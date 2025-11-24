@@ -1,0 +1,9 @@
+{
+  "name": "kabazaApp",
+  "displayName": "kabaza",
+  "react-native": {
+    "android": {
+      "package": "com.kabaza.app"
+    }
+  }
+}
