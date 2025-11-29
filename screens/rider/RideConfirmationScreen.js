@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import { getUserData } from '../../src/utils/userStorage'; // ✅ ADDED: For consistency
 
 export default function RideConfirmationScreen({ route, navigation }) {
   const { ride, destination, pickupLocation, riderInfo } = route.params || {};
@@ -14,6 +15,21 @@ export default function RideConfirmationScreen({ route, navigation }) {
   const [driverFound, setDriverFound] = useState(false);
   const [driverInfo, setDriverInfo] = useState(null);
   const [countdown, setCountdown] = useState(30);
+  const [userData, setUserData] = useState(null); // ✅ ADDED: For consistency
+
+  // ✅ ADDED: Load user data for consistency
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const data = await getUserData();
+        setUserData(data);
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
+    loadUserData();
+  }, []);
 
   // Simulate driver search
   useEffect(() => {

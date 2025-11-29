@@ -1,52 +1,71 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import { saveUserData, saveUserRole } from '../../src/utils/userStorage';
+import { useDispatch } from 'react-redux'; // ✅ ADD THIS
+import { loginSuccess } from '../../src/store/slices/authSlice'; // ✅ ADD THIS
 
 export default function RoleSelectionScreen({ navigation, route }) {
   // Get all user data
   const { phone, authMethod, socialUserInfo, userProfile } = route.params || {};
   const [selectedRole, setSelectedRole] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const dispatch = useDispatch(); // ✅ ADD THIS
 
-  const handleRole = async (role) => {
+  const handleRoleSelection = async (role) => {
     setLoading(true);
     setSelectedRole(role);
-    
-    // Simulate API call or processing
-    setTimeout(() => {
-      const routeName = role === 'rider' ? 'RiderStack' : 'DriverStack';
+    setError(null);
+
+    try {
+      // Validation checks
+      if (!phone && !socialUserInfo) {
+        throw new Error('User information missing. Please restart registration.');
+      }
       
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ 
-            name: routeName,
-            params: {
-              phone,
-              authMethod,
-              socialUserInfo,
-              userProfile
-            }
-          }],
-        })
-      );
+      if (!userProfile?.firstName || !userProfile?.surname) {
+        throw new Error('Profile information incomplete.');
+      }
+
+      // Save user data to AsyncStorage
+      const userData = {
+        phone,
+        authMethod,
+        socialUserInfo,
+        userProfile,
+        userRole: role,
+        isLoggedIn: true,
+        registrationComplete: true
+      };
+
+      // Save to persistent storage
+      await saveUserData(userData);
+      await saveUserRole(role);
+
+      console.log('✅ User data and role saved successfully');
+      
+      // ✅ UPDATE REDUX STORE - This will trigger AppNavigator to re-render
+      dispatch(loginSuccess({
+        user: userData,
+        token: null, // Add token if you have one
+        role: role
+      }));
+
+      // AppNavigator will automatically navigate to the correct stack
+
+    } catch (err) {
+      console.error('❌ Role selection error:', err);
+      setError(err.message);
       setLoading(false);
-    }, 500);
+    }
   };
 
-  // Update welcome message to use profile name if available
-  const getWelcomeMessage = () => {
-    if (userProfile?.fullName) {
-      return `Welcome, ${userProfile.fullName}!`;
-    }
-    if (socialUserInfo?.name) {
-      return `Welcome, ${socialUserInfo.name}!`;
-    }
-    if (phone) {
-      return `Welcome! (${phone})`;
-    }
-    return "Welcome!";
+  // ... rest of your component stays the same
+
+  const handleRetry = () => {
+    setError(null);
   };
 
   return (
@@ -68,28 +87,6 @@ export default function RoleSelectionScreen({ navigation, route }) {
           </View>
         )}
         
-        {authMethod === 'google' && (
-          <View style={styles.contextItem}>
-            <View style={[styles.checkbox, styles.checked]}>
-              <Icon name="check" size={12} color="#fff" />
-            </View>
-            <Text style={styles.contextText}>
-              Signed in with Google {socialUserInfo?.name && `as ${socialUserInfo.name}`}
-            </Text>
-          </View>
-        )}
-        
-        {authMethod === 'facebook' && (
-          <View style={styles.contextItem}>
-            <View style={[styles.checkbox, styles.checked]}>
-              <Icon name="check" size={12} color="#fff" />
-            </View>
-            <Text style={styles.contextText}>
-              Signed in with Facebook {socialUserInfo?.name && `as ${socialUserInfo.name}`}
-            </Text>
-          </View>
-        )}
-        
         {userProfile?.fullName && (
           <View style={styles.contextItem}>
             <View style={[styles.checkbox, styles.checked]}>
@@ -100,6 +97,17 @@ export default function RoleSelectionScreen({ navigation, route }) {
         )}
       </View>
 
+      {/* Error Message Display */}
+      {error && (
+        <View style={styles.errorContainer}>
+          <Icon name="exclamation-triangle" size={16} color="#fff" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={handleRetry}>
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Divider */}
       <View style={styles.divider} />
 
@@ -109,11 +117,11 @@ export default function RoleSelectionScreen({ navigation, route }) {
           style={[
             styles.roleButton, 
             selectedRole === 'rider' && styles.roleButtonSelected,
-            loading && styles.roleButtonDisabled
+            (loading || error) && styles.roleButtonDisabled
           ]} 
-          onPress={() => handleRole('rider')}
+          onPress={() => handleRoleSelection('rider')}
           activeOpacity={0.8}
-          disabled={loading}
+          disabled={loading || error}
         >
           {loading && selectedRole === 'rider' ? (
             <ActivityIndicator size="small" color="#4CAF50" />
@@ -132,11 +140,11 @@ export default function RoleSelectionScreen({ navigation, route }) {
           style={[
             styles.roleButton, 
             selectedRole === 'driver' && styles.roleButtonSelected,
-            loading && styles.roleButtonDisabled
+            (loading || error) && styles.roleButtonDisabled
           ]} 
-          onPress={() => handleRole('driver')}
+          onPress={() => handleRoleSelection('driver')}
           activeOpacity={0.8}
-          disabled={loading}
+          disabled={loading || error}
         >
           {loading && selectedRole === 'driver' ? (
             <ActivityIndicator size="small" color="#4CAF50" />
@@ -213,6 +221,27 @@ const styles = StyleSheet.create({
   contextText: {
     fontSize: 14,
     color: '#666',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ff6b6b',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  errorText: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 14,
+    marginLeft: 8,
+    marginRight: 12,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   divider: {
     height: 1,

@@ -1,26 +1,42 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-// ✅ FIXED: Correct import path for Loading component
 import Loading from '../../src/components/Loading';
 
 export default function OtpVerificationScreen({ navigation, route }) {
-  // UPDATED: Handle both phone and social login
+  // FIXED: Better handling of route params with fallbacks
   const { phoneNumber, socialUserInfo, authMethod } = route.params || {};
+  
+  // FIXED: Proper phone number formatting
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return '+265 XXX XXX XXX';
+    
+    // Remove any existing +undefined prefix
+    let cleanPhone = phone.replace('+undefined', '');
+    
+    // Ensure it starts with +
+    if (!cleanPhone.startsWith('+')) {
+      cleanPhone = '+265' + cleanPhone;
+    }
+    
+    return cleanPhone;
+  };
+
   const [otp, setOtp] = useState(new Array(6).fill(''));
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef([]);
 
-  // UPDATED: Get display info based on auth method
+  // FIXED: Better verification info with formatted phone number
   const getVerificationInfo = () => {
     if (authMethod === 'phone') {
+      const formattedPhone = formatPhoneNumber(phoneNumber);
       return {
         title: 'Verify Your Number',
         description: 'We\'ve sent a 6-digit code to',
-        displayText: phoneNumber || '+265 XXX XXX XXX',
-        resendTarget: phoneNumber
+        displayText: formattedPhone,
+        resendTarget: formattedPhone
       };
     } else {
       return {
@@ -75,9 +91,9 @@ export default function OtpVerificationScreen({ navigation, route }) {
     // Simulate verification
     setTimeout(() => {
       setLoading(false);
-      // UPDATED: Pass all auth data to ProfileCompletion
+      // FIXED: Pass formatted phone number to next screen
       navigation.navigate('ProfileCompletion', {
-        phoneNumber,
+        phoneNumber: formatPhoneNumber(phoneNumber),
         socialUserInfo,
         authMethod,
         verified: true,
@@ -108,7 +124,6 @@ export default function OtpVerificationScreen({ navigation, route }) {
           <Icon name="arrow-left" size={20} color="#333" />
         </TouchableOpacity>
 
-        {/* UPDATED: Dynamic titles based on auth method */}
         <Text style={styles.title}>{verificationInfo.title}</Text>
         <Text style={styles.description}>{verificationInfo.description}</Text>
         <Text style={styles.phoneNumber}>{verificationInfo.displayText}</Text>

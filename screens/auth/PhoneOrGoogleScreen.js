@@ -1,17 +1,34 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import InternationalPhoneNumberInput from 'react-native-international-phone-number';
 
 export default function PhoneOrGoogleScreen({ navigation }) {
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState(null);
   const [loading, setLoading] = useState(false);
   const [socialAuthMethod, setSocialAuthMethod] = useState(null);
   const [socialUserInfo, setSocialUserInfo] = useState(null);
 
+  const handlePhoneNumberChange = (input) => {
+    setPhoneNumber(input);
+  };
+
+  const handleSelectedCountryChange = (country) => {
+    setSelectedCountry(country);
+  };
+
   const handleContinue = () => {
-    if (phoneNumber.length >= 10) {
+    if (phoneNumber && phoneNumber.length >= 10) {
+      // FIXED: Ensure phone number is properly formatted
+      const fullPhoneNumber = selectedCountry ? 
+        `+${selectedCountry.callingCode}${phoneNumber}` : 
+        `+265${phoneNumber}`; // Default to Malawi if no country selected
+      
+      console.log('Sending phone number:', fullPhoneNumber); // Debug log
+      
       navigation.navigate('OtpVerification', { 
-        phoneNumber: phoneNumber,
+        phoneNumber: fullPhoneNumber,
         authMethod: 'phone'
       });
     } else {
@@ -69,11 +86,17 @@ export default function PhoneOrGoogleScreen({ navigation }) {
     }, 1500);
   };
 
-  // FIXED: Corrected navigation parameters for social login
   const handleSocialContinue = () => {
     if (phoneNumber.length >= 10) {
+      // FIXED: Ensure phone number is properly formatted
+      const fullPhoneNumber = selectedCountry ? 
+        `+${selectedCountry.callingCode}${phoneNumber}` : 
+        `+265${phoneNumber}`; // Default to Malawi if no country selected
+      
+      console.log('Sending phone number (social):', fullPhoneNumber); // Debug log
+      
       navigation.navigate('OtpVerification', { 
-        phoneNumber: phoneNumber,
+        phoneNumber: fullPhoneNumber,
         authMethod: socialAuthMethod,
         socialUserInfo: socialUserInfo,
       });
@@ -90,6 +113,7 @@ export default function PhoneOrGoogleScreen({ navigation }) {
     setSocialAuthMethod(null);
     setSocialUserInfo(null);
     setPhoneNumber('');
+    setSelectedCountry(null);
   };
 
   return (
@@ -128,13 +152,15 @@ export default function PhoneOrGoogleScreen({ navigation }) {
 
             {/* Phone number input for verification */}
             <Text style={styles.phoneLabel}>Enter your phone number</Text>
-            <TextInput
-              style={styles.phoneInput}
-              placeholder="Enter phone number"
+            
+            {/* International Phone Number Input - FIXED: Malawi as default */}
+            <InternationalPhoneNumberInput
               value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              keyboardType="phone-pad"
-              autoFocus
+              onChangePhoneNumber={handlePhoneNumberChange}
+              onChangeSelectedCountry={handleSelectedCountryChange}
+              defaultCountry="MW" // Changed from "US" to "MW" for Malawi
+              phoneInputStyles={styles.phoneInput}
+              modalSearchInputStyles={styles.searchInput}
             />
 
             {/* Verify Phone Button */}
@@ -163,13 +189,15 @@ export default function PhoneOrGoogleScreen({ navigation }) {
           <>
             {/* Regular registration flow */}
             <Text style={styles.phoneLabel}>Enter your number</Text>
-            <TextInput
-              style={styles.phoneInput}
-              placeholder="Enter phone number"
+            
+            {/* International Phone Number Input - FIXED: Malawi as default */}
+            <InternationalPhoneNumberInput
               value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              keyboardType="phone-pad"
-              autoFocus
+              onChangePhoneNumber={handlePhoneNumberChange}
+              onChangeSelectedCountry={handleSelectedCountryChange}
+              defaultCountry="MW" // Changed from "US" to "MW" for Malawi
+              phoneInputStyles={styles.phoneInput}
+              modalSearchInputStyles={styles.searchInput}
             />
 
             {/* Continue with Phone Button */}
@@ -305,6 +333,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 20,
     backgroundColor: '#fff',
+  },
+  searchInput: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    margin: 15,
   },
   continueButton: {
     backgroundColor: '#6c3',

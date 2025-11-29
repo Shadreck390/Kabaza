@@ -9,6 +9,7 @@ import MapComponent from 'components/MapComponent';
 import { fetchNearbyRides } from 'services/api/rideAPI';
 import { subscribeToNearbyRides, unsubscribeFromNearbyRides } from 'services/socket/realtimeUpdates';
 import Geolocation from 'react-native-geolocation-service';
+import { getUserData } from '../../src/utils/userStorage'; // ✅ ADDED: Import storage utility
 
 export default function DriverHomeScreen({ route, navigation }) {
   const [region, setRegion] = useState(null);
@@ -17,12 +18,25 @@ export default function DriverHomeScreen({ route, navigation }) {
   const [isOnline, setIsOnline] = useState(false);
   const [selectedRideId, setSelectedRideId] = useState(null);
   const [locationPermission, setLocationPermission] = useState(false);
+  const [userData, setUserData] = useState(null); // ✅ ADDED: State for user data
   const mapRef = useRef(null);
 
-  // FIXED: Get user data from proper route params
-  const { phone, authMethod, socialUserInfo, userProfile } = route.params || {};
-  
-  const driverName = userProfile?.fullName || socialUserInfo?.name || 'Driver';
+  // ✅ FIXED: Get user data from AsyncStorage instead of route params
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const data = await getUserData();
+        setUserData(data);
+        console.log('Driver data loaded from storage:', data?.userProfile?.fullName);
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
+    loadUserData();
+  }, []);
+
+  const driverName = userData?.userProfile?.fullName || userData?.socialUserInfo?.name || 'Driver';
 
   const defaultRegion = {
     latitude: -15.3875, // Malawi coordinates

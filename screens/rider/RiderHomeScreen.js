@@ -11,6 +11,7 @@ import Loading from 'components/Loading';
 import RideCard from 'components/RideCard';
 import MapComponent from 'components/MapComponent';
 import Geolocation from 'react-native-geolocation-service';
+import { getUserData } from '../../src/utils/userStorage'; // ✅ ADDED: Import storage utility
 
 export default function RiderHomeScreen({ route, navigation }) {
   const [region, setRegion] = useState(null);
@@ -20,12 +21,26 @@ export default function RiderHomeScreen({ route, navigation }) {
   const [locationPermission, setLocationPermission] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [userData, setUserData] = useState(null); // ✅ ADDED: State for user data
   const mapRef = useRef(null);
 
-  // Get user data from auth flow
-  const { phone, authMethod, socialUserInfo, userProfile } = route.params || {};
-  
-  const riderName = userProfile?.fullName || socialUserInfo?.name || 'Rider';
+  // ✅ FIXED: Get user data from AsyncStorage instead of route params
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const data = await getUserData();
+        setUserData(data);
+        console.log('Rider data loaded from storage:', data?.userProfile?.fullName);
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
+    loadUserData();
+  }, []);
+
+  const riderName = userData?.userProfile?.fullName || userData?.socialUserInfo?.name || 'Rider';
+  const riderPhone = userData?.phone;
 
   const defaultRegion = {
     latitude: -15.3875, // Malawi coordinates
@@ -207,7 +222,7 @@ export default function RiderHomeScreen({ route, navigation }) {
               ride,
               riderInfo: {
                 name: riderName,
-                phone: phone,
+                phone: riderPhone,
                 currentLocation: currentLocation
               }
             });
@@ -279,7 +294,7 @@ export default function RiderHomeScreen({ route, navigation }) {
         rightComponent={
           <TouchableOpacity 
             style={styles.profileButton}
-            onPress={() => navigation.navigate('Profile', route.params)}
+            onPress={() => navigation.navigate('Profile')} // ✅ REMOVED: route.params
           >
             <Icon name="user" size={20} color="#fff" />
           </TouchableOpacity>
@@ -345,7 +360,7 @@ export default function RiderHomeScreen({ route, navigation }) {
 
           <TouchableOpacity 
             style={styles.actionButton}
-            onPress={() => navigation.navigate('RideHistory', route.params)}
+            onPress={() => navigation.navigate('RideHistory')} // ✅ REMOVED: route.params
           >
             <Icon name="history" size={20} color="#6c3" />
             <Text style={styles.actionText}>History</Text>

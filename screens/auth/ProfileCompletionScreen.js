@@ -70,22 +70,25 @@ export default function ProfileCompletionScreen({ navigation, route }) {
     // Get existing params from previous screens
     const { phoneNumber, authMethod, socialUserInfo, verified } = route.params || {};
 
-    // Prepare complete user data
+    // ✅ FIXED: Clean user data structure for storage
     const userData = {
       phone: phoneNumber,
       authMethod: authMethod || 'phone',
-      socialUserInfo: socialUserInfo,
+      socialUserInfo: socialUserInfo || null,
+      verified: verified || false,
       profilePicture: profilePicture,
       userProfile: {
         firstName: firstName.trim(),
         surname: surname.trim(),
         gender,
-        dateOfBirth,
+        dateOfBirth: dateOfBirth || '',
         fullName: `${firstName.trim()} ${surname.trim()}`,
       }
     };
 
-    // Navigate to role selection with ALL user data
+    console.log('Navigating to RoleSelection with:', userData);
+
+    // ✅ FIXED: Use navigate instead of replace to maintain back stack
     navigation.navigate('RoleSelection', userData);
   };
 
@@ -153,20 +156,20 @@ export default function ProfileCompletionScreen({ navigation, route }) {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Gender *</Text>
           <View style={styles.genderContainer}>
-            {['male', 'female', 'other'].map((item) => (
+            {['Male', 'Female', 'Other'].map((item) => (
               <TouchableOpacity
-                key={item}
+                key={item.toLowerCase()}
                 style={[
                   styles.genderButton,
-                  gender === item && styles.genderButtonSelected
+                  gender === item.toLowerCase() && styles.genderButtonSelected
                 ]}
-                onPress={() => setGender(item)}
+                onPress={() => setGender(item.toLowerCase())}
               >
                 <Text style={[
                   styles.genderText,
-                  gender === item && styles.genderTextSelected
+                  gender === item.toLowerCase() && styles.genderTextSelected
                 ]}>
-                  {item.charAt(0).toUpperCase() + item.slice(1)}
+                  {item}
                 </Text>
               </TouchableOpacity>
             ))}

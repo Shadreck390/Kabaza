@@ -116,9 +116,10 @@ dependencies {
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.2.0-alpha01"
 
     // Google Play Services
-    implementation "com.google.android.gms:play-services-maps:19.0.0"
-    implementation "com.google.android.gms:play-services-location:21.3.0"
-    implementation "com.google.android.gms:play-services-auth:21.2.0"
+    implementation "com.google.android.gms:play-services-maps:18.2.0"
+    implementation "com.google.android.gms:play-services-location:21.0.1"
+    implementation "com.google.android.gms:play-services-auth:20.7.0"
+    implementation "com.google.android.gms:play-services-base:18.2.0"
 
     // Tests
     testImplementation "junit:junit:4.13.2"
