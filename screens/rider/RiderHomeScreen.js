@@ -5,11 +5,11 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 // ✅ Use aliases (if configured properly)
-import Header from 'components/Header';
-import Button from 'components/Button';
-import Loading from 'components/Loading';
-import RideCard from 'components/RideCard';
-import MapComponent from 'components/MapComponent';
+import Header from '../../src/components/Header';
+import Button from '../../src/components/Button';
+import Loading from '../../src/components/Loading';
+import RideCard from '../../src/components/RideCard';
+import MapComponent from '../../src/components/MapComponent';
 import Geolocation from 'react-native-geolocation-service';
 import { getUserData } from '../../src/utils/userStorage'; // ✅ ADDED: Import storage utility
 
@@ -239,10 +239,20 @@ export default function RiderHomeScreen({ route, navigation }) {
 
   useEffect(() => {
     const initializeLocation = async () => {
-      const granted = await requestLocationPermission();
-      if (granted) {
-        getCurrentLocation();
-      } else {
+      try {
+        const granted = await requestLocationPermission();
+        
+        if (granted) {
+          // Add delay to ensure Google Play Services are ready
+          setTimeout(() => {
+            getCurrentLocation();
+          }, 1000);
+        } else {
+          setRegion(defaultRegion);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error initializing location:', error);
         setRegion(defaultRegion);
         setLoading(false);
       }

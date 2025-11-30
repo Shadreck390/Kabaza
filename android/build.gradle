@@ -3,9 +3,10 @@ buildscript {
         buildToolsVersion = "34.0.0"
         minSdkVersion = 24
         compileSdkVersion = 35
-        targetSdkVersion = 34
+        targetSdkVersion = 35
         kotlinVersion = "1.9.22"
         ndkVersion = "26.1.10909125"
+        playServicesVersion = "21.3.0" // ✅ ADD THIS
     }
 
     repositories {

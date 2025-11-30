@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, PermissionsAndroid, Platform } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import Geolocation from 'react-native-geolocation-service'; // ✅ ADD THIS IMPORT
 import { saveUserData, saveUserRole } from '../../src/utils/userStorage';
-import { useDispatch } from 'react-redux'; // ✅ ADD THIS
-import { loginSuccess } from '../../src/store/slices/authSlice'; // ✅ ADD THIS
+import { useDispatch } from 'react-redux';
+import { loginSuccess } from '../../src/store/slices/authSlice';
 
 export default function RoleSelectionScreen({ navigation, route }) {
   // Get all user data
@@ -12,8 +13,53 @@ export default function RoleSelectionScreen({ navigation, route }) {
   const [selectedRole, setSelectedRole] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const dispatch = useDispatch(); // ✅ ADD THIS
+  const dispatch = useDispatch();
 
+  // ✅ ADD THIS FUNCTION - Request location permission
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'ios') {
+      const status = await Geolocation.requestAuthorization('whenInUse');
+      return status === 'granted';
+    } else {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location Access Required',
+            message: 'Kabaza needs access to your location to find rides and drivers',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn('Location permission error:', err);
+        return false;
+      }
+    }
+  };
+
+  // ✅ ADD THIS FUNCTION - Get current location
+  const getCurrentLocation = () => {
+    return new Promise((resolve, reject) => {
+      Geolocation.getCurrentPosition(
+        (position) => {
+          resolve(position.coords);
+        },
+        (error) => {
+          reject(error);
+        },
+        { 
+          enableHighAccuracy: true, 
+          timeout: 15000, 
+          maximumAge: 10000 
+        }
+      );
+    });
+  };
+
+  // ✅ MODIFIED THIS FUNCTION - Added location handling
   const handleRoleSelection = async (role) => {
     setLoading(true);
     setSelectedRole(role);
@@ -29,13 +75,35 @@ export default function RoleSelectionScreen({ navigation, route }) {
         throw new Error('Profile information incomplete.');
       }
 
-      // Save user data to AsyncStorage
+      // ✅ ADDED: Request location permission
+      const hasLocationPermission = await requestLocationPermission();
+      if (!hasLocationPermission) {
+        throw new Error('Location permission is required to use Kabaza services.');
+      }
+
+      // ✅ ADDED: Get current location
+      let userLocation = null;
+      try {
+        userLocation = await getCurrentLocation();
+        console.log('📍 Location obtained:', userLocation);
+      } catch (locationError) {
+        console.warn('Location fetch failed, continuing without location:', locationError);
+        // Don't throw error - allow user to continue but warn them
+        Alert.alert(
+          'Location Service',
+          'Unable to get your current location. You can still use the app, but some features may not work properly.',
+          [{ text: 'Continue' }]
+        );
+      }
+
+      // Save user data to AsyncStorage - ✅ ADDED location
       const userData = {
         phone,
         authMethod,
         socialUserInfo,
         userProfile,
         userRole: role,
+        userLocation, // ✅ ADD LOCATION DATA
         isLoggedIn: true,
         registrationComplete: true
       };
@@ -46,11 +114,12 @@ export default function RoleSelectionScreen({ navigation, route }) {
 
       console.log('✅ User data and role saved successfully');
       
-      // ✅ UPDATE REDUX STORE - This will trigger AppNavigator to re-render
+      // ✅ UPDATE REDUX STORE - Include location
       dispatch(loginSuccess({
         user: userData,
         token: null, // Add token if you have one
-        role: role
+        role: role,
+        location: userLocation // ✅ ADD LOCATION TO REDUX
       }));
 
       // AppNavigator will automatically navigate to the correct stack
@@ -63,7 +132,6 @@ export default function RoleSelectionScreen({ navigation, route }) {
   };
 
   // ... rest of your component stays the same
-
   const handleRetry = () => {
     setError(null);
   };
@@ -95,6 +163,14 @@ export default function RoleSelectionScreen({ navigation, route }) {
             <Text style={styles.contextText}>Profile: {userProfile.fullName}</Text>
           </View>
         )}
+
+        {/* ✅ ADDED: Location permission info */}
+        <View style={styles.contextItem}>
+          <View style={[styles.checkbox]}>
+            <Icon name="map-marker" size={12} color="#fff" />
+          </View>
+          <Text style={styles.contextText}>Location access required for services</Text>
+        </View>
       </View>
 
       {/* Error Message Display */}
@@ -132,6 +208,7 @@ export default function RoleSelectionScreen({ navigation, route }) {
               </View>
               <Text style={styles.roleButtonText}>Continue as Passenger</Text>
               <Text style={styles.roleDescription}>Book rides and get around town</Text>
+              <Text style={styles.locationNote}>📍 Location required</Text>
             </>
           )}
         </TouchableOpacity>
@@ -155,6 +232,7 @@ export default function RoleSelectionScreen({ navigation, route }) {
               </View>
               <Text style={styles.roleButtonText}>Continue as Driver</Text>
               <Text style={styles.roleDescription}>Earn money by giving rides</Text>
+              <Text style={styles.locationNote}>📍 Location required</Text>
             </>
           )}
         </TouchableOpacity>
@@ -163,7 +241,7 @@ export default function RoleSelectionScreen({ navigation, route }) {
       {/* Loading Message */}
       {loading && (
         <Text style={styles.loadingText}>
-          Setting up your {selectedRole === 'rider' ? 'passenger' : 'driver'} account...
+          {selectedRole === 'rider' ? 'Finding your location...' : 'Setting up driver account...'}
         </Text>
       )}
 
@@ -213,6 +291,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#4CAF50', // ✅ Changed to always show green
   },
   checked: {
     backgroundColor: '#4CAF50',
@@ -262,7 +341,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 100,
+    minHeight: 120, // ✅ Increased height for location note
   },
   roleButtonSelected: {
     borderColor: '#4CAF50',
@@ -285,6 +364,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+    marginBottom: 4,
+  },
+  locationNote: {
+    fontSize: 12,
+    color: '#4CAF50',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   loadingText: {
     fontSize: 14,
