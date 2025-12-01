@@ -6,7 +6,6 @@ buildscript {
         targetSdkVersion = 35
         kotlinVersion = "1.9.22"
         ndkVersion = "26.1.10909125"
-        playServicesVersion = "21.3.0" // ✅ ADD THIS
     }
 
     repositories {
