@@ -1,5 +1,5 @@
 // components/Header.js
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -30,18 +30,26 @@ const Header = ({
   centerTitle = true,
   style,
   testID,
+  disabled = false,
+  large = false,
 }) => {
   const navigation = useNavigation();
 
   const handleBack = () => {
+    if (disabled) return;
     if (onBack) {
       onBack();
-    } else {
+    } else if (navigation.canGoBack()) {
       navigation.goBack();
     }
   };
 
-  const renderLeft = () => {
+  const handleRightPress = () => {
+    if (disabled || !onRightPress) return;
+    onRightPress();
+  };
+
+  const renderLeft = useMemo(() => {
     if (leftComponent) {
       return leftComponent;
     }
@@ -54,6 +62,8 @@ const Header = ({
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityLabel="Go back"
           accessibilityRole="button"
+          disabled={disabled}
+          activeOpacity={0.7}
         >
           <Icon name="arrow-left" size={20} color={iconColor} />
         </TouchableOpacity>
@@ -61,9 +71,9 @@ const Header = ({
     }
 
     return <View style={styles.placeholder} />;
-  };
+  }, [leftComponent, showBack, iconColor, disabled]);
 
-  const renderRight = () => {
+  const renderRight = useMemo(() => {
     if (rightComponent) {
       return rightComponent;
     }
@@ -71,11 +81,13 @@ const Header = ({
     if (rightIcon) {
       return (
         <TouchableOpacity 
-          onPress={onRightPress} 
+          onPress={handleRightPress} 
           style={styles.rightButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityLabel={typeof rightIcon === 'string' ? rightIcon : 'Action'}
           accessibilityRole="button"
+          disabled={disabled || !onRightPress}
+          activeOpacity={0.7}
         >
           {typeof rightIcon === 'string' ? (
             <Icon name={rightIcon} size={20} color={iconColor} />
@@ -87,73 +99,95 @@ const Header = ({
     }
 
     return <View style={styles.placeholder} />;
-  };
+  }, [rightComponent, rightIcon, iconColor, onRightPress, disabled]);
 
-  const headerStyle = [
+  const headerStyle = useMemo(() => [
     styles.header,
+    large && styles.headerLarge,
     transparent && styles.transparent,
-    elevated && styles.elevated,
+    elevated && !transparent && styles.elevated,
     { backgroundColor: transparent ? 'transparent' : backgroundColor },
     style
-  ];
+  ], [transparent, elevated, backgroundColor, large, style]);
+
+  const titleStyle = useMemo(() => [
+    styles.title,
+    large && styles.titleLarge,
+    { color: titleColor },
+    subtitle && styles.titleWithSubtitle
+  ], [titleColor, subtitle, large]);
+
+  const subtitleStyle = useMemo(() => [
+    styles.subtitle,
+    large && styles.subtitleLarge,
+    { color: titleColor }
+  ], [titleColor, large]);
 
   return (
-    <SafeAreaView style={transparent ? styles.transparentSafeArea : null}>
+    <>
       <StatusBar 
         barStyle={statusBarStyle} 
         backgroundColor={transparent ? 'transparent' : backgroundColor}
         translucent={transparent}
       />
-      <View style={headerStyle} testID={testID}>
-        <View style={styles.leftContainer}>
-          {renderLeft()}
-        </View>
+      <SafeAreaView 
+        style={[
+          styles.safeArea,
+          { backgroundColor: transparent ? 'transparent' : backgroundColor }
+        ]}
+      >
+        <View style={headerStyle} testID={testID}>
+          <View style={styles.leftContainer}>
+            {renderLeft}
+          </View>
 
-        <View style={[
-          styles.titleContainer, 
-          !centerTitle && styles.titleContainerLeft
-        ]}>
-          <Text 
-            style={[
-              styles.title, 
-              { color: titleColor },
-              subtitle && styles.titleWithSubtitle
-            ]}
-            numberOfLines={1}
-            accessibilityRole="header"
-          >
-            {title}
-          </Text>
-          {subtitle && (
+          <View style={[
+            styles.titleContainer, 
+            !centerTitle && styles.titleContainerLeft
+          ]}>
             <Text 
-              style={[styles.subtitle, { color: titleColor }]}
+              style={titleStyle}
               numberOfLines={1}
+              ellipsizeMode="tail"
+              accessibilityRole="header"
             >
-              {subtitle}
+              {title}
             </Text>
-          )}
-        </View>
+            {subtitle && (
+              <Text 
+                style={subtitleStyle}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {subtitle}
+              </Text>
+            )}
+          </View>
 
-        <View style={styles.rightContainer}>
-          {renderRight()}
+          <View style={styles.rightContainer}>
+            {renderRight}
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    backgroundColor: '#6c3',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 8 : 12,
-    paddingBottom: 12,
+    paddingVertical: 12,
     minHeight: Platform.OS === 'ios' ? 44 : 56,
   },
-  transparentSafeArea: {
-    backgroundColor: 'transparent',
+  headerLarge: {
+    minHeight: Platform.OS === 'ios' ? 64 : 72,
+    paddingVertical: 16,
   },
   transparent: {
     backgroundColor: 'transparent',
@@ -195,8 +229,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: Platform.OS === 'ios' ? '600' : 'bold',
     textAlign: 'center',
+  },
+  titleLarge: {
+    fontSize: 24,
+    fontWeight: Platform.OS === 'ios' ? '700' : 'bold',
   },
   titleWithSubtitle: {
     marginBottom: 2,
@@ -204,8 +242,11 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 12,
     fontWeight: '400',
-    opacity: 0.9,
+    opacity: 0.85,
     textAlign: 'center',
+  },
+  subtitleLarge: {
+    fontSize: 14,
   },
   backButton: {
     padding: 4,

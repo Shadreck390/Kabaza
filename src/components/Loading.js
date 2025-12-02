@@ -1,5 +1,5 @@
 // components/Loading.js
-import React from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -16,7 +16,7 @@ const { width, height } = Dimensions.get('window');
 const Loading = ({ 
   message = 'Loading...', 
   size = 'large',
-  type = 'spinner', // 'spinner', 'dots', 'pulse', 'skeleton'
+  type = 'spinner', // 'spinner', 'dots', 'pulse', 'skeleton', 'progress', 'bars'
   color = '#6c3',
   backgroundColor = 'transparent',
   overlay = false,
@@ -27,15 +27,26 @@ const Loading = ({
   progress, // For progress bar type (0-100)
   subtitle,
   testID,
+  animated = true,
+  skeletonCount = 3,
 }) => {
-  const pulseAnim = new Animated.Value(1);
-  const dotAnim1 = new Animated.Value(0);
-  const dotAnim2 = new Animated.Value(0);
-  const dotAnim3 = new Animated.Value(0);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const dotAnim1 = useRef(new Animated.Value(0)).current;
+  const dotAnim2 = useRef(new Animated.Value(0)).current;
+  const dotAnim3 = useRef(new Animated.Value(0)).current;
+  const barAnim1 = useRef(new Animated.Value(0.3)).current;
+  const barAnim2 = useRef(new Animated.Value(0.3)).current;
+  const barAnim3 = useRef(new Animated.Value(0.3)).current;
+  const skeletonAnim = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
+    if (!animated) return;
+
+    let animations = [];
+
     if (type === 'pulse') {
-      Animated.loop(
+      const pulseAnimation = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.2,
@@ -50,17 +61,19 @@ const Loading = ({
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      pulseAnimation.start();
+      animations.push(pulseAnimation);
     }
 
     if (type === 'dots') {
       const createDotAnimation = (anim, delay) => {
         return Animated.loop(
           Animated.sequence([
+            Animated.delay(delay),
             Animated.timing(anim, {
               toValue: 1,
               duration: 600,
-              delay,
               easing: Easing.inOut(Easing.ease),
               useNativeDriver: true,
             }),
@@ -74,61 +87,132 @@ const Loading = ({
         );
       };
 
-      createDotAnimation(dotAnim1, 0).start();
-      createDotAnimation(dotAnim2, 200).start();
-      createDotAnimation(dotAnim3, 400).start();
+      const dot1 = createDotAnimation(dotAnim1, 0);
+      const dot2 = createDotAnimation(dotAnim2, 200);
+      const dot3 = createDotAnimation(dotAnim3, 400);
+      
+      dot1.start();
+      dot2.start();
+      dot3.start();
+      
+      animations.push(dot1, dot2, dot3);
     }
-  }, [type]);
+
+    if (type === 'bars') {
+      const createBarAnimation = (anim, delay) => {
+        return Animated.loop(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(anim, {
+              toValue: 1,
+              duration: 500,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim, {
+              toValue: 0.3,
+              duration: 500,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+          ])
+        );
+      };
+
+      const bar1 = createBarAnimation(barAnim1, 0);
+      const bar2 = createBarAnimation(barAnim2, 150);
+      const bar3 = createBarAnimation(barAnim3, 300);
+      
+      bar1.start();
+      bar2.start();
+      bar3.start();
+      
+      animations.push(bar1, bar2, bar3);
+    }
+
+    if (type === 'skeleton') {
+      const skeletonAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(skeletonAnim, {
+            toValue: 1,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(skeletonAnim, {
+            toValue: 0,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      skeletonAnimation.start();
+      animations.push(skeletonAnimation);
+    }
+
+    return () => {
+      animations.forEach(anim => anim.stop());
+    };
+  }, [type, animated]);
+
+  useEffect(() => {
+    if (type === 'progress' && typeof progress === 'number') {
+      Animated.timing(progressAnim, {
+        toValue: progress,
+        duration: 300,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [progress, type]);
 
   const renderSpinner = () => (
     <ActivityIndicator 
       size={size} 
       color={color} 
       style={styles.spinner}
+      accessibilityLabel="Loading"
     />
   );
 
   const renderDots = () => (
     <View style={styles.dotsContainer}>
-      <Animated.View 
-        style={[
-          styles.dot,
-          { 
-            backgroundColor: color,
-            opacity: dotAnim1,
-            transform: [{ scale: dotAnim1.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0.5, 1]
-            })}]
-          }
-        ]} 
-      />
-      <Animated.View 
-        style={[
-          styles.dot,
-          { 
-            backgroundColor: color,
-            opacity: dotAnim2,
-            transform: [{ scale: dotAnim2.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0.5, 1]
-            })}]
-          }
-        ]} 
-      />
-      <Animated.View 
-        style={[
-          styles.dot,
-          { 
-            backgroundColor: color,
-            opacity: dotAnim3,
-            transform: [{ scale: dotAnim3.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0.5, 1]
-            })}]
-          }
-        ]} 
-      />
+      {[dotAnim1, dotAnim2, dotAnim3].map((anim, index) => (
+        <Animated.View 
+          key={index}
+          style={[
+            styles.dot,
+            { 
+              backgroundColor: color,
+              opacity: anim,
+              transform: [{ 
+                scale: anim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.5, 1]
+                })
+              }]
+            }
+          ]} 
+        />
+      ))}
+    </View>
+  );
+
+  const renderBars = () => (
+    <View style={styles.barsContainer}>
+      {[barAnim1, barAnim2, barAnim3].map((anim, index) => (
+        <Animated.View 
+          key={index}
+          style={[
+            styles.bar,
+            { 
+              backgroundColor: color,
+              transform: [{ scaleY: anim }]
+            }
+          ]} 
+        />
+      ))}
     </View>
   );
 
@@ -143,33 +227,56 @@ const Loading = ({
     </Animated.View>
   );
 
-  const renderProgressBar = () => (
-    <View style={styles.progressContainer}>
-      <View style={styles.progressBackground}>
-        <View 
-          style={[
-            styles.progressFill,
-            { 
-              width: `${progress}%`,
-              backgroundColor: color
-            }
-          ]} 
-        />
+  const renderProgressBar = () => {
+    const displayProgress = typeof progress === 'number' ? progress : 0;
+    const progressWidth = progressAnim.interpolate({
+      inputRange: [0, 100],
+      outputRange: ['0%', '100%'],
+    });
+
+    return (
+      <View style={styles.progressContainer}>
+        <View style={styles.progressBackground}>
+          <Animated.View 
+            style={[
+              styles.progressFill,
+              { 
+                width: progressWidth,
+                backgroundColor: color
+              }
+            ]} 
+          />
+        </View>
+        <Text style={[styles.progressText, { color }]}>
+          {Math.round(displayProgress)}%
+        </Text>
       </View>
-      <Text style={[styles.progressText, { color }]}>
-        {Math.round(progress)}%
-      </Text>
-    </View>
-  );
+    );
+  };
+
+  const skeletonOpacity = skeletonAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
 
   const renderSkeleton = () => (
     <View style={styles.skeletonContainer}>
-      <View style={[styles.skeletonLine, styles.skeletonTitle]} />
-      <View style={[styles.skeletonLine, styles.skeletonSubtitle]} />
-      <View style={styles.skeletonContent}>
-        <View style={[styles.skeletonBox, styles.skeletonBox1]} />
-        <View style={[styles.skeletonBox, styles.skeletonBox2]} />
-      </View>
+      {Array.from({ length: skeletonCount }).map((_, index) => (
+        <Animated.View 
+          key={index}
+          style={[
+            styles.skeletonItem,
+            { opacity: skeletonOpacity }
+          ]}
+        >
+          <View style={[styles.skeletonLine, styles.skeletonTitle]} />
+          <View style={[styles.skeletonLine, styles.skeletonSubtitle]} />
+          <View style={styles.skeletonContent}>
+            <View style={[styles.skeletonBox, styles.skeletonBox1]} />
+            <View style={[styles.skeletonBox, styles.skeletonBox2]} />
+          </View>
+        </Animated.View>
+      ))}
     </View>
   );
 
@@ -177,6 +284,8 @@ const Loading = ({
     switch (type) {
       case 'dots':
         return renderDots();
+      case 'bars':
+        return renderBars();
       case 'pulse':
         return renderPulse();
       case 'progress':
@@ -188,24 +297,35 @@ const Loading = ({
     }
   };
 
-  const containerStyles = [
+  const containerStyles = useMemo(() => [
     styles.container,
     overlay && styles.overlay,
     fullScreen && styles.fullScreen,
     { backgroundColor },
     containerStyle
-  ];
+  ], [overlay, fullScreen, backgroundColor, containerStyle]);
 
   if (type === 'skeleton') {
     return (
-      <View style={containerStyles} testID={testID}>
+      <View 
+        style={containerStyles} 
+        testID={testID}
+        accessibilityLabel="Loading content"
+        accessibilityRole="progressbar"
+      >
         {renderSkeleton()}
       </View>
     );
   }
 
   return (
-    <View style={containerStyles} testID={testID}>
+    <View 
+      style={containerStyles} 
+      testID={testID}
+      accessibilityLabel={message}
+      accessibilityRole="progressbar"
+      accessibilityLiveRegion="polite"
+    >
       {showLogo && (
         <View style={styles.logoContainer}>
           <Icon name="car" size={48} color={color} />
@@ -215,16 +335,20 @@ const Loading = ({
       
       {renderLoader()}
       
-      <View style={styles.textContainer}>
-        <Text style={[styles.message, textStyle, { color }]}>
-          {message}
-        </Text>
-        {subtitle && (
-          <Text style={[styles.subtitle, textStyle, { color: `${color}99` }]}>
-            {subtitle}
-          </Text>
-        )}
-      </View>
+      {(message || subtitle) && (
+        <View style={styles.textContainer}>
+          {message && (
+            <Text style={[styles.message, textStyle, { color }]}>
+              {message}
+            </Text>
+          )}
+          {subtitle && (
+            <Text style={[styles.subtitle, textStyle, { color: `${color}99` }]}>
+              {subtitle}
+            </Text>
+          )}
+        </View>
+      )}
     </View>
   );
 };
@@ -235,29 +359,41 @@ export const LoadingWrapper = ({
   children, 
   type = 'spinner',
   message = 'Loading...',
+  fallback,
   ...props 
 }) => {
   if (loading) {
-    return <Loading type={type} message={message} {...props} />;
+    return fallback || <Loading type={type} message={message} {...props} />;
   }
-  return children;
+  return <>{children}</>;
 };
 
 // Inline loading component
-export const InlineLoading = ({ size = 'small', color = '#6c3', ...props }) => (
+export const InlineLoading = ({ 
+  size = 'small', 
+  color = '#6c3',
+  style,
+  ...props 
+}) => (
   <Loading 
     size={size} 
     color={color} 
     overlay={false}
     fullScreen={false}
+    containerStyle={[styles.inline, style]}
     {...props} 
   />
 );
 
 // Page loading component
-export const PageLoading = ({ message = 'Loading...', ...props }) => (
+export const PageLoading = ({ 
+  message = 'Loading...', 
+  color = '#6c3',
+  ...props 
+}) => (
   <Loading 
     message={message} 
+    color={color}
     fullScreen={true} 
     overlay={true}
     showLogo={true}
@@ -266,11 +402,17 @@ export const PageLoading = ({ message = 'Loading...', ...props }) => (
 );
 
 // Progress loading component
-export const ProgressLoading = ({ progress, message = 'Processing...', ...props }) => (
+export const ProgressLoading = ({ 
+  progress = 0, 
+  message = 'Processing...',
+  color = '#6c3',
+  ...props 
+}) => (
   <Loading 
     type="progress" 
     progress={progress} 
     message={message}
+    color={color}
     fullScreen={true}
     overlay={true}
     {...props} 
@@ -278,13 +420,37 @@ export const ProgressLoading = ({ progress, message = 'Processing...', ...props 
 );
 
 // Skeleton loading component
-export const SkeletonLoading = ({ ...props }) => (
+export const SkeletonLoading = ({ 
+  count = 3,
+  ...props 
+}) => (
   <Loading 
     type="skeleton" 
+    skeletonCount={count}
     fullScreen={false}
     overlay={false}
     {...props} 
   />
+);
+
+// Card skeleton for lists
+export const CardSkeleton = ({ count = 1, style }) => (
+  <View style={style}>
+    {Array.from({ length: count }).map((_, index) => (
+      <View key={index} style={styles.cardSkeletonWrapper}>
+        <View style={styles.cardSkeleton}>
+          <View style={styles.cardSkeletonHeader}>
+            <View style={styles.cardSkeletonAvatar} />
+            <View style={styles.cardSkeletonHeaderText}>
+              <View style={styles.cardSkeletonTitle} />
+              <View style={styles.cardSkeletonSubtitle} />
+            </View>
+          </View>
+          <View style={styles.cardSkeletonBody} />
+        </View>
+      </View>
+    ))}
+  </View>
 );
 
 const styles = StyleSheet.create({
@@ -306,6 +472,11 @@ const styles = StyleSheet.create({
     width,
     height,
   },
+  inline: {
+    padding: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   spinner: {
     marginBottom: 16,
   },
@@ -314,12 +485,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-    gap: 8,
+    gap: 10,
   },
   dot: {
     width: 12,
     height: 12,
     borderRadius: 6,
+  },
+  barsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 40,
+    marginBottom: 16,
+    gap: 6,
+  },
+  bar: {
+    width: 6,
+    height: 40,
+    borderRadius: 3,
   },
   pulseContainer: {
     marginBottom: 16,
@@ -334,15 +518,15 @@ const styles = StyleSheet.create({
   },
   progressBackground: {
     width: '100%',
-    height: 6,
+    height: 8,
     backgroundColor: '#E5E7EB',
-    borderRadius: 3,
+    borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 8,
   },
   progressFill: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: 4,
   },
   progressText: {
     fontSize: 14,
@@ -374,7 +558,10 @@ const styles = StyleSheet.create({
   // Skeleton styles
   skeletonContainer: {
     width: '100%',
+  },
+  skeletonItem: {
     padding: 16,
+    marginBottom: 16,
   },
   skeletonLine: {
     backgroundColor: '#E5E7EB',
@@ -405,6 +592,50 @@ const styles = StyleSheet.create({
   skeletonBox2: {
     flex: 1,
     height: 100,
+  },
+  // Card skeleton styles
+  cardSkeletonWrapper: {
+    marginBottom: 12,
+  },
+  cardSkeleton: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  cardSkeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cardSkeletonAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E5E7EB',
+    marginRight: 12,
+  },
+  cardSkeletonHeaderText: {
+    flex: 1,
+  },
+  cardSkeletonTitle: {
+    height: 16,
+    width: '70%',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  cardSkeletonSubtitle: {
+    height: 12,
+    width: '50%',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+  },
+  cardSkeletonBody: {
+    height: 60,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 8,
   },
 });
 

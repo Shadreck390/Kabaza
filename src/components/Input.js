@@ -1,5 +1,5 @@
 // components/Input.js
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { 
   View, 
   TextInput, 
@@ -20,6 +20,7 @@ const Input = ({
   keyboardType = 'default',
   error,
   success,
+  helperText,
   icon,
   rightIcon,
   onRightIconPress,
@@ -41,6 +42,12 @@ const Input = ({
   required = false,
   testID,
   accessibilityLabel,
+  clearable = false,
+  onClear,
+  focusedBorderColor = '#6c3',
+  focusedLabelColor = '#6c3',
+  variant = 'default', // 'default', 'outlined', 'filled'
+  size = 'medium', // 'small', 'medium', 'large'
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -48,55 +55,89 @@ const Input = ({
   const animatedValue = useRef(new Animated.Value(value ? 1 : 0)).current;
   const inputRef = useRef(null);
 
-  const handleFocus = () => {
+  useEffect(() => {
+    if (value && animatedValue._value === 0) {
+      animateLabel(1);
+    } else if (!value && !isFocused && animatedValue._value === 1) {
+      animateLabel(0);
+    }
+  }, [value]);
+
+  const handleFocus = useCallback(() => {
     setIsFocused(true);
     animateLabel(1);
-  };
+  }, []);
 
-  const handleBlur = () => {
+  const handleBlur = useCallback(() => {
     setIsFocused(false);
     if (!value) {
       animateLabel(0);
     }
-  };
+  }, [value]);
 
-  const animateLabel = (toValue) => {
+  const animateLabel = useCallback((toValue) => {
     Animated.timing(animatedValue, {
       toValue,
       duration: 200,
       useNativeDriver: false,
     }).start();
-  };
+  }, [animatedValue]);
 
-  const handleChangeText = (text) => {
+  const handleChangeText = useCallback((text) => {
     onChangeText?.(text);
-    if (text && !isFocused) {
-      animateLabel(1);
-    }
-  };
+  }, [onChangeText]);
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
-  const focusInput = () => {
+  const handleClear = useCallback(() => {
+    onChangeText?.('');
+    onClear?.();
     inputRef.current?.focus();
-  };
+  }, [onChangeText, onClear]);
 
-  const getBorderColor = () => {
+  const togglePasswordVisibility = useCallback(() => {
+    setShowPassword(prev => !prev);
+  }, []);
+
+  const focusInput = useCallback(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const getBorderColor = useMemo(() => {
     if (error) return '#EF4444';
     if (success) return '#10B981';
-    if (isFocused) return '#6c3';
+    if (isFocused) return focusedBorderColor;
     return '#D1D5DB';
-  };
+  }, [error, success, isFocused, focusedBorderColor]);
 
-  const getRightIcon = () => {
+  const getInputHeight = useMemo(() => {
+    const heights = { small: 48, medium: 56, large: 64 };
+    return heights[size] || heights.medium;
+  }, [size]);
+
+  const showClearButton = clearable && value && !secureTextEntry && !rightIcon;
+
+  const getRightIcon = useCallback(() => {
+    if (showClearButton) {
+      return (
+        <TouchableOpacity
+          onPress={handleClear}
+          style={styles.rightIcon}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityLabel="Clear input"
+          accessibilityRole="button"
+        >
+          <Icon name="times-circle" size={18} color="#9CA3AF" />
+        </TouchableOpacity>
+      );
+    }
+
     if (secureTextEntry) {
       return (
         <TouchableOpacity
           onPress={togglePasswordVisibility}
           style={styles.rightIcon}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+          accessibilityRole="button"
         >
           <Icon 
             name={showPassword ? 'eye-slash' : 'eye'} 
@@ -113,6 +154,8 @@ const Input = ({
           onPress={onRightIconPress}
           style={styles.rightIcon}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          disabled={!onRightIconPress}
+          accessibilityRole="button"
         >
           <Icon name={rightIcon} size={18} color="#6B7280" />
         </TouchableOpacity>
@@ -120,7 +163,7 @@ const Input = ({
     }
 
     return null;
-  };
+  }, [showClearButton, secureTextEntry, rightIcon, showPassword, onRightIconPress, handleClear, togglePasswordVisibility]);
 
   const labelPosition = animatedValue.interpolate({
     inputRange: [0, 1],
@@ -134,30 +177,45 @@ const Input = ({
 
   const labelColor = animatedValue.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#6B7280', '#6c3'],
+    outputRange: ['#6B7280', isFocused ? focusedLabelColor : '#6c3'],
   });
+
+  const containerVariantStyle = useMemo(() => {
+    switch (variant) {
+      case 'filled':
+        return styles.filledVariant;
+      case 'outlined':
+        return styles.outlinedVariant;
+      default:
+        return null;
+    }
+  }, [variant]);
 
   return (
     <View style={[styles.container, containerStyle]}>
       <TouchableOpacity
         activeOpacity={1}
         onPress={focusInput}
+        disabled={!editable}
         style={[
           styles.inputContainer,
+          containerVariantStyle,
           {
-            borderColor: getBorderColor(),
-            backgroundColor: editable ? '#fff' : '#F9FAFB',
+            borderColor: getBorderColor,
+            backgroundColor: editable ? (variant === 'filled' ? '#F9FAFB' : '#fff') : '#F3F4F6',
+            minHeight: multiline ? 100 : getInputHeight,
           },
           multiline && styles.multilineContainer,
           error && styles.inputError,
           success && styles.inputSuccess,
+          !editable && styles.containerDisabled,
         ]}
       >
         {icon && (
           <Icon 
             name={icon} 
             size={18} 
-            color={isFocused ? '#6c3' : '#6B7280'} 
+            color={isFocused ? focusedBorderColor : '#6B7280'} 
             style={styles.leftIcon} 
           />
         )}
@@ -170,7 +228,7 @@ const Input = ({
                 {
                   transform: [{ translateY: labelPosition }],
                   fontSize: labelSize,
-                  color: labelColor,
+                  color: error ? '#EF4444' : labelColor,
                 },
                 labelStyle,
               ]}
@@ -185,9 +243,10 @@ const Input = ({
             ref={inputRef}
             style={[
               styles.input,
+              { fontSize: size === 'small' ? 14 : size === 'large' ? 18 : 16 },
               multiline && styles.multilineInput,
               icon && styles.inputWithLeftIcon,
-              (rightIcon || secureTextEntry) && styles.inputWithRightIcon,
+              (rightIcon || secureTextEntry || showClearButton) && styles.inputWithRightIcon,
               !editable && styles.inputDisabled,
               inputStyle,
             ]}
@@ -213,6 +272,7 @@ const Input = ({
             accessibilityLabel={accessibilityLabel || label}
             accessibilityRole="text"
             accessibilityState={{ disabled: !editable }}
+            accessibilityHint={error || helperText}
             {...props}
           />
         </View>
@@ -221,23 +281,32 @@ const Input = ({
       </TouchableOpacity>
 
       <View style={styles.footer}>
-        <View style={styles.errorContainer}>
+        <View style={styles.messageContainer}>
           {error && (
-            <View style={styles.errorWrapper}>
+            <View style={styles.messageWrapper}>
               <Icon name="exclamation-circle" size={12} color="#EF4444" />
               <Text style={[styles.errorText, errorStyle]}>{error}</Text>
             </View>
           )}
           {success && !error && (
-            <View style={styles.successWrapper}>
+            <View style={styles.messageWrapper}>
               <Icon name="check-circle" size={12} color="#10B981" />
               <Text style={styles.successText}>{success}</Text>
             </View>
           )}
+          {helperText && !error && !success && (
+            <Text style={styles.helperText}>{helperText}</Text>
+          )}
         </View>
 
         {showCharacterCount && maxLength && (
-          <Text style={styles.characterCount}>
+          <Text 
+            style={[
+              styles.characterCount,
+              (value?.length || 0) > maxLength * 0.9 && styles.characterCountWarning,
+              (value?.length || 0) >= maxLength && styles.characterCountError,
+            ]}
+          >
             {value?.length || 0}/{maxLength}
           </Text>
         )}
@@ -258,6 +327,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingHorizontal: 16,
     minHeight: 56,
+    transition: 'all 0.2s',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -270,6 +340,15 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  outlinedVariant: {
+    backgroundColor: 'transparent',
+  },
+  filledVariant: {
+    borderWidth: 0,
+    borderBottomWidth: 2,
+    borderRadius: 8,
+    paddingTop: 8,
+  },
   multilineContainer: {
     minHeight: 100,
     paddingVertical: 12,
@@ -279,6 +358,9 @@ const styles = StyleSheet.create({
   },
   inputSuccess: {
     borderColor: '#10B981',
+  },
+  containerDisabled: {
+    opacity: 0.6,
   },
   leftIcon: {
     marginRight: 12,
@@ -293,6 +375,7 @@ const styles = StyleSheet.create({
     left: 0,
     fontWeight: '500',
     zIndex: 1,
+    backgroundColor: 'transparent',
   },
   required: {
     color: '#EF4444',
@@ -307,13 +390,16 @@ const styles = StyleSheet.create({
       ios: {
         paddingTop: 22,
       },
+      android: {
+        paddingTop: 20,
+      },
     }),
   },
   inputWithLeftIcon: {
     marginLeft: 0,
   },
   inputWithRightIcon: {
-    paddingRight: 30,
+    paddingRight: 36,
   },
   multilineInput: {
     minHeight: 80,
@@ -323,25 +409,26 @@ const styles = StyleSheet.create({
   },
   inputDisabled: {
     color: '#6B7280',
-    opacity: 0.7,
   },
   rightIcon: {
     position: 'absolute',
     right: 16,
     top: 16,
     zIndex: 2,
+    padding: 4,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
+    alignItems: 'flex-start',
+    marginTop: 6,
     minHeight: 20,
   },
-  errorContainer: {
+  messageContainer: {
     flex: 1,
+    marginRight: 8,
   },
-  errorWrapper: {
+  messageWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -350,21 +437,31 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     marginLeft: 4,
     fontWeight: '500',
-  },
-  successWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexShrink: 1,
   },
   successText: {
     fontSize: 12,
     color: '#10B981',
     marginLeft: 4,
     fontWeight: '500',
+    flexShrink: 1,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '400',
+    lineHeight: 16,
   },
   characterCount: {
     fontSize: 12,
     color: '#6B7280',
     fontWeight: '500',
+  },
+  characterCountWarning: {
+    color: '#F59E0B',
+  },
+  characterCountError: {
+    color: '#EF4444',
   },
 });
 

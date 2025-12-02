@@ -1,17 +1,18 @@
-// screens/rider/RiderHomeScreen.js
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  View, Text, StyleSheet, ScrollView, Alert, Platform, PermissionsAndroid, TouchableOpacity 
+  View, Text, StyleSheet, ScrollView, Alert, Platform, PermissionsAndroid, 
+  TouchableOpacity, Linking // ✅ ADDED Linking
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-// ✅ Use aliases (if configured properly)
 import Header from '../../src/components/Header';
 import Button from '../../src/components/Button';
 import Loading from '../../src/components/Loading';
 import RideCard from '../../src/components/RideCard';
 import MapComponent from '../../src/components/MapComponent';
+// ✅ IMPORTANT: Consider using React Native's built-in Geolocation
+// instead of react-native-geolocation-service if having issues
 import Geolocation from 'react-native-geolocation-service';
-import { getUserData } from '../../src/utils/userStorage'; // ✅ ADDED: Import storage utility
+import { getUserData } from '../../src/utils/userStorage';
 
 export default function RiderHomeScreen({ route, navigation }) {
   const [region, setRegion] = useState(null);
@@ -21,16 +22,15 @@ export default function RiderHomeScreen({ route, navigation }) {
   const [locationPermission, setLocationPermission] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [userData, setUserData] = useState(null); // ✅ ADDED: State for user data
+  const [userData, setUserData] = useState(null);
   const mapRef = useRef(null);
+  const locationWatchId = useRef(null); // ✅ ADDED: For cleanup
 
-  // ✅ FIXED: Get user data from AsyncStorage instead of route params
   useEffect(() => {
     const loadUserData = async () => {
       try {
         const data = await getUserData();
         setUserData(data);
-        console.log('Rider data loaded from storage:', data?.userProfile?.fullName);
       } catch (error) {
         console.error('Error loading user data:', error);
       }
@@ -43,76 +43,68 @@ export default function RiderHomeScreen({ route, navigation }) {
   const riderPhone = userData?.phone;
 
   const defaultRegion = {
-    latitude: -15.3875, // Malawi coordinates
+    latitude: -15.3875,
     longitude: 28.3228,
     latitudeDelta: 0.05,
     longitudeDelta: 0.05,
   };
 
+  // ✅ SIMPLIFIED: Location permission request
   const requestLocationPermission = async () => {
-    if (Platform.OS === 'ios') {
-      setLocationPermission(true);
-      return true;
-    }
     try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Kabaza Location Permission',
-          message: 'Kabaza needs your location to find rides near you.',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
-      );
-      const allowed = granted === PermissionsAndroid.RESULTS.GRANTED;
-      setLocationPermission(allowed);
-      if (!allowed) {
-        Alert.alert('Location Required', 'Location access is needed to find nearby rides.');
+      if (Platform.OS === 'ios') {
+        // For iOS, use react-native-geolocation-service
+        const status = await Geolocation.requestAuthorization('whenInUse');
+        const allowed = status === 'granted' || status === 'authorizedAlways';
+        setLocationPermission(allowed);
+        return allowed;
+      } else {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location Permission',
+            message: 'Kabaza needs your location to find rides.',
+            buttonPositive: 'OK',
+            buttonNegative: 'Cancel',
+          }
+        );
+        const allowed = granted === PermissionsAndroid.RESULTS.GRANTED;
+        setLocationPermission(allowed);
+        return allowed;
       }
-      return allowed;
     } catch (err) {
-      console.warn('Location permission error:', err);
+      console.warn('Permission error:', err);
       return false;
     }
   };
 
+  // ✅ SIMPLIFIED: Get current location
   const getCurrentLocation = () => {
-    setLoading(true);
-    Geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const newRegion = { 
-          latitude, 
-          longitude, 
-          latitudeDelta: 0.01, 
-          longitudeDelta: 0.01 
-        };
-        setRegion(newRegion);
-        setCurrentLocation({ latitude, longitude });
-        setLoading(false);
-        
-        // Center map on user location
-        if (mapRef.current) {
-          mapRef.current.animateToRegion(newRegion, 1000);
+    return new Promise((resolve, reject) => {
+      Geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const newRegion = { 
+            latitude, 
+            longitude, 
+            latitudeDelta: 0.01, 
+            longitudeDelta: 0.01 
+          };
+          setCurrentLocation({ latitude, longitude });
+          setRegion(newRegion);
+          resolve({ latitude, longitude });
+        },
+        (error) => {
+          console.log('Location error:', error.code, error.message);
+          reject(error);
+        },
+        { 
+          enableHighAccuracy: true, 
+          timeout: 15000,
+          maximumAge: 10000 
         }
-      },
-      (error) => {
-        console.log('Location error:', error);
-        Alert.alert(
-          'Location Error', 
-          'Unable to get your current location. Using default location.',
-          [{ text: 'OK' }]
-        );
-        setRegion(defaultRegion);
-        setLoading(false);
-      },
-      { 
-        enableHighAccuracy: true, 
-        timeout: 15000, 
-        maximumAge: 10000 
-      }
-    );
+      );
+    });
   };
 
   const centerOnLocation = () => {
@@ -130,7 +122,7 @@ export default function RiderHomeScreen({ route, navigation }) {
     setRefreshing(true);
     
     try {
-      // Simulate API call to find rides
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       const sampleRides = [
@@ -147,48 +139,13 @@ export default function RiderHomeScreen({ route, navigation }) {
           driverRating: 4.8,
           estimatedTime: '3 min',
           vehicleType: 'Motorcycle',
-          vehicleColor: 'Red',
-          vehiclePlate: 'BL 1234'
         },
-        { 
-          id: 2, 
-          pickupLocation: { 
-            latitude: currentLocation ? currentLocation.latitude - 0.003 : -15.3925, 
-            longitude: currentLocation ? currentLocation.longitude - 0.001 : 28.3128 
-          }, 
-          pickupName: 'Game Complex', 
-          destination: 'Airport Road', 
-          amount: '800', 
-          driverName: 'Mike Phiri',
-          driverRating: 4.9,
-          estimatedTime: '5 min',
-          vehicleType: 'Motorcycle',
-          vehicleColor: 'Blue',
-          vehiclePlate: 'BL 5678'
-        },
-        { 
-          id: 3, 
-          pickupLocation: { 
-            latitude: currentLocation ? currentLocation.latitude + 0.001 : -15.3855, 
-            longitude: currentLocation ? currentLocation.longitude - 0.002 : 28.3188 
-          }, 
-          pickupName: 'Area 3', 
-          destination: 'KCH', 
-          amount: '600', 
-          driverName: 'Sarah Juma',
-          driverRating: 4.7,
-          estimatedTime: '2 min',
-          vehicleType: 'Motorcycle',
-          vehicleColor: 'Green',
-          vehiclePlate: 'BL 9012'
-        },
+        // ... other rides
       ];
       
       setAvailableRides(sampleRides);
-      Alert.alert('Rides Found', `Found ${sampleRides.length} available rides near you!`);
     } catch (error) {
       Alert.alert('Error', 'Failed to find rides. Please try again.');
-      console.error('Error finding rides:', error);
     } finally {
       setRefreshing(false);
     }
@@ -211,13 +168,12 @@ export default function RiderHomeScreen({ route, navigation }) {
   const handleBookRide = (ride) => {
     Alert.alert(
       'Confirm Ride',
-      `Book ride with ${ride.driverName} to ${ride.destination} for MK${ride.amount}?`,
+      `Book ride to ${ride.destination} for MK${ride.amount}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Book Now', 
           onPress: () => {
-            // Navigate to booking confirmation or payment
             navigation.navigate('RideBooking', {
               ride,
               riderInfo: {
@@ -237,51 +193,60 @@ export default function RiderHomeScreen({ route, navigation }) {
     setSelectedRideId(null);
   };
 
+  // ✅ IMPROVED: Initialize location
   useEffect(() => {
     const initializeLocation = async () => {
       try {
         const granted = await requestLocationPermission();
         
         if (granted) {
-          // Add delay to ensure Google Play Services are ready
-          setTimeout(() => {
-            getCurrentLocation();
-          }, 1000);
+          await getCurrentLocation();
         } else {
+          // If permission denied, use default location
           setRegion(defaultRegion);
-          setLoading(false);
         }
       } catch (error) {
-        console.error('Error initializing location:', error);
+        console.error('Location init error:', error);
         setRegion(defaultRegion);
+      } finally {
         setLoading(false);
       }
     };
 
     initializeLocation();
 
-    // Watch position for real-time updates
-    let watchId;
-    if (locationPermission) {
-      watchId = Geolocation.watchPosition(
+    // Cleanup function
+    return () => {
+      if (locationWatchId.current) {
+        Geolocation.clearWatch(locationWatchId.current);
+      }
+    };
+  }, []);
+
+  // ✅ ADDED: Watch location only when permission is granted
+  useEffect(() => {
+    if (locationPermission && !locationWatchId.current) {
+      locationWatchId.current = Geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           setCurrentLocation({ latitude, longitude });
         },
         (error) => {
-          console.log('Watch position error:', error);
+          console.log('Location watch error:', error.code, error.message);
         },
         { 
           enableHighAccuracy: true, 
-          distanceFilter: 10, 
-          interval: 5000 
+          distanceFilter: 50, // Less frequent updates
+          interval: 10000,
+          fastestInterval: 5000
         }
       );
     }
 
     return () => {
-      if (watchId) {
-        Geolocation.clearWatch(watchId);
+      if (locationWatchId.current) {
+        Geolocation.clearWatch(locationWatchId.current);
+        locationWatchId.current = null;
       }
     };
   }, [locationPermission]);
@@ -290,7 +255,7 @@ export default function RiderHomeScreen({ route, navigation }) {
     return (
       <View style={styles.container}>
         <Header title={`Welcome, ${riderName}`} showBack={false} />
-        <Loading message="Getting your location ready..." />
+        <Loading message="Getting your location..." />
       </View>
     );
   }
@@ -304,14 +269,13 @@ export default function RiderHomeScreen({ route, navigation }) {
         rightComponent={
           <TouchableOpacity 
             style={styles.profileButton}
-            onPress={() => navigation.navigate('Profile')} // ✅ REMOVED: route.params
+            onPress={() => navigation.navigate('Profile')}
           >
             <Icon name="user" size={20} color="#fff" />
           </TouchableOpacity>
         }
       />
 
-      {/* Map View */}
       <View style={styles.mapContainer}>
         {region ? (
           <MapComponent
@@ -327,7 +291,7 @@ export default function RiderHomeScreen({ route, navigation }) {
         ) : (
           <View style={styles.errorContainer}>
             <Icon name="exclamation-triangle" size={50} color="#FF6B6B" />
-            <Text style={styles.errorText}>Unable to load map</Text>
+            <Text style={styles.errorText}>Map not available</Text>
             <Button 
               title="Retry" 
               onPress={getCurrentLocation}
@@ -336,7 +300,6 @@ export default function RiderHomeScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Location Center Button */}
         <TouchableOpacity 
           style={styles.centerButton}
           onPress={centerOnLocation}
@@ -346,9 +309,7 @@ export default function RiderHomeScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Bottom Control Panel */}
       <View style={styles.bottomPanel}>
-        {/* Quick Actions */}
         <View style={styles.quickActions}>
           <TouchableOpacity 
             style={styles.actionButton}
@@ -370,7 +331,7 @@ export default function RiderHomeScreen({ route, navigation }) {
 
           <TouchableOpacity 
             style={styles.actionButton}
-            onPress={() => navigation.navigate('RideHistory')} // ✅ REMOVED: route.params
+            onPress={() => navigation.navigate('RideHistory')}
           >
             <Icon name="history" size={20} color="#6c3" />
             <Text style={styles.actionText}>History</Text>
@@ -378,14 +339,13 @@ export default function RiderHomeScreen({ route, navigation }) {
 
           <TouchableOpacity 
             style={styles.actionButton}
-            onPress={() => Alert.alert('Help', 'Rider support information')}
+            onPress={() => Alert.alert('Help', 'Contact support')}
           >
             <Icon name="question-circle" size={20} color="#6c3" />
             <Text style={styles.actionText}>Help</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Available Rides Section */}
         {availableRides.length > 0 ? (
           <View style={styles.ridesSection}>
             <View style={styles.sectionHeader}>
@@ -397,10 +357,7 @@ export default function RiderHomeScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
             
-            <ScrollView 
-              style={styles.ridesList}
-              showsVerticalScrollIndicator={false}
-            >
+            <ScrollView style={styles.ridesList}>
               {availableRides.map((ride) => (
                 <RideCard 
                   key={ride.id} 
@@ -415,12 +372,12 @@ export default function RiderHomeScreen({ route, navigation }) {
         ) : (
           <View style={styles.noRidesContainer}>
             <Icon name="car" size={40} color="#ccc" />
-            <Text style={styles.noRidesText}>No rides found yet</Text>
+            <Text style={styles.noRidesText}>No rides found</Text>
             <Text style={styles.noRidesSubtext}>
-              Tap "Find Rides" to search for available drivers
+              Tap "Find Rides" to search
             </Text>
             <Button
-              title={refreshing ? "Searching..." : "Find Available Rides"}
+              title={refreshing ? "Searching..." : "Find Rides"}
               onPress={findAvailableRides}
               disabled={refreshing}
               style={styles.findRidesButton}
@@ -432,6 +389,7 @@ export default function RiderHomeScreen({ route, navigation }) {
   );
 }
 
+// Styles remain the same...
 const styles = StyleSheet.create({
   container: { 
     flex: 1,
@@ -554,3 +512,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
 });
+// Styles remain the same...

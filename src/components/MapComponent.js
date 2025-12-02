@@ -1,13 +1,12 @@
-// components/MapComponent.js
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   View, 
   StyleSheet, 
   TouchableOpacity,
   Text,
   Alert,
-  Platform,
-  ActivityIndicator // ✅ ADDED
+  ActivityIndicator,
+  Platform
 } from 'react-native';
 import MapView, { 
   Marker, 
@@ -17,7 +16,44 @@ import MapView, {
   Callout 
 } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import Geolocation from 'react-native-geolocation-service';
+
+// ✅ CORRECTED IMPORT PATH - Use our config module
+import AppConfig from '../config'; // Changed from '../../config'
+import Constants from '../config/constants'; // Added constants import
+
+// Get Google Maps API Key from config
+const GOOGLE_MAPS_API_KEY = AppConfig.MAPS.API_KEY;
+
+// Constants (now referencing our constants file)
+const DEFAULT_DELTA = {
+  latitudeDelta: Constants.MAP_CONSTANTS.DEFAULT_LOCATION.latitudeDelta,
+  longitudeDelta: Constants.MAP_CONSTANTS.DEFAULT_LOCATION.longitudeDelta,
+};
+
+const GEOLOCATION_OPTIONS = {
+  enableHighAccuracy: true,
+  timeout: 15000,
+  maximumAge: 10000,
+  distanceFilter: 50,
+};
+
+const ANIMATION_DURATION = Constants.UI_CONSTANTS.ANIMATION.DURATION.NORMAL;
+
+// Show warning if API key is missing or placeholder
+if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY.includes('Placeholder')) {
+  console.warn('⚠️ Google Maps API Key is missing or using placeholder!');
+  console.log('👉 Add your real API key to: C:\\Front_End\\Kabaza\\.env.local');
+  console.log('👉 Get key from: https://console.cloud.google.com/');
+  
+  // Only show alert in development
+  if (AppConfig.ENV.DEBUG && Platform.OS !== 'web') {
+    Alert.alert(
+      'Configuration Required',
+      'Google Maps API key is missing. Please add it to .env.local file.',
+      [{ text: 'OK' }]
+    );
+  }
+}
 
 const MapComponent = ({ 
   region, 
@@ -32,7 +68,6 @@ const MapComponent = ({
   showRideDetails = true,
   currentBooking = null,
   driverLocation = null,
-  routeCoordinates = [],
   onRegionChangeComplete,
   style,
   testID,
@@ -42,194 +77,306 @@ const MapComponent = ({
   const [userLocation, setUserLocation] = useState(null);
   const [isFollowingUser, setIsFollowingUser] = useState(true);
   const [mapReady, setMapReady] = useState(false);
+  const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const [eta, setEta] = useState(null);
+  const [isLoadingRoute, setIsLoadingRoute] = useState(false);
 
-  // Animate to region when it changes
-  useEffect(() => {
-    if (region && mapRef.current && mapReady) {
-      mapRef.current.animateToRegion(region, 1000);
+  // ✅ Check if API key is available and valid
+  const hasGoogleMapsKey = React.useMemo(() => {
+    if (!GOOGLE_MAPS_API_KEY) {
+      console.error('❌ Google Maps API Key is undefined');
+      return false;
     }
-  }, [region, mapReady]);
+    if (GOOGLE_MAPS_API_KEY.includes('Placeholder')) {
+      console.warn('⚠️ Using placeholder API key - maps may not work');
+      return true; // Still return true to show map with warning
+    }
+    if (GOOGLE_MAPS_API_KEY.startsWith('AIza')) {
+      return true;
+    }
+    console.error('❌ Invalid Google Maps API Key format');
+    return false;
+  }, []);
 
-  // Get current user location
-  const getCurrentLocation = useCallback(() => {
-    Geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const newLocation = { latitude, longitude };
-        setUserLocation(newLocation);
-        
-        if (isFollowingUser) {
+  // ✅ Debounce function for performance
+  const debounce = (func, wait) => {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  };
+
+  // ✅ Center map on user location with debouncing
+  const centerOnUserLocation = useCallback(
+    debounce(() => {
+      if (userLocation && mapRef.current && mapReady) {
+        const newRegion = {
+          ...userLocation,
+          ...DEFAULT_DELTA,
+        };
+        setRegion(newRegion);
+        mapRef.current.animateToRegion(newRegion, ANIMATION_DURATION);
+        setIsFollowingUser(true);
+      }
+    }, 300),
+    [userLocation, mapReady, setRegion]
+  );
+
+  // ✅ Handle map ready
+  const handleMapReady = useCallback(() => {
+    setMapReady(true);
+    
+    // ✅ Request location after map is ready
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const newLocation = { latitude, longitude };
+          setUserLocation(newLocation);
+          
           const newRegion = {
             ...newLocation,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
+            ...DEFAULT_DELTA,
           };
           setRegion(newRegion);
-          mapRef.current?.animateToRegion(newRegion, 1000);
-        }
-      },
-      (error) => {
-        console.log('Error getting current location:', error);
-        Alert.alert('Location Error', 'Unable to get your current location');
-      },
-      { 
-        enableHighAccuracy: true, 
-        timeout: 15000, 
-        maximumAge: 10000 
-      }
-    );
-  }, [isFollowingUser, setRegion]);
-
-  // Center map on user location
-  const centerOnUserLocation = () => {
-    if (userLocation) {
-      const newRegion = {
-        ...userLocation,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      };
-      setRegion(newRegion);
-      mapRef.current?.animateToRegion(newRegion, 1000);
-      setIsFollowingUser(true);
+          
+          // Log location in development
+          if (AppConfig.ENV.DEBUG) {
+            console.log('📍 User location acquired:', newLocation);
+          }
+        },
+        (error) => {
+          console.warn('Geolocation error:', error);
+          
+          // Use default location from config
+          const defaultLocation = Constants.MAP_CONSTANTS.DEFAULT_LOCATION;
+          setRegion({
+            latitude: defaultLocation.latitude,
+            longitude: defaultLocation.longitude,
+            ...DEFAULT_DELTA,
+          });
+          
+          // Show error in development
+          if (AppConfig.ENV.DEBUG) {
+            Alert.alert(
+              'Location Error',
+              'Unable to get your location. Using default location.',
+              [{ text: 'OK' }]
+            );
+          }
+        },
+        GEOLOCATION_OPTIONS
+      );
     } else {
-      getCurrentLocation();
+      console.warn('Geolocation not supported');
+      // Use default location
+      const defaultLocation = Constants.MAP_CONSTANTS.DEFAULT_LOCATION;
+      setRegion({
+        latitude: defaultLocation.latitude,
+        longitude: defaultLocation.longitude,
+        ...DEFAULT_DELTA,
+      });
     }
-  };
+  }, [setRegion]);
 
-  // Handle map ready
-  const handleMapReady = () => {
-    setMapReady(true);
-    getCurrentLocation();
-  };
-
-  // Handle marker press
-  const handleMarkerPress = (ride) => {
+  // ✅ Handle marker press
+  const handleMarkerPress = useCallback((ride) => {
     if (onSelectRide) {
       onSelectRide(ride);
     }
     
     // Center map on selected ride
-    if (ride.pickupLocation) {
+    if (ride.pickupLocation && mapRef.current) {
       const newRegion = {
         ...ride.pickupLocation,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
+        ...DEFAULT_DELTA,
       };
-      mapRef.current?.animateToRegion(newRegion, 1000);
+      mapRef.current.animateToRegion(newRegion, ANIMATION_DURATION);
       setIsFollowingUser(false);
     }
+  }, [onSelectRide]);
+
+  // ✅ Handle region change with debouncing
+  const handleRegionChangeComplete = useCallback(
+    debounce((newRegion) => {
+      if (onRegionChangeComplete) {
+        onRegionChangeComplete(newRegion);
+      }
+      if (isFollowingUser) {
+        setIsFollowingUser(false);
+      }
+    }, 300),
+    [onRegionChangeComplete, isFollowingUser]
+  );
+
+  // ✅ Simplified route fetching without external API (for now)
+  const calculateRoute = useCallback((origin, destination) => {
+    if (!origin || !destination) return;
+    
+    setIsLoadingRoute(true);
+    
+    // Simple straight line for demo (replace with actual API later)
+    const points = [
+      { latitude: origin.latitude, longitude: origin.longitude },
+      { latitude: destination.latitude, longitude: destination.longitude }
+    ];
+    
+    setRouteCoordinates(points);
+    
+    // Calculate approximate ETA (1 min per km)
+    const distance = calculateDistance(origin, destination);
+    const minutes = Math.ceil(distance / 1000); // 1 min per km
+    setEta(`${minutes} min`);
+    
+    setIsLoadingRoute(false);
+  }, []);
+
+  // ✅ Helper: Calculate distance between two coordinates
+  const calculateDistance = (coord1, coord2) => {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = coord1.latitude * Math.PI/180;
+    const φ2 = coord2.latitude * Math.PI/180;
+    const Δφ = (coord2.latitude - coord1.latitude) * Math.PI/180;
+    const Δλ = (coord2.longitude - coord1.longitude) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // Distance in meters
   };
 
-  // Handle region change
-  const handleRegionChangeComplete = (newRegion) => {
-    if (onRegionChangeComplete) {
-      onRegionChangeComplete(newRegion);
+  // ✅ Update route when driver or user moves
+  useEffect(() => {
+    if (userLocation && driverLocation && currentBooking) {
+      calculateRoute(driverLocation, userLocation);
+    } else {
+      setRouteCoordinates([]);
+      setEta(null);
     }
-    // Stop following user if they manually move the map
-    if (isFollowingUser) {
-      setIsFollowingUser(false);
-    }
-  };
+  }, [userLocation, driverLocation, currentBooking, calculateRoute]);
 
-  // Render user location marker
-  const renderUserLocation = () => {
+  // ✅ Log config status on mount
+  useEffect(() => {
+    if (AppConfig.ENV.DEBUG) {
+      console.log('🗺️ MapComponent mounted with config:', {
+        hasApiKey: hasGoogleMapsKey,
+        apiKeyLength: GOOGLE_MAPS_API_KEY?.length || 0,
+        environment: AppConfig.ENV.NAME,
+        debugMode: AppConfig.ENV.DEBUG,
+      });
+    }
+  }, []);
+
+  // ✅ User location marker component
+  const UserLocationMarker = useMemo(() => {
     if (!userLocation || !showUserLocation) return null;
-
+    
     return (
-      <View>
-        {/* Accuracy circle */}
+      <React.Fragment key="user-location">
         <Circle
           center={userLocation}
-          radius={100} // 100 meters
+          radius={100}
           fillColor="rgba(76, 175, 80, 0.1)"
           strokeColor="rgba(76, 175, 80, 0.3)"
           strokeWidth={1}
         />
-        {/* User location marker */}
-        <Marker
-          coordinate={userLocation}
-          title="Your Location"
-          description="You are here"
+        <Marker 
+          coordinate={userLocation} 
+          title="Your Location" 
+          description="You are here" 
           anchor={{ x: 0.5, y: 0.5 }}
+          tracksViewChanges={false}
         >
           <View style={styles.userLocationMarker}>
-            <View style={[styles.userLocationPulse, { backgroundColor: userLocationColor }]} />
             <View style={[styles.userLocationInner, { backgroundColor: userLocationColor }]} />
+            <View style={styles.userLocationCenter} />
           </View>
         </Marker>
-      </View>
+      </React.Fragment>
     );
-  };
+  }, [userLocation, showUserLocation, userLocationColor]);
 
-  // Render ride markers
-  const renderRideMarkers = () => {
-    return rides.map((ride) => {
-      if (!ride.pickupLocation) return null;
-
-      const isSelected = ride.id === selectedRideId;
-      
-      return (
-        <Marker
-          key={ride.id}
-          coordinate={ride.pickupLocation}
-          title={ride.pickupName || 'Pickup Location'}
-          description={`${ride.driverName} - MWK ${ride.amount}`}
-          onPress={() => handleMarkerPress(ride)}
-          anchor={{ x: 0.5, y: 1 }}
-        >
-          <View style={[
-            styles.rideMarker,
-            isSelected && styles.selectedRideMarker
-          ]}>
-            <View style={[
-              styles.rideMarkerPin,
-              isSelected && styles.selectedRideMarkerPin
-            ]}>
-              <Text style={styles.rideMarkerText}>
-                MWK {ride.amount}
-              </Text>
-            </View>
-            <View style={[
-              styles.rideMarkerPoint,
-              isSelected && styles.selectedRideMarkerPoint
-            ]} />
-          </View>
-          
-          {showRideDetails && (
-            <Callout tooltip={true}>
-              <View style={styles.calloutContainer}>
-                <Text style={styles.calloutTitle}>{ride.pickupName}</Text>
-                <Text style={styles.calloutDriver}>Driver: {ride.driverName}</Text>
-                <Text style={styles.calloutAmount}>MWK {ride.amount}</Text>
-                {ride.estimatedTime && (
-                  <Text style={styles.calloutTime}>ETA: {ride.estimatedTime}</Text>
-                )}
-                {onRideBook && (
-                  <TouchableOpacity 
-                    style={styles.bookButton}
-                    onPress={() => onRideBook(ride)}
-                  >
-                    <Text style={styles.bookButtonText}>Book Ride</Text>
-                  </TouchableOpacity>
-                )}
+  // ✅ Ride markers component (optimized)
+  const RideMarkers = useMemo(() => {
+    return rides
+      .filter(ride => ride.pickupLocation)
+      .map((ride) => {
+        const isSelected = ride.id === selectedRideId;
+        
+        return (
+          <Marker
+            key={`ride-${ride.id}`}
+            coordinate={ride.pickupLocation}
+            title={ride.pickupName || 'Pickup Location'}
+            description={`${ride.driverName || 'Driver'} - MWK ${ride.amount || '0'}`}
+            onPress={() => handleMarkerPress(ride)}
+            anchor={{ x: 0.5, y: 1 }}
+            tracksViewChanges={false}
+          >
+            <View style={[styles.rideMarkerContainer, isSelected && styles.selectedRide]}>
+              <View style={styles.rideMarker}>
+                <Text style={styles.rideMarkerText}>
+                  {ride.amount ? `MWK ${ride.amount}` : 'Ride'}
+                </Text>
               </View>
-            </Callout>
-          )}
-        </Marker>
-      );
-    });
-  };
+              <View style={styles.rideMarkerPointer} />
+            </View>
+            
+            {showRideDetails && (
+              <Callout tooltip={true}>
+                <View style={styles.calloutContainer}>
+                  <Text style={styles.calloutTitle}>
+                    {ride.pickupName || 'Pickup Location'}
+                  </Text>
+                  {ride.driverName && (
+                    <Text style={styles.calloutSubtitle}>
+                      Driver: {ride.driverName}
+                    </Text>
+                  )}
+                  {ride.amount && (
+                    <Text style={styles.calloutAmount}>
+                      MWK {ride.amount}
+                    </Text>
+                  )}
+                  {ride.estimatedTime && (
+                    <Text style={styles.calloutTime}>
+                      ETA: {ride.estimatedTime}
+                    </Text>
+                  )}
+                  {onRideBook && (
+                    <TouchableOpacity 
+                      style={styles.bookButton} 
+                      onPress={() => onRideBook(ride)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.bookButtonText}>
+                        Book Ride
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </Callout>
+            )}
+          </Marker>
+        );
+      });
+  }, [rides, selectedRideId, showRideDetails, handleMarkerPress, onRideBook]);
 
-  // Render driver location for active booking
-  const renderDriverLocation = () => {
+  // ✅ Driver marker component
+  const DriverMarker = useMemo(() => {
     if (!driverLocation || !currentBooking) return null;
-
+    
     return (
-      <Marker
-        coordinate={driverLocation}
-        title="Your Driver"
-        description={`${currentBooking.driverName} is on the way`}
+      <Marker 
+        key="driver-location"
+        coordinate={driverLocation} 
+        title="Your Driver" 
+        description={`${currentBooking.driverName || 'Driver'} is on the way`} 
         anchor={{ x: 0.5, y: 0.5 }}
+        tracksViewChanges={false}
       >
         <View style={styles.driverMarker}>
           <Icon name="motorcycle" size={24} color="#1E40AF" />
@@ -237,95 +384,133 @@ const MapComponent = ({
         </View>
       </Marker>
     );
-  };
+  }, [driverLocation, currentBooking]);
 
-  // Render route polyline
-  const renderRoute = () => {
+  // ✅ Route polyline component
+  const RoutePolyline = useMemo(() => {
     if (routeCoordinates.length < 2) return null;
-
+    
     return (
-      <Polyline
-        coordinates={routeCoordinates}
-        strokeColor="#6c3"
-        strokeWidth={4}
-        lineCap="round"
+      <Polyline 
+        coordinates={routeCoordinates} 
+        strokeColor="#4CAF50" 
+        strokeWidth={3} 
+        lineCap="round" 
         lineJoin="round"
       />
     );
-  };
+  }, [routeCoordinates]);
 
-  // Render map controls
-  const renderControls = () => {
-    if (!showControls) return null;
+  // ✅ Render map or fallback
+  const renderMap = () => {
+    if (!hasGoogleMapsKey) {
+      return (
+        <View style={styles.apiKeyWarning}>
+          <Icon name="exclamation-triangle" size={40} color="#F59E0B" />
+          <Text style={styles.warningTitle}>Google Maps API Key Required</Text>
+          <Text style={styles.warningText}>
+            Please add your Google Maps API key to .env.local file
+          </Text>
+          <Text style={styles.warningSubtext}>
+            Get key from: https://console.cloud.google.com/
+          </Text>
+          <TouchableOpacity 
+            style={styles.helpButton}
+            onPress={() => {
+              Alert.alert(
+                'Setup Instructions',
+                '1. Go to Google Cloud Console\n2. Create API Key\n3. Enable Maps SDK\n4. Add key to .env.local\n5. Restart app',
+                [{ text: 'OK' }]
+              );
+            }}
+          >
+            <Text style={styles.helpButtonText}>Show Setup Instructions</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (!region) {
+      return (
+        <View style={styles.mapLoading}>
+          <ActivityIndicator size="large" color="#4CAF50" />
+          <Text style={styles.loadingText}>Loading map...</Text>
+          {GOOGLE_MAPS_API_KEY.includes('Placeholder') && (
+            <Text style={styles.placeholderWarning}>
+              Using placeholder API key - get real key for production
+            </Text>
+          )}
+        </View>
+      );
+    }
 
     return (
-      <View style={styles.controlsContainer}>
-        <TouchableOpacity 
-          style={styles.controlButton}
-          onPress={centerOnUserLocation}
-        >
-          <Icon 
-            name="crosshairs" 
-            size={20} 
-            color={isFollowingUser ? "#6c3" : "#666"} 
-          />
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.controlButton}
-          onPress={getCurrentLocation}
-        >
-          <Icon name="refresh" size={18} color="#666" />
-        </TouchableOpacity>
-      </View>
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        provider={PROVIDER_GOOGLE}
+        initialRegion={region}
+        showsUserLocation={false}
+        showsMyLocationButton={false}
+        showsCompass={true}
+        showsScale={true}
+        onMapReady={handleMapReady}
+        onRegionChangeComplete={handleRegionChangeComplete}
+        mapType="standard"
+        customMapStyle={mapStyle}
+        moveOnMarkerPress={false}
+        {...props}
+      >
+        {UserLocationMarker}
+        {RideMarkers}
+        {DriverMarker}
+        {RoutePolyline}
+      </MapView>
     );
   };
 
   return (
     <View style={[styles.container, style]} testID={testID}>
-      {/* ✅ ADDED: Conditional rendering for map loading */}
-      {region ? (
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          region={region}
-          showsUserLocation={false} // We're using custom user location marker
-          showsMyLocationButton={false}
-          showsCompass={true}
-          showsScale={true}
-          showsTraffic={false}
-          showsBuildings={true}
-          onMapReady={handleMapReady}
-          onRegionChangeComplete={handleRegionChangeComplete}
-          mapType="standard"
-          customMapStyle={mapStyle}
-          {...props}
-        >
-          {renderUserLocation()}
-          {renderRideMarkers()}
-          {renderDriverLocation()}
-          {renderRoute()}
-        </MapView>
-      ) : (
-        <View style={styles.mapLoading}>
-          <Text>Loading map...</Text>
-          <ActivityIndicator size="large" color="#6c3" />
+      {renderMap()}
+
+      {/* Map Controls */}
+      {showControls && (
+        <View style={styles.controlsContainer}>
+          <TouchableOpacity 
+            style={[styles.controlButton, isFollowingUser && styles.activeControlButton]} 
+            onPress={centerOnUserLocation}
+            activeOpacity={0.7}
+          >
+            <Icon 
+              name="crosshairs" 
+              size={20} 
+              color={isFollowingUser ? "#4CAF50" : "#666"} 
+            />
+          </TouchableOpacity>
         </View>
       )}
-      
-      {renderControls()}
-      
-      {/* Current booking info */}
+
+      {/* Current Booking Info */}
       {currentBooking && (
         <View style={styles.bookingInfo}>
-          <Text style={styles.bookingTitle}>Active Ride</Text>
-          <Text style={styles.bookingDriver}>Driver: {currentBooking.driverName}</Text>
-          <Text style={styles.bookingVehicle}>
-            {currentBooking.vehicleColor} {currentBooking.vehicleType} • {currentBooking.vehiclePlate}
+          <View style={styles.bookingHeader}>
+            <Text style={styles.bookingTitle}>Active Ride</Text>
+            {isLoadingRoute && (
+              <ActivityIndicator size="small" color="#4CAF50" />
+            )}
+          </View>
+          <Text style={styles.bookingDriver}>
+            Driver: {currentBooking.driverName || 'Driver'}
           </Text>
-          {driverLocation && (
-            <Text style={styles.bookingStatus}>Driver is on the way</Text>
+          {currentBooking.vehicleType && (
+            <Text style={styles.bookingVehicle}>
+              {currentBooking.vehicleColor} {currentBooking.vehicleType}
+            </Text>
+          )}
+          {eta && (
+            <Text style={styles.bookingStatus}>
+              Driver is on the way • ETA: {eta}
+            </Text>
           )}
         </View>
       )}
@@ -333,7 +518,7 @@ const MapComponent = ({
   );
 };
 
-// Custom map styling for better UX
+// Custom map styling
 const mapStyle = [
   {
     "elementType": "geometry",
@@ -344,248 +529,239 @@ const mapStyle = [
     "stylers": [{ "visibility": "off" }]
   },
   {
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#616161" }]
-  },
-  {
-    "elementType": "labels.text.stroke",
-    "stylers": [{ "color": "#f5f5f5" }]
-  },
-  {
-    "featureType": "administrative.land_parcel",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#bdbdbd" }]
-  },
-  {
     "featureType": "poi",
     "elementType": "geometry",
     "stylers": [{ "color": "#eeeeee" }]
   },
   {
-    "featureType": "poi",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#757575" }]
-  },
-  {
     "featureType": "road",
     "elementType": "geometry",
     "stylers": [{ "color": "#ffffff" }]
-  },
-  {
-    "featureType": "road.arterial",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#757575" }]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#dadada" }]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#616161" }]
-  },
-  {
-    "featureType": "water",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#c9c9c9" }]
   }
 ];
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    position: 'relative',
+  container: { 
+    flex: 1, 
+    position: 'relative' 
   },
-  map: {
-    flex: 1,
+  map: { 
+    flex: 1 
   },
-  // ✅ ADDED: Map loading style
-  mapLoading: {
+  apiKeyWarning: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#FFF3CD',
+    padding: Constants.UI_CONSTANTS.SPACING.LG,
   },
-  // User Location Marker
-  userLocationMarker: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  warningTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#856404',
+    marginTop: Constants.UI_CONSTANTS.SPACING.MD,
+    marginBottom: Constants.UI_CONSTANTS.SPACING.SM,
   },
-  userLocationPulse: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    opacity: 0.4,
+  warningText: {
+    fontSize: 14,
+    color: '#856404',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: Constants.UI_CONSTANTS.SPACING.XS,
   },
-  userLocationInner: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#fff',
+  warningSubtext: {
+    fontSize: 12,
+    color: '#856404',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginBottom: Constants.UI_CONSTANTS.SPACING.MD,
   },
-  // Ride Markers
-  rideMarker: {
-    alignItems: 'center',
-  },
-  selectedRideMarker: {
-    zIndex: 1000,
-  },
-  rideMarkerPin: {
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  selectedRideMarkerPin: {
+  helpButton: {
     backgroundColor: '#F59E0B',
-    transform: [{ scale: 1.1 }],
+    paddingVertical: Constants.UI_CONSTANTS.SPACING.SM,
+    paddingHorizontal: Constants.UI_CONSTANTS.SPACING.MD,
+    borderRadius: Constants.UI_CONSTANTS.BORDER_RADIUS.MD,
+    marginTop: Constants.UI_CONSTANTS.SPACING.SM,
   },
-  rideMarkerText: {
+  helpButtonText: {
     color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  rideMarkerPoint: {
-    width: 0,
-    height: 0,
-    backgroundColor: 'transparent',
-    borderStyle: 'solid',
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderBottomWidth: 6,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#EF4444',
-    marginTop: -1,
-  },
-  selectedRideMarkerPoint: {
-    borderBottomColor: '#F59E0B',
-  },
-  // Callout Styles
-  calloutContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    width: 200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  calloutTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  calloutDriver: {
+    fontWeight: '600',
     fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
   },
-  calloutAmount: {
+  mapLoading: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: '#f8f9fa' 
+  },
+  loadingText: {
+    marginTop: Constants.UI_CONSTANTS.SPACING.MD,
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-    marginBottom: 4,
+    color: '#666',
   },
-  calloutTime: {
+  placeholderWarning: {
+    marginTop: Constants.UI_CONSTANTS.SPACING.SM,
     fontSize: 11,
-    color: '#666',
-    marginBottom: 8,
+    color: '#F59E0B',
+    fontStyle: 'italic',
   },
-  bookButton: {
-    backgroundColor: '#6c3',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+  userLocationMarker: { 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  userLocationInner: { 
+    width: 20, 
+    height: 20, 
+    borderRadius: 10, 
+    borderWidth: 3, 
+    borderColor: '#fff' 
+  },
+  userLocationCenter: { 
+    width: 6, 
+    height: 6, 
+    borderRadius: 3, 
+    backgroundColor: '#fff', 
+    position: 'absolute' 
+  },
+  rideMarkerContainer: { 
+    alignItems: 'center' 
+  },
+  selectedRide: { 
+    transform: [{ scale: 1.1 }] 
+  },
+  rideMarker: { 
+    backgroundColor: '#EF4444', 
+    paddingHorizontal: Constants.UI_CONSTANTS.SPACING.SM, 
+    paddingVertical: Constants.UI_CONSTANTS.SPACING.XS, 
+    borderRadius: Constants.UI_CONSTANTS.BORDER_RADIUS.MD, 
+    borderWidth: 2, 
+    borderColor: '#fff', 
+    ...Constants.UI_CONSTANTS.SHADOW.SM
+  },
+  rideMarkerText: { 
+    color: '#fff', 
+    fontSize: 10, 
+    fontWeight: 'bold' 
+  },
+  rideMarkerPointer: { 
+    width: 0, 
+    height: 0, 
+    borderStyle: 'solid', 
+    borderLeftWidth: 5, 
+    borderRightWidth: 5, 
+    borderBottomWidth: 5, 
+    borderLeftColor: 'transparent', 
+    borderRightColor: 'transparent', 
+    borderBottomColor: '#EF4444', 
+    marginTop: -1 
+  },
+  calloutContainer: { 
+    backgroundColor: '#fff', 
+    borderRadius: Constants.UI_CONSTANTS.BORDER_RADIUS.MD, 
+    padding: Constants.UI_CONSTANTS.SPACING.MD, 
+    width: 180, 
+    ...Constants.UI_CONSTANTS.SHADOW.SM
+  },
+  calloutTitle: { 
+    fontSize: 14, 
+    fontWeight: '600', 
+    color: '#333', 
+    marginBottom: Constants.UI_CONSTANTS.SPACING.XS 
+  },
+  calloutSubtitle: { 
+    fontSize: 12, 
+    color: '#666', 
+    marginBottom: Constants.UI_CONSTANTS.SPACING.XS 
+  },
+  calloutAmount: { 
+    fontSize: 14, 
+    fontWeight: 'bold', 
+    color: '#4CAF50', 
+    marginBottom: Constants.UI_CONSTANTS.SPACING.XS 
+  },
+  calloutTime: { 
+    fontSize: 11, 
+    color: '#666', 
+    marginBottom: Constants.UI_CONSTANTS.SPACING.SM 
+  },
+  bookButton: { 
+    backgroundColor: '#4CAF50', 
+    paddingVertical: Constants.UI_CONSTANTS.SPACING.XS, 
+    paddingHorizontal: Constants.UI_CONSTANTS.SPACING.MD, 
+    borderRadius: Constants.UI_CONSTANTS.BORDER_RADIUS.SM, 
+    alignItems: 'center' 
+  },
+  bookButtonText: { 
+    color: '#fff', 
+    fontSize: 12, 
+    fontWeight: '600' 
+  },
+  driverMarker: { 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  driverPulse: { 
+    position: 'absolute', 
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    backgroundColor: 'rgba(30, 64, 175, 0.1)', 
+    zIndex: -1 
+  },
+  controlsContainer: { 
+    position: 'absolute', 
+    top: 20, 
+    right: 16, 
+    gap: 12 
+  },
+  controlButton: { 
+    backgroundColor: '#fff', 
+    width: 44, 
+    height: 44, 
+    borderRadius: 22, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    ...Constants.UI_CONSTANTS.SHADOW.SM
+  },
+  activeControlButton: {
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  bookingInfo: { 
+    position: 'absolute', 
+    bottom: 20, 
+    left: 16, 
+    right: 16, 
+    backgroundColor: '#fff', 
+    borderRadius: Constants.UI_CONSTANTS.BORDER_RADIUS.LG, 
+    padding: Constants.UI_CONSTANTS.SPACING.MD, 
+    ...Constants.UI_CONSTANTS.SHADOW.MD
+  },
+  bookingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: Constants.UI_CONSTANTS.SPACING.SM,
   },
-  bookButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
+  bookingTitle: { 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    color: '#333' 
   },
-  // Driver Marker
-  driverMarker: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  bookingDriver: { 
+    fontSize: 14, 
+    color: '#666', 
+    marginBottom: Constants.UI_CONSTANTS.SPACING.XS 
   },
-  driverPulse: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(30, 64, 175, 0.2)',
-    zIndex: -1,
+  bookingVehicle: { 
+    fontSize: 12, 
+    color: '#666', 
+    marginBottom: Constants.UI_CONSTANTS.SPACING.XS 
   },
-  // Controls
-  controlsContainer: {
-    position: 'absolute',
-    top: 20,
-    right: 16,
-    gap: 12,
-  },
-  controlButton: {
-    backgroundColor: '#fff',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  // Booking Info
-  bookingInfo: {
-    position: 'absolute',
-    bottom: 20,
-    left: 16,
-    right: 16,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  bookingTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  bookingDriver: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 2,
-  },
-  bookingVehicle: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
-  bookingStatus: {
-    fontSize: 12,
-    color: '#6c3',
-    fontWeight: '500',
+  bookingStatus: { 
+    fontSize: 12, 
+    color: '#4CAF50', 
+    fontWeight: '500' 
   },
 });
 

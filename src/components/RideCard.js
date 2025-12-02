@@ -1,5 +1,5 @@
 // components/RideCard.js
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -18,7 +18,7 @@ const RideCard = ({
   onCancel,
   onCall,
   onMessage,
-  type = 'available', // 'available', 'upcoming', 'completed', 'cancelled', 'driver_request'
+  type = 'available',
   selected = false,
   showActions = false,
   compact = false,
@@ -27,15 +27,16 @@ const RideCard = ({
   style,
   testID,
 }) => {
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
+  // Memoized date formatting
+  const formattedDate = useMemo(() => {
+    if (!ride.date) return '';
     try {
-      const date = new Date(dateString);
+      const date = new Date(ride.date);
       const now = new Date();
       const diffTime = Math.abs(now - date);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
+      if (diffDays === 0) return 'Today';
       if (diffDays === 1) return 'Yesterday';
       if (diffDays < 7) return `${diffDays} days ago`;
       if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
@@ -46,27 +47,28 @@ const RideCard = ({
         year: 'numeric'
       });
     } catch (error) {
-      return dateString;
+      console.warn('Date formatting error:', error);
+      return ride.date;
     }
-  };
+  }, [ride.date]);
 
-  // Format time for display
-  const formatTime = (dateString) => {
-    if (!dateString) return '';
+  const formattedTime = useMemo(() => {
+    if (!ride.date) return '';
     try {
-      const date = new Date(dateString);
+      const date = new Date(ride.date);
       return date.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true
       });
     } catch (error) {
+      console.warn('Time formatting error:', error);
       return '';
     }
-  };
+  }, [ride.date]);
 
-  // Get status configuration
-  const getStatusConfig = () => {
+  // Memoized status configuration
+  const statusConfig = useMemo(() => {
     const statusMap = {
       available: { 
         color: '#10B981', 
@@ -113,30 +115,43 @@ const RideCard = ({
         color: '#10B981', 
         bgColor: '#D1FAE5', 
         icon: 'user-plus', 
-        text: 'Driver Accepted' 
+        text: 'Accepted' 
       },
     };
 
     return statusMap[ride.status] || statusMap.available;
-  };
+  }, [ride.status]);
 
-  // Handle book ride
-  const handleBook = () => {
+  // Memoized user info
+  const userInfo = useMemo(() => ({
+    name: type === 'driver_request' ? ride.riderName : ride.driverName,
+    avatar: ride.driverAvatar || ride.riderAvatar,
+    rating: ride.driverRating,
+    totalRides: ride.totalRides,
+    phone: ride.driverPhone || ride.riderPhone,
+    id: ride.driverId || ride.riderId,
+  }), [type, ride]);
+
+  // Event handlers with useCallback
+  const handleBook = useCallback(() => {
+    if (!onBook) return;
+    
     Alert.alert(
       'Confirm Ride',
-      `Book ride with ${ride.driverName} for MK${ride.amount}?`,
+      `Book ride with ${userInfo.name} for MK${ride.amount}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Book Now', 
-          onPress: () => onBook?.(ride)
+          onPress: () => onBook(ride)
         }
       ]
     );
-  };
+  }, [onBook, userInfo.name, ride]);
 
-  // Handle cancel ride
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
+    if (!onCancel) return;
+    
     Alert.alert(
       'Cancel Ride',
       'Are you sure you want to cancel this ride?',
@@ -145,28 +160,59 @@ const RideCard = ({
         { 
           text: 'Yes, Cancel', 
           style: 'destructive',
-          onPress: () => onCancel?.(ride.id)
+          onPress: () => onCancel(ride.id)
         }
       ]
     );
-  };
+  }, [onCancel, ride.id]);
 
-  // Handle call driver/rider
-  const handleCall = () => {
-    if (onCall) {
-      onCall(ride.driverPhone || ride.riderPhone);
+  const handleCall = useCallback(() => {
+    if (onCall && userInfo.phone) {
+      onCall(userInfo.phone);
     }
-  };
+  }, [onCall, userInfo.phone]);
 
-  // Handle message driver/rider
-  const handleMessage = () => {
-    if (onMessage) {
-      onMessage(ride.driverId || ride.riderId);
+  const handleMessage = useCallback(() => {
+    if (onMessage && userInfo.id) {
+      onMessage(userInfo.id);
     }
-  };
+  }, [onMessage, userInfo.id]);
 
-  const statusConfig = getStatusConfig();
+  const handlePress = useCallback(() => {
+    if (onPress) {
+      onPress(ride);
+    }
+  }, [onPress, ride]);
 
+  // Render avatar component
+  const renderAvatar = useCallback((size = 'normal') => {
+    const isCompact = size === 'compact';
+    const avatarStyle = isCompact ? styles.avatarCompact : styles.avatarPlaceholder;
+    const imageStyle = isCompact ? styles.avatarImageCompact : styles.avatarImage;
+    const iconSize = isCompact ? 16 : 20;
+
+    if (userInfo.avatar) {
+      return (
+        <Image 
+          source={{ uri: userInfo.avatar }} 
+          style={imageStyle}
+          accessibilityLabel={`${userInfo.name}'s profile picture`}
+        />
+      );
+    }
+
+    return (
+      <View style={avatarStyle}>
+        <Icon 
+          name="user" 
+          size={iconSize} 
+          color="#66cc33" 
+        />
+      </View>
+    );
+  }, [userInfo.avatar, userInfo.name]);
+
+  // Compact view
   if (compact) {
     return (
       <TouchableOpacity
@@ -176,29 +222,19 @@ const RideCard = ({
           selected && styles.selectedCard,
           style
         ]}
-        onPress={onPress}
+        onPress={handlePress}
         activeOpacity={0.7}
         testID={testID}
+        accessibilityRole="button"
+        accessibilityLabel={`Ride from ${ride.pickup} to ${ride.destination}`}
+        accessibilityHint="Double tap to view ride details"
       >
         <View style={styles.compactContent}>
           <View style={styles.compactLeft}>
-            <View style={styles.avatarCompact}>
-              {ride.driverAvatar || ride.riderAvatar ? (
-                <Image 
-                  source={{ uri: ride.driverAvatar || ride.riderAvatar }} 
-                  style={styles.avatarImageCompact} 
-                />
-              ) : (
-                <Icon 
-                  name={type === 'driver_request' ? 'user' : 'car'} 
-                  size={16} 
-                  color="#6c3" 
-                />
-              )}
-            </View>
+            {renderAvatar('compact')}
             <View style={styles.compactInfo}>
               <Text style={styles.compactName} numberOfLines={1}>
-                {type === 'driver_request' ? ride.riderName : ride.driverName}
+                {userInfo.name}
               </Text>
               <Text style={styles.compactRoute} numberOfLines={1}>
                 {ride.pickup} → {ride.destination}
@@ -219,6 +255,7 @@ const RideCard = ({
     );
   }
 
+  // Full view
   return (
     <TouchableOpacity
       style={[
@@ -226,19 +263,25 @@ const RideCard = ({
         selected && styles.selectedCard,
         style
       ]}
-      onPress={onPress}
+      onPress={handlePress}
       activeOpacity={0.7}
       testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={`Ride from ${ride.pickup} to ${ride.destination}, ${statusConfig.text}`}
+      accessibilityHint="Double tap to view ride details"
     >
       {/* Header with date and status */}
       <View style={styles.header}>
         <View style={styles.dateTime}>
-          <Text style={styles.date}>{formatDate(ride.date)}</Text>
-          {ride.date && (
-            <Text style={styles.time}>{formatTime(ride.date)}</Text>
+          <Text style={styles.date}>{formattedDate}</Text>
+          {formattedTime && (
+            <Text style={styles.time}>{formattedTime}</Text>
           )}
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+        <View 
+          style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}
+          accessibilityLabel={`Status: ${statusConfig.text}`}
+        >
           <Icon name={statusConfig.icon} size={12} color={statusConfig.color} />
           <Text style={[styles.statusText, { color: statusConfig.color }]}>
             {statusConfig.text}
@@ -249,31 +292,18 @@ const RideCard = ({
       {/* Driver/Rider Info */}
       <View style={styles.userInfo}>
         <View style={styles.avatarContainer}>
-          {ride.driverAvatar || ride.riderAvatar ? (
-            <Image 
-              source={{ uri: ride.driverAvatar || ride.riderAvatar }} 
-              style={styles.avatarImage} 
-            />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Icon 
-                name={type === 'driver_request' ? 'user' : 'user'} 
-                size={20} 
-                color="#6c3" 
-              />
-            </View>
-          )}
+          {renderAvatar('normal')}
         </View>
         <View style={styles.userDetails}>
           <Text style={styles.userName}>
-            {type === 'driver_request' ? ride.riderName : ride.driverName}
+            {userInfo.name}
           </Text>
-          {showRating && ride.driverRating && (
+          {showRating && userInfo.rating && (
             <View style={styles.ratingContainer}>
               <Icon name="star" size={12} color="#FFD700" />
-              <Text style={styles.ratingText}>{ride.driverRating}</Text>
-              {ride.totalRides && (
-                <Text style={styles.ridesCount}>({ride.totalRides} rides)</Text>
+              <Text style={styles.ratingText}>{userInfo.rating}</Text>
+              {userInfo.totalRides && (
+                <Text style={styles.ridesCount}>({userInfo.totalRides} rides)</Text>
               )}
             </View>
           )}
@@ -308,26 +338,28 @@ const RideCard = ({
       </View>
 
       {/* Additional Info */}
-      <View style={styles.additionalInfo}>
-        {ride.distance && (
-          <View style={styles.infoItem}>
-            <Icon name="road" size={12} color="#666" />
-            <Text style={styles.infoText}>{ride.distance}</Text>
-          </View>
-        )}
-        {ride.estimatedTime && (
-          <View style={styles.infoItem}>
-            <Icon name="clock-o" size={12} color="#666" />
-            <Text style={styles.infoText}>{ride.estimatedTime}</Text>
-          </View>
-        )}
-        {ride.duration && (
-          <View style={styles.infoItem}>
-            <Icon name="hourglass" size={12} color="#666" />
-            <Text style={styles.infoText}>{ride.duration}</Text>
-          </View>
-        )}
-      </View>
+      {(ride.distance || ride.estimatedTime || ride.duration) && (
+        <View style={styles.additionalInfo}>
+          {ride.distance && (
+            <View style={styles.infoItem}>
+              <Icon name="road" size={12} color="#666" />
+              <Text style={styles.infoText}>{ride.distance}</Text>
+            </View>
+          )}
+          {ride.estimatedTime && (
+            <View style={styles.infoItem}>
+              <Icon name="clock-o" size={12} color="#666" />
+              <Text style={styles.infoText}>{ride.estimatedTime}</Text>
+            </View>
+          )}
+          {ride.duration && (
+            <View style={styles.infoItem}>
+              <Icon name="hourglass" size={12} color="#666" />
+              <Text style={styles.infoText}>{ride.duration}</Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Action Buttons */}
       {showActions && (
@@ -336,6 +368,8 @@ const RideCard = ({
             <TouchableOpacity 
               style={styles.primaryButton}
               onPress={handleBook}
+              accessibilityRole="button"
+              accessibilityLabel="Book this ride"
             >
               <Icon name="check" size={14} color="#fff" />
               <Text style={styles.primaryButtonText}>Book Ride</Text>
@@ -346,6 +380,8 @@ const RideCard = ({
             <TouchableOpacity 
               style={styles.secondaryButton}
               onPress={handleCancel}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel this ride"
             >
               <Icon name="times" size={14} color="#EF4444" />
               <Text style={styles.secondaryButtonText}>Cancel</Text>
@@ -355,7 +391,9 @@ const RideCard = ({
           {statusConfig.showRating && (
             <TouchableOpacity 
               style={styles.secondaryButton}
-              onPress={() => onPress?.()}
+              onPress={handlePress}
+              accessibilityRole="button"
+              accessibilityLabel="Rate this ride"
             >
               <Icon name="star" size={14} color="#F59E0B" />
               <Text style={styles.secondaryButtonText}>Rate</Text>
@@ -364,20 +402,24 @@ const RideCard = ({
 
           {(onCall || onMessage) && (
             <View style={styles.communicationActions}>
-              {onCall && (
+              {onCall && userInfo.phone && (
                 <TouchableOpacity 
                   style={styles.iconButton}
                   onPress={handleCall}
+                  accessibilityRole="button"
+                  accessibilityLabel="Call driver"
                 >
                   <Icon name="phone" size={16} color="#3B82F6" />
                 </TouchableOpacity>
               )}
-              {onMessage && (
+              {onMessage && userInfo.id && (
                 <TouchableOpacity 
                   style={styles.iconButton}
                   onPress={handleMessage}
+                  accessibilityRole="button"
+                  accessibilityLabel="Message driver"
                 >
-                  <Icon name="comment" size={16} color="#6c3" />
+                  <Icon name="comment" size={16} color="#66cc33" />
                 </TouchableOpacity>
               )}
             </View>
@@ -415,10 +457,9 @@ const styles = StyleSheet.create({
   },
   selectedCard: {
     backgroundColor: '#f0f7f0',
-    borderColor: '#6c3',
+    borderColor: '#66cc33',
     borderWidth: 2,
   },
-  // Header Styles
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -449,8 +490,8 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 10,
     fontWeight: '600',
+    textTransform: 'capitalize',
   },
-  // User Info Styles
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -506,9 +547,8 @@ const styles = StyleSheet.create({
   amount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#6c3',
+    color: '#66cc33',
   },
-  // Route Styles
   route: {
     marginBottom: 12,
   },
@@ -535,9 +575,9 @@ const styles = StyleSheet.create({
     marginLeft: 9,
     marginVertical: 2,
   },
-  // Additional Info
   additionalInfo: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 16,
     marginBottom: 12,
   },
@@ -550,10 +590,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
-  // Actions
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
     paddingTop: 12,
     borderTopWidth: 1,
@@ -562,13 +602,14 @@ const styles = StyleSheet.create({
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#6c3',
+    backgroundColor: '#66cc33',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
     gap: 6,
     flex: 1,
     justifyContent: 'center',
+    minHeight: 40,
   },
   primaryButtonText: {
     color: '#fff',
@@ -580,11 +621,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'transparent',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e0e0e0',
     gap: 6,
+    minHeight: 40,
   },
   secondaryButtonText: {
     color: '#666',
@@ -600,8 +642,11 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
     backgroundColor: '#f8f9fa',
+    minWidth: 40,
+    minHeight: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  // Compact Styles
   compactContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -611,6 +656,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    marginRight: 8,
   },
   avatarCompact: {
     width: 32,
@@ -645,9 +691,9 @@ const styles = StyleSheet.create({
   compactAmount: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#6c3',
+    color: '#66cc33',
     marginBottom: 4,
   },
 });
 
-export default RideCard;
+export default React.memo(RideCard);

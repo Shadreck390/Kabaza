@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, PermissionsAndroid, Alert } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  Platform, 
+  PermissionsAndroid, 
+  Alert,
+  Linking // ✅ ADDED MISSING IMPORT
+} from 'react-native';
 import Header from 'components/Header';
 import Button from 'components/Button';
 import Loading from 'components/Loading';
@@ -18,68 +27,33 @@ export default function DriverHomeScreen({ route, navigation }) {
   const [selectedRideId, setSelectedRideId] = useState(null);
   const [locationPermission, setLocationPermission] = useState(false);
   const [userData, setUserData] = useState(null);
-  const [currentLocation, setCurrentLocation] = useState(null); // ✅ ADDED: Track current location
+  const [currentLocation, setCurrentLocation] = useState(null);
   const mapRef = useRef(null);
-  const locationWatchId = useRef(null); // ✅ ADDED: For tracking location updates
-
-  // ✅ IMPROVED: Get user data from AsyncStorage
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const data = await getUserData();
-        setUserData(data);
-        console.log('Driver data loaded from storage:', data?.userProfile?.fullName);
-        
-        // ✅ Use location from storage if available
-        if (data?.userLocation) {
-          setCurrentLocation(data.userLocation);
-          const newRegion = {
-            latitude: data.userLocation.latitude,
-            longitude: data.userLocation.longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          };
-          setRegion(newRegion);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('Error loading user data:', error);
-        setRegion(defaultRegion);
-        setLoading(false);
-      }
-    };
-
-    loadUserData();
-  }, []);
+  const locationWatchId = useRef(null);
 
   const driverName = userData?.userProfile?.fullName || userData?.socialUserInfo?.name || 'Driver';
 
   const defaultRegion = {
-    latitude: -15.3875, // Malawi coordinates
+    latitude: -15.3875,
     longitude: 28.3228,
     latitudeDelta: 0.05,
     longitudeDelta: 0.05,
   };
 
-  // ✅ IMPROVED: Location permission request
+  // ✅ SIMPLIFIED: Location permission request
   const requestLocationPermission = async () => {
-    if (Platform.OS === 'ios') {
-      try {
+    try {
+      if (Platform.OS === 'ios') {
         const status = await Geolocation.requestAuthorization('whenInUse');
-        const allowed = status === 'granted';
+        const allowed = status === 'granted' || status === 'authorizedAlways';
         setLocationPermission(allowed);
         return allowed;
-      } catch (error) {
-        console.warn('iOS location permission error:', error);
-        return false;
-      }
-    } else {
-      try {
+      } else {
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           {
             title: 'Kabaza Location Permission',
-            message: 'Kabaza needs your location to show nearby rides and help passengers find you.',
+            message: 'Kabaza needs your location to show nearby rides',
             buttonNeutral: 'Ask Me Later',
             buttonNegative: 'Cancel',
             buttonPositive: 'OK',
@@ -87,25 +61,15 @@ export default function DriverHomeScreen({ route, navigation }) {
         );
         const allowed = granted === PermissionsAndroid.RESULTS.GRANTED;
         setLocationPermission(allowed);
-        if (!allowed) {
-          Alert.alert(
-            'Location Permission Required',
-            'Location access is required to find nearby rides. You can enable it in Settings.',
-            [
-              { text: 'OK' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() }
-            ]
-          );
-        }
         return allowed;
-      } catch (err) {
-        console.warn('Android location permission error:', err);
-        return false;
       }
+    } catch (error) {
+      console.warn('Location permission error:', error);
+      return false;
     }
   };
 
-  // ✅ IMPROVED: Get current location with better error handling
+  // ✅ SIMPLIFIED: Get current location
   const getCurrentLocation = () => {
     return new Promise((resolve, reject) => {
       Geolocation.getCurrentPosition(
@@ -119,24 +83,121 @@ export default function DriverHomeScreen({ route, navigation }) {
           };
           setCurrentLocation(position.coords);
           setRegion(newRegion);
-          setLoading(false);
           resolve(position.coords);
         },
         (error) => {
-          console.log('Location error:', error);
-          setLoading(false);
+          console.log('Location error:', error.code, error.message);
           reject(error);
         },
         { 
           enableHighAccuracy: true, 
-          timeout: 20000, // Increased timeout
-          maximumAge: 30000 
+          timeout: 15000,
+          maximumAge: 10000 
         }
       );
     });
   };
 
-  // ✅ ADDED: Start watching location when online
+  // ✅ SIMPLIFIED: Initialize app
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // 1. Load user data
+        const data = await getUserData();
+        setUserData(data);
+        
+        // 2. Try to get location permission
+        const granted = await requestLocationPermission();
+        
+        if (granted) {
+          // 3. Get current location
+          await getCurrentLocation();
+        } else {
+          // Use default region if permission denied
+          setRegion(defaultRegion);
+        }
+      } catch (error) {
+        console.error('Initialization error:', error);
+        setRegion(defaultRegion);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeApp();
+
+    // Cleanup
+    return () => {
+      if (locationWatchId.current) {
+        Geolocation.clearWatch(locationWatchId.current);
+      }
+      unsubscribeFromNearbyRides();
+    };
+  }, []);
+
+  // ✅ SIMPLIFIED: Go online
+  const goOnline = async () => {
+    if (!locationPermission) {
+      const granted = await requestLocationPermission();
+      if (!granted) {
+        Alert.alert(
+          'Permission Required',
+          'Location permission is required to go online.',
+          [
+            { text: 'OK' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return;
+      }
+    }
+
+    setLoading(true);
+    
+    try {
+      // Get fresh location
+      const location = await getCurrentLocation();
+      
+      // Start location tracking
+      startLocationTracking();
+      
+      setIsOnline(true);
+      
+      // Fetch rides
+      const rides = await fetchNearbyRides(location || region);
+      setNearbyRides(rides);
+      
+      // Subscribe to updates
+      subscribeToNearbyRides(location || region, (ride) => {
+        setNearbyRides(prev => {
+          const exists = prev.find(r => r.id === ride.id);
+          if (exists) return prev.map(r => r.id === ride.id ? ride : r);
+          return [ride, ...prev];
+        });
+      });
+      
+    } catch (error) {
+      console.error('Error going online:', error);
+      Alert.alert('Error', 'Failed to go online. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ SIMPLIFIED: Go offline
+  const goOffline = () => {
+    setIsOnline(false);
+    setNearbyRides([]);
+    
+    if (locationWatchId.current) {
+      Geolocation.clearWatch(locationWatchId.current);
+      locationWatchId.current = null;
+    }
+    
+    unsubscribeFromNearbyRides();
+  };
+
+  // ✅ SIMPLIFIED: Start location tracking
   const startLocationTracking = () => {
     if (locationWatchId.current) {
       Geolocation.clearWatch(locationWatchId.current);
@@ -146,7 +207,8 @@ export default function DriverHomeScreen({ route, navigation }) {
       (position) => {
         const { latitude, longitude } = position.coords;
         setCurrentLocation(position.coords);
-        // Update map region smoothly
+        
+        // Smooth map update
         if (mapRef.current) {
           mapRef.current.animateToRegion({
             latitude,
@@ -157,79 +219,15 @@ export default function DriverHomeScreen({ route, navigation }) {
         }
       },
       (error) => {
-        console.log('Location tracking error:', error);
+        console.log('Tracking error:', error.code, error.message);
       },
       {
         enableHighAccuracy: true,
-        distanceFilter: 10, // Update every 10 meters
-        interval: 5000,
-        fastestInterval: 2000
+        distanceFilter: 50, // Update every 50 meters (less battery)
+        interval: 10000,
+        fastestInterval: 5000
       }
     );
-  };
-
-  // ✅ IMPROVED: Go online with better location handling
-  const goOnline = async () => {
-    if (!locationPermission) {
-      const granted = await requestLocationPermission();
-      if (!granted) return;
-    }
-
-    setLoading(true);
-    
-    try {
-      // Ensure we have current location
-      if (!currentLocation) {
-        await getCurrentLocation();
-      }
-
-      setIsOnline(true);
-      
-      // Start location tracking
-      startLocationTracking();
-
-      // Fetch nearby rides
-      const rides = await fetchNearbyRides(currentLocation || region);
-      setNearbyRides(rides);
-
-      // Subscribe to real-time ride updates
-      subscribeToNearbyRides(currentLocation || region, (ride) => {
-        setNearbyRides((prev) => {
-          const exists = prev.find((r) => r.id === ride.id);
-          if (exists) return prev.map((r) => (r.id === ride.id ? ride : r));
-          return [ride, ...prev];
-        });
-      });
-
-      Alert.alert('You\'re Online!', 'You are now visible to passengers and can receive ride requests.');
-
-    } catch (error) {
-      console.error('Error going online:', error);
-      Alert.alert(
-        'Connection Error', 
-        'Failed to connect to ride services. Please check your internet connection and try again.'
-      );
-      setIsOnline(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ✅ IMPROVED: Go offline with cleanup
-  const goOffline = () => {
-    setIsOnline(false);
-    setNearbyRides([]);
-    setSelectedRideId(null);
-    
-    // Stop location tracking
-    if (locationWatchId.current) {
-      Geolocation.clearWatch(locationWatchId.current);
-      locationWatchId.current = null;
-    }
-    
-    unsubscribeFromNearbyRides();
-    
-    Alert.alert('You\'re Offline', 'You are no longer visible to passengers.');
   };
 
   const handleSelectRide = (ride) => {
@@ -249,65 +247,29 @@ export default function DriverHomeScreen({ route, navigation }) {
   const handleAcceptRide = (ride) => {
     Alert.alert(
       'Accept Ride',
-      `Accept ride from ${ride.pickupName || 'customer'} for ${ride.fare || 'unknown fare'}?`,
+      `Accept ride for ${ride.fare || 'unknown fare'}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Accept', 
           onPress: () => {
-            // Navigate to ride details or start navigation
-            Alert.alert('Ride Accepted!', 'Please proceed to the pickup location.');
+            Alert.alert('Ride Accepted!', 'Please proceed to pickup.');
             setSelectedRideId(ride.id);
-            // Here you would typically navigate to ride details screen
-            // navigation.navigate('RideDetails', { ride });
           }
         }
       ]
     );
   };
 
-  // ✅ IMPROVED: Initialize location
-  useEffect(() => {
-    const initializeLocation = async () => {
-      try {
-        // If we don't have location from storage, request permission and get location
-        if (!currentLocation && !region) {
-          const granted = await requestLocationPermission();
-          
-          if (granted) {
-            await getCurrentLocation();
-          } else {
-            setRegion(defaultRegion);
-            setLoading(false);
-          }
-        }
-      } catch (error) {
-        console.error('Error initializing location:', error);
-        setRegion(defaultRegion);
-        setLoading(false);
-      }
-    };
-
-    initializeLocation();
-
-    // Cleanup function
-    return () => {
-      if (locationWatchId.current) {
-        Geolocation.clearWatch(locationWatchId.current);
-      }
-      unsubscribeFromNearbyRides();
-    };
-  }, []);
-
   if (loading && !region) {
-    return <Loading message="Getting your location ready..." />;
+    return <Loading message="Getting your location..." />;
   }
 
   return (
     <View style={styles.container}>
       <Header 
         title={`Welcome, ${driverName}`} 
-        subtitle={isOnline ? 'Online - Accepting rides' : 'Offline'}
+        subtitle={isOnline ? 'Online' : 'Offline'}
         showBack={false}
         rightComponent={
           <Button 
@@ -322,13 +284,12 @@ export default function DriverHomeScreen({ route, navigation }) {
       <View style={styles.mapContainer}>
         <MapComponent
           ref={mapRef}
-          region={region}
+          region={region || defaultRegion}
           setRegion={setRegion}
           rides={nearbyRides}
           selectedRideId={selectedRideId}
           onSelectRide={handleSelectRide}
-          userLocation={currentLocation} // ✅ PASS CURRENT LOCATION
-          userLocationColor="#4CAF50"
+          userLocation={currentLocation}
           showUserLocation={true}
         />
       </View>
@@ -337,7 +298,7 @@ export default function DriverHomeScreen({ route, navigation }) {
         <View style={styles.onlineStatusContainer}>
           <View style={[styles.statusIndicator, isOnline ? styles.online : styles.offline]} />
           <Text style={styles.statusText}>
-            {isOnline ? 'ONLINE - Accepting rides' : 'OFFLINE - Not accepting rides'}
+            {isOnline ? 'ONLINE' : 'OFFLINE'}
           </Text>
         </View>
 
@@ -345,19 +306,15 @@ export default function DriverHomeScreen({ route, navigation }) {
           title={isOnline ? "Go Offline" : "Go Online"}
           onPress={isOnline ? goOffline : goOnline}
           style={[styles.onlineButton, isOnline ? styles.offlineButton : styles.onlineButtonStyle]}
-          textStyle={styles.onlineButtonText}
           loading={loading}
         />
 
         {nearbyRides.length > 0 ? (
           <View style={styles.ridesListContainer}>
             <Text style={styles.sectionTitle}>
-              Nearby Ride Requests ({nearbyRides.length})
+              Nearby Rides ({nearbyRides.length})
             </Text>
-            <ScrollView 
-              style={styles.ridesList}
-              showsVerticalScrollIndicator={false}
-            >
+            <ScrollView style={styles.ridesList}>
               {nearbyRides.map((ride) => (
                 <DriverCard 
                   key={ride.id} 
@@ -371,14 +328,15 @@ export default function DriverHomeScreen({ route, navigation }) {
           </View>
         ) : isOnline ? (
           <View style={styles.noRidesContainer}>
-            <Text style={styles.noRidesText}>No ride requests in your area</Text>
-            <Text style={styles.noRidesSubtext}>Rides will appear here when available</Text>
+            <Text style={styles.noRidesText}>No rides nearby</Text>
           </View>
         ) : null}
       </View>
     </View>
   );
 }
+
+// Styles remain the same
 const styles = StyleSheet.create({
   container: { 
     flex: 1,
@@ -449,10 +407,6 @@ const styles = StyleSheet.create({
   offlineButton: {
     backgroundColor: '#ff6b6b',
   },
-  onlineButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   ridesListContainer: { 
     maxHeight: 300,
   },
@@ -473,10 +427,5 @@ const styles = StyleSheet.create({
   noRidesText: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 4,
-  },
-  noRidesSubtext: {
-    fontSize: 14,
-    color: '#999',
   },
 });
