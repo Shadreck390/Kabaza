@@ -1,30 +1,52 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  View, Text, StyleSheet, ScrollView, Alert, Platform, PermissionsAndroid, 
-  TouchableOpacity, Linking // ✅ ADDED Linking
+  View, Text, StyleSheet, ScrollView, Platform, PermissionsAndroid, 
+  TouchableOpacity, StatusBar, Dimensions
 } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import Header from '../../src/components/Header';
-import Button from '../../src/components/Button';
+import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import Loading from '../../src/components/Loading';
-import RideCard from '../../src/components/RideCard';
-import MapComponent from '../../src/components/MapComponent';
-// ✅ IMPORTANT: Consider using React Native's built-in Geolocation
-// instead of react-native-geolocation-service if having issues
 import Geolocation from 'react-native-geolocation-service';
 import { getUserData } from '../../src/utils/userStorage';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function RiderHomeScreen({ route, navigation }) {
   const [region, setRegion] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [availableRides, setAvailableRides] = useState([]);
-  const [selectedRideId, setSelectedRideId] = useState(null);
   const [locationPermission, setLocationPermission] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [userData, setUserData] = useState(null);
-  const mapRef = useRef(null);
-  const locationWatchId = useRef(null); // ✅ ADDED: For cleanup
+  const locationWatchId = useRef(null);
+
+  // Quick action buttons - Bolt-like
+  const quickActions = [
+    { id: 1, title: 'Rides', subtitle: "Let's get moving", icon: 'car', screen: 'RideConfirmation' },
+    { id: 2, title: 'Schedule', subtitle: 'Book ahead', icon: 'calendar-alt', screen: 'RideHistory' },
+    { id: 3, title: 'Bolt Send', subtitle: 'Package delivery', icon: 'box', screen: 'Profile' },
+  ];
+
+  // Saved places changed to Lilongwe (Malawi) examples
+  const savedPlaces = [
+    {
+      id: 1,
+      name: 'City Centre',
+      address: 'Kamuzu 1 Ave, Lilongwe, Malawi',
+      icon: 'access-time',
+    },
+    {
+      id: 2,
+      name: 'Kamuzu Central Hospital',
+      address: 'Area 33, Lilongwe, Malawi',
+      icon: 'access-time',
+    },
+    {
+      id: 3,
+      name: 'Lilongwe Golf Club',
+      address: 'Old Town, Lilongwe, Malawi',
+      icon: 'access-time',
+    },
+  ];
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -40,20 +62,18 @@ export default function RiderHomeScreen({ route, navigation }) {
   }, []);
 
   const riderName = userData?.userProfile?.fullName || userData?.socialUserInfo?.name || 'Rider';
-  const riderPhone = userData?.phone;
 
+  // Default region set to Lilongwe, Malawi 
   const defaultRegion = {
-    latitude: -15.3875,
-    longitude: 28.3228,
+    latitude: -13.9626,
+    longitude: 33.7741,
     latitudeDelta: 0.05,
     longitudeDelta: 0.05,
   };
 
-  // ✅ SIMPLIFIED: Location permission request
   const requestLocationPermission = async () => {
     try {
       if (Platform.OS === 'ios') {
-        // For iOS, use react-native-geolocation-service
         const status = await Geolocation.requestAuthorization('whenInUse');
         const allowed = status === 'granted' || status === 'authorizedAlways';
         setLocationPermission(allowed);
@@ -78,7 +98,6 @@ export default function RiderHomeScreen({ route, navigation }) {
     }
   };
 
-  // ✅ SIMPLIFIED: Get current location
   const getCurrentLocation = () => {
     return new Promise((resolve, reject) => {
       Geolocation.getCurrentPosition(
@@ -96,6 +115,7 @@ export default function RiderHomeScreen({ route, navigation }) {
         },
         (error) => {
           console.log('Location error:', error.code, error.message);
+          setRegion(defaultRegion);
           reject(error);
         },
         { 
@@ -107,102 +127,13 @@ export default function RiderHomeScreen({ route, navigation }) {
     });
   };
 
-  const centerOnLocation = () => {
-    if (currentLocation && mapRef.current) {
-      const newRegion = {
-        ...currentLocation,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      };
-      mapRef.current.animateToRegion(newRegion, 1000);
-    }
-  };
-
-  const findAvailableRides = async () => {
-    setRefreshing(true);
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const sampleRides = [
-        { 
-          id: 1, 
-          pickupLocation: { 
-            latitude: currentLocation ? currentLocation.latitude + 0.002 : -15.3875, 
-            longitude: currentLocation ? currentLocation.longitude + 0.002 : 28.3228 
-          }, 
-          pickupName: 'Shoprite Complex', 
-          destination: 'City Center', 
-          amount: '500', 
-          driverName: 'John Banda',
-          driverRating: 4.8,
-          estimatedTime: '3 min',
-          vehicleType: 'Motorcycle',
-        },
-        // ... other rides
-      ];
-      
-      setAvailableRides(sampleRides);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to find rides. Please try again.');
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  const handleSelectRide = (ride) => {
-    setSelectedRideId(ride.id);
-    if (ride?.pickupLocation) {
-      const newRegion = {
-        latitude: ride.pickupLocation.latitude,
-        longitude: ride.pickupLocation.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      };
-      setRegion(newRegion);
-      mapRef.current?.animateToRegion(newRegion, 1000);
-    }
-  };
-
-  const handleBookRide = (ride) => {
-    Alert.alert(
-      'Confirm Ride',
-      `Book ride to ${ride.destination} for MK${ride.amount}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Book Now', 
-          onPress: () => {
-            navigation.navigate('RideBooking', {
-              ride,
-              riderInfo: {
-                name: riderName,
-                phone: riderPhone,
-                currentLocation: currentLocation
-              }
-            });
-          }
-        }
-      ]
-    );
-  };
-
-  const clearRides = () => {
-    setAvailableRides([]);
-    setSelectedRideId(null);
-  };
-
-  // ✅ IMPROVED: Initialize location
   useEffect(() => {
     const initializeLocation = async () => {
       try {
         const granted = await requestLocationPermission();
-        
         if (granted) {
           await getCurrentLocation();
         } else {
-          // If permission denied, use default location
           setRegion(defaultRegion);
         }
       } catch (error) {
@@ -215,7 +146,6 @@ export default function RiderHomeScreen({ route, navigation }) {
 
     initializeLocation();
 
-    // Cleanup function
     return () => {
       if (locationWatchId.current) {
         Geolocation.clearWatch(locationWatchId.current);
@@ -223,38 +153,10 @@ export default function RiderHomeScreen({ route, navigation }) {
     };
   }, []);
 
-  // ✅ ADDED: Watch location only when permission is granted
-  useEffect(() => {
-    if (locationPermission && !locationWatchId.current) {
-      locationWatchId.current = Geolocation.watchPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setCurrentLocation({ latitude, longitude });
-        },
-        (error) => {
-          console.log('Location watch error:', error.code, error.message);
-        },
-        { 
-          enableHighAccuracy: true, 
-          distanceFilter: 50, // Less frequent updates
-          interval: 10000,
-          fastestInterval: 5000
-        }
-      );
-    }
-
-    return () => {
-      if (locationWatchId.current) {
-        Geolocation.clearWatch(locationWatchId.current);
-        locationWatchId.current = null;
-      }
-    };
-  }, [locationPermission]);
-
   if (loading && !region) {
     return (
       <View style={styles.container}>
-        <Header title={`Welcome, ${riderName}`} showBack={false} />
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <Loading message="Getting your location..." />
       </View>
     );
@@ -262,254 +164,301 @@ export default function RiderHomeScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <Header 
-        title={`Welcome, ${riderName}`} 
-        subtitle="Find rides near you"
-        showBack={false}
-        rightComponent={
-          <TouchableOpacity 
-            style={styles.profileButton}
-            onPress={() => navigation.navigate('Profile')}
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      
+      <ScrollView 
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Heading */}
+        <View style={styles.headingContainer}>
+          <Text style={styles.mainHeading}>Smooth sailing ahead.</Text>
+        </View>
+
+        {/* Quick Action Cards */}
+        <View style={styles.actionsContainer}>
+          <ScrollView 
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.actionsScrollContent}
           >
-            <Icon name="user" size={20} color="#fff" />
-          </TouchableOpacity>
-        }
-      />
+            {quickActions.map((action) => (
+              <TouchableOpacity 
+                key={action.id}
+                style={styles.actionCard}
+                onPress={() => navigation.navigate(action.screen)}
+              >
+                <View style={styles.actionCardHeader}>
+                  <View style={styles.checkmarkBadge}>
+                    <MaterialIcon name="check" size={14} color="#FFFFFF" />
+                  </View>
+                </View>
+                <View style={styles.actionImagePlaceholder}>
+                  <FontAwesome5 
+                    name={action.icon} 
+                    size={32} 
+                    color={'#000'} 
+                  />
+                </View>
+                <View style={styles.actionTextContainer}>
+                  <Text style={styles.actionCardTitle}>{action.title}</Text>
+                  <Text style={styles.actionCardSubtitle}>{action.subtitle}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
 
-      <View style={styles.mapContainer}>
-        {region ? (
-          <MapComponent
-            ref={mapRef}
-            region={region}
-            setRegion={setRegion}
-            rides={availableRides}
-            selectedRideId={selectedRideId}
-            onSelectRide={handleSelectRide}
-            userLocationColor="#2196f3"
-            showUserLocation={true}
-          />
-        ) : (
-          <View style={styles.errorContainer}>
-            <Icon name="exclamation-triangle" size={50} color="#FF6B6B" />
-            <Text style={styles.errorText}>Map not available</Text>
-            <Button 
-              title="Retry" 
-              onPress={getCurrentLocation}
-              style={styles.retryButton}
-            />
-          </View>
-        )}
-
-        <TouchableOpacity 
-          style={styles.centerButton}
-          onPress={centerOnLocation}
-          disabled={!currentLocation}
-        >
-          <Icon name="crosshairs" size={20} color="#333" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.bottomPanel}>
-        <View style={styles.quickActions}>
+        {/* Main Search Bar */}
+        <View style={styles.mainSearchContainer}>
           <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={findAvailableRides}
-            disabled={refreshing}
+            style={styles.mainSearchBox}
+            onPress={() => navigation.navigate('SearchScreen')}
           >
-            <Icon name="search" size={20} color="#6c3" />
-            <Text style={styles.actionText}>Find Rides</Text>
+            <MaterialIcon name="search" size={24} color="#000" style={styles.searchIcon} />
+            <Text style={styles.searchPlaceholder}>Where to?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={centerOnLocation}
-            disabled={!currentLocation}
-          >
-            <Icon name="location-arrow" size={20} color="#6c3" />
-            <Text style={styles.actionText}>My Location</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('RideHistory')}
-          >
-            <Icon name="history" size={20} color="#6c3" />
-            <Text style={styles.actionText}>History</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => Alert.alert('Help', 'Contact support')}
-          >
-            <Icon name="question-circle" size={20} color="#6c3" />
-            <Text style={styles.actionText}>Help</Text>
+          <TouchableOpacity style={styles.laterButton}>
+            <MaterialIcon name="schedule" size={20} color="#000" />
+            <Text style={styles.laterButtonText}>Later</Text>
           </TouchableOpacity>
         </View>
 
-        {availableRides.length > 0 ? (
-          <View style={styles.ridesSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>
-                Available Rides ({availableRides.length})
-              </Text>
-              <TouchableOpacity onPress={clearRides}>
-                <Text style={styles.clearText}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={styles.ridesList}>
-              {availableRides.map((ride) => (
-                <RideCard 
-                  key={ride.id} 
-                  ride={ride} 
-                  onPress={() => handleSelectRide(ride)}
-                  onBook={() => handleBookRide(ride)}
-                  isSelected={ride.id === selectedRideId}
-                />
-              ))}
-            </ScrollView>
-          </View>
-        ) : (
-          <View style={styles.noRidesContainer}>
-            <Icon name="car" size={40} color="#ccc" />
-            <Text style={styles.noRidesText}>No rides found</Text>
-            <Text style={styles.noRidesSubtext}>
-              Tap "Find Rides" to search
-            </Text>
-            <Button
-              title={refreshing ? "Searching..." : "Find Rides"}
-              onPress={findAvailableRides}
-              disabled={refreshing}
-              style={styles.findRidesButton}
-            />
-          </View>
-        )}
+        {/* Saved Places Section */}
+        <View style={styles.savedPlacesSection}>
+          {savedPlaces.map((place, index) => (
+            <TouchableOpacity 
+              key={place.id}
+              style={[
+                styles.placeItem,
+                index === savedPlaces.length - 1 && styles.placeItemLast
+              ]}
+              onPress={() => navigation.navigate('RideConfirmation', { destination: place.name })}
+            >
+              <View style={styles.placeIconContainer}>
+                <MaterialIcon name="access-time" size={20} color="#666" />
+              </View>
+              <View style={styles.placeInfo}>
+                <Text style={styles.placeName}>{place.name}</Text>
+                <Text style={styles.placeAddress} numberOfLines={1}>
+                  {place.address}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* Bottom Tab Bar */}
+      <View style={styles.bottomTabBar}>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => navigation.navigate('Home')}
+        >
+          <MaterialIcon name="home" size={28} color="#000" />
+          <Text style={styles.tabTextActive}>Home</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => navigation.navigate('RideHistory')}
+        >
+          <MaterialIcon name="event-note" size={28} color="#9E9E9E" />
+          <Text style={styles.tabText}>Rides</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => navigation.navigate('Profile')}
+        >
+          <MaterialIcon name="account-circle" size={28} color="#9E9E9E" />
+          <Text style={styles.tabText}>Account</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-// Styles remain the same...
 const styles = StyleSheet.create({
-  container: { 
+  container: {
     flex: 1,
-    backgroundColor: '#f8f9fa'
+    backgroundColor: '#F7F6F3', // soft off-white like Bolt
   },
-  mapContainer: {
+  scrollContainer: {
     flex: 1,
-    position: 'relative',
   },
-  profileButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  scrollContent: {
+    paddingBottom: 120,
+  },
+  headingContainer: {
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 20,
+    backgroundColor: '#FFFFFF',
+  },
+  mainHeading: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#000000',
+    letterSpacing: -0.5,
+  },
+  actionsContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingBottom: 20,
+  },
+  actionsScrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  actionCard: {
+    width: SCREEN_WIDTH * 0.45,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  actionCardHeader: {
     padding: 8,
-    borderRadius: 20,
-    marginLeft: 10,
+    alignItems: 'flex-end',
   },
-  centerButton: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    backgroundColor: '#fff',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  checkmarkBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#06C167', // green accent
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
   },
-  errorContainer: {
-    flex: 1,
+  actionImagePlaceholder: {
+    height: 100,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    margin: 8,
   },
-  errorText: {
-    fontSize: 16,
-    color: '#666',
-    marginVertical: 10,
-    textAlign: 'center',
+  actionTextContainer: {
+    padding: 12,
+    paddingTop: 8,
   },
-  retryButton: {
-    marginTop: 10,
-    paddingHorizontal: 20,
-  },
-  bottomPanel: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    maxHeight: '60%',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  actionButton: {
-    alignItems: 'center',
-    padding: 10,
-    minWidth: 70,
-  },
-  actionText: {
-    fontSize: 12,
-    color: '#6c3',
-    marginTop: 5,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  ridesSection: {
-    flex: 1,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  sectionTitle: {
+  actionCardTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 2,
   },
-  clearText: {
+  actionCardSubtitle: {
     fontSize: 14,
-    color: '#ff6b6b',
+    color: '#666',
+  },
+  mainSearchContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    marginTop: 8,
+  },
+  mainSearchBox: {
+    backgroundColor: '#F5F5F5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginBottom: 12,
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchPlaceholder: {
+    flex: 1,
+    fontSize: 18,
+    color: '#000',
     fontWeight: '500',
   },
-  ridesList: {
-    flexGrow: 0,
-  },
-  noRidesContainer: {
+  laterButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 30,
+    alignSelf: 'flex-start',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#FFFFFF',
   },
-  noRidesText: {
+  laterButtonText: {
     fontSize: 16,
-    color: '#666',
-    marginTop: 10,
-    marginBottom: 5,
+    fontWeight: '500',
+    color: '#000000',
+    marginLeft: 8,
   },
-  noRidesSubtext: {
+  savedPlacesSection: {
+    backgroundColor: '#FFFFFF',
+    marginTop: 8,
+    paddingHorizontal: 16,
+  },
+  placeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  placeItemLast: {
+    borderBottomWidth: 0,
+  },
+  placeIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  placeInfo: {
+    flex: 1,
+  },
+  placeName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  placeAddress: {
     fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    marginBottom: 20,
+    color: '#666',
   },
-  findRidesButton: {
-    paddingHorizontal: 30,
+  bottomTabBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  tabTextActive: {
+    fontSize: 12,
+    color: '#000000',
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  tabText: {
+    fontSize: 12,
+    color: '#9E9E9E',
+    marginTop: 4,
   },
 });
-// Styles remain the same...

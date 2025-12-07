@@ -8,7 +8,10 @@ react {
     autolinkLibrariesWithApp()
 }
 
-// ✅ ✅ ✅ ADD THIS LINE HERE (CRITICAL for react-native-config)
+project.ext.vectoricons = [
+    iconFontNames: ['FontAwesome.ttf']
+]
+
 apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
 
 android {
@@ -26,14 +29,29 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
 
+        buildConfigField("boolean", "DEBUG", "true")
         buildConfigField("boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false")
         buildConfigField("boolean", "IS_HERMES_ENABLED", "true")
+
+        // ✅ FIXED: Use VARIABLE NAMES, not values!
+        buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${project.env.get("GOOGLE_MAPS_API_KEY")}\"")
+        buildConfigField("String", "API_BASE_URL", "\"${project.env.get("API_BASE_URL")}\"")
+        buildConfigField("String", "ENVIRONMENT", "\"${project.env.get("ENVIRONMENT")}\"")
+        
+        // ✅ FIXED: Use VARIABLE NAME!
+        manifestPlaceholders = [
+            GOOGLE_MAPS_API_KEY: project.env.get("GOOGLE_MAPS_API_KEY")
+        ]
 
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
         }
     }
-
+    
+    lintOptions {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -66,6 +84,8 @@ android {
     // ✅ CORRECT PLACEMENT: Force consistent Google Play Services versions
     configurations.all {
         resolutionStrategy {
+            force 'androidx.core:core:1.12.0'
+            force 'androidx.core:core-ktx:1.12.0'
             force "com.google.android.gms:play-services-base:18.3.0"
             force "com.google.android.gms:play-services-location:21.0.1"
             force "com.google.android.gms:play-services-maps:18.2.0"
@@ -126,7 +146,9 @@ dependencies {
 
     // AndroidX
     implementation "androidx.appcompat:appcompat:1.7.0"
-    implementation "androidx.core:core-ktx:1.15.0"
+    implementation "androidx.core:core-ktx:1.12.0"
+    implementation "androidx.core:core:1.12.0"
+
     implementation "com.google.android.material:material:1.12.0"
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
 

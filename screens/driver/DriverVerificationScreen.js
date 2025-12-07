@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { getUserData, saveUserData } from '../../src/utils/userStorage'; // ✅ ADDED saveUserData
 
 export default function DriverVerificationScreen({ navigation, route }) {
   const { userProfile } = route.params || {};
@@ -194,73 +195,62 @@ export default function DriverVerificationScreen({ navigation, route }) {
     return true;
   };
 
+  // ✅ FIXED: Updated submit function to save verification data
   const submitVerification = async () => {
     if (!validateData()) return;
 
     setLoading(true);
 
     try {
-      // Simulate API call to backend
-      setTimeout(() => {
-        Alert.alert(
-          'Verification Submitted Successfully!',
-          'Your documents are under review. You will be notified once verified.\n\nFor testing, you can now access the driver dashboard.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // ✅ FIXED NAVIGATION - Multiple safe options
-                handleSuccessfulVerification();
-              }
-            }
-          ]
-        );
-        setLoading(false);
-      }, 2000);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to submit verification');
-      setLoading(false);
-    }
-  };
-
-  // ✅ FIXED: Safe navigation handler
-  const handleSuccessfulVerification = () => {
-    const verificationParams = {
-      verificationStatus: 'pending',
-      ...route.params
-    };
-
-    // Try multiple navigation strategies
-    try {
-      // Option 1: Navigate to DriverStack (should work for authenticated drivers)
-      navigation.navigate('DriverStack', verificationParams);
-    } catch (error) {
-      console.log('Navigation to DriverStack failed, trying alternatives...');
+      // Get current user data
+      const userData = await getUserData();
       
-      try {
-        // Option 2: Navigate to DriverHome directly
-        navigation.navigate('DriverHome', verificationParams);
-      } catch (error2) {
-        console.log('Navigation to DriverHome failed, trying fallback...');
-        
-        try {
-          // Option 3: Reset navigation to DriverStack
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'DriverStack', params: verificationParams }],
-          });
-        } catch (error3) {
-          console.log('Reset navigation failed, trying last resort...');
-          
-          try {
-            // Option 4: Go to RiderHome as fallback
-            navigation.navigate('RiderHome', verificationParams);
-          } catch (error4) {
-            // Option 5: Ultimate fallback - go back
-            navigation.goBack();
+      // Create verification data object
+      const verificationDataToSave = {
+        ...verificationData,
+        documents: Object.keys(documents).reduce((acc, key) => {
+          if (documents[key]) {
+            acc[key] = documents[key].uri;
           }
+          return acc;
+        }, {}),
+        submittedAt: new Date().toISOString(),
+        verificationStatus: 'pending'
+      };
+
+      // Update user data with verification info
+      const updatedData = {
+        ...userData,
+        driverProfile: {
+          ...userData?.driverProfile,
+          ...verificationDataToSave,
+          isVerified: false, // Still pending verification
+          verificationStatus: 'pending'
         }
-      }
+      };
+
+      // Save to storage
+      await saveUserData(updatedData);
+
+      // Show success message
+      Alert.alert(
+        'Verification Submitted Successfully!',
+        'Your documents are under review. This usually takes 24-48 hours.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate to VerificationPending screen
+              navigation.navigate('VerificationPending');
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error submitting verification:', error);
+      Alert.alert('Error', 'Failed to submit verification. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -496,7 +486,10 @@ export default function DriverVerificationScreen({ navigation, route }) {
         {loading ? (
           <Text style={styles.submitButtonText}>Submitting...</Text>
         ) : (
-          <Text style={styles.submitButtonText}>Submit Verification</Text>
+          <>
+            <Icon name="paper-plane" size={20} color="#fff" style={{marginRight: 10}} />
+            <Text style={styles.submitButtonText}>Submit Verification</Text>
+          </>
         )}
       </TouchableOpacity>
 
@@ -568,8 +561,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   idTypeButtonActive: {
-    borderColor: '#4CAF50',
-    backgroundColor: '#f0f9f0',
+    borderColor: '#00B894',
+    backgroundColor: '#E8F8F5',
   },
   idTypeButtonText: {
     fontSize: 14,
@@ -577,7 +570,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   idTypeButtonTextActive: {
-    color: '#4CAF50',
+    color: '#00B894',
     fontWeight: '600',
   },
   input: {
@@ -651,7 +644,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   uploadedText: {
-    color: '#4CAF50',
+    color: '#00B894',
     fontSize: 14,
     fontWeight: '500',
     marginTop: 4,
@@ -662,7 +655,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   submitButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#00B894',
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',
@@ -672,6 +665,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   submitButtonDisabled: {
     backgroundColor: '#cccccc',

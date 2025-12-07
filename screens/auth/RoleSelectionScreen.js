@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, PermissionsAndroid, Platform } from 'react-native';
-import { CommonActions } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import Geolocation from 'react-native-geolocation-service'; // ✅ ADD THIS IMPORT
-import { saveUserData, saveUserRole } from '../../src/utils/userStorage';
+import Geolocation from 'react-native-geolocation-service';
+import { saveUserData, saveUserRole, getUserData } from '../../src/utils/userStorage';
 import { useDispatch } from 'react-redux';
 import { loginSuccess } from '../../src/store/slices/authSlice';
 
@@ -15,7 +14,7 @@ export default function RoleSelectionScreen({ navigation, route }) {
   const [error, setError] = useState(null);
   const dispatch = useDispatch();
 
-  // ✅ ADD THIS FUNCTION - Request location permission
+  // Request location permission
   const requestLocationPermission = async () => {
     if (Platform.OS === 'ios') {
       const status = await Geolocation.requestAuthorization('whenInUse');
@@ -40,7 +39,7 @@ export default function RoleSelectionScreen({ navigation, route }) {
     }
   };
 
-  // ✅ ADD THIS FUNCTION - Get current location
+  // Get current location
   const getCurrentLocation = () => {
     return new Promise((resolve, reject) => {
       Geolocation.getCurrentPosition(
@@ -59,7 +58,7 @@ export default function RoleSelectionScreen({ navigation, route }) {
     });
   };
 
-  // ✅ MODIFIED THIS FUNCTION - Added location handling
+  // ✅ FIXED FUNCTION - Now with proper navigation
   const handleRoleSelection = async (role) => {
     setLoading(true);
     setSelectedRole(role);
@@ -75,20 +74,19 @@ export default function RoleSelectionScreen({ navigation, route }) {
         throw new Error('Profile information incomplete.');
       }
 
-      // ✅ ADDED: Request location permission
+      // Request location permission
       const hasLocationPermission = await requestLocationPermission();
       if (!hasLocationPermission) {
         throw new Error('Location permission is required to use Kabaza services.');
       }
 
-      // ✅ ADDED: Get current location
+      // Get current location
       let userLocation = null;
       try {
         userLocation = await getCurrentLocation();
         console.log('📍 Location obtained:', userLocation);
       } catch (locationError) {
         console.warn('Location fetch failed, continuing without location:', locationError);
-        // Don't throw error - allow user to continue but warn them
         Alert.alert(
           'Location Service',
           'Unable to get your current location. You can still use the app, but some features may not work properly.',
@@ -96,16 +94,17 @@ export default function RoleSelectionScreen({ navigation, route }) {
         );
       }
 
-      // Save user data to AsyncStorage - ✅ ADDED location
+      // Save user data to AsyncStorage
       const userData = {
         phone,
         authMethod,
         socialUserInfo,
         userProfile,
         userRole: role,
-        userLocation, // ✅ ADD LOCATION DATA
+        userLocation,
         isLoggedIn: true,
-        registrationComplete: true
+        registrationComplete: true,
+        timestamp: new Date().toISOString()
       };
 
       // Save to persistent storage
@@ -114,24 +113,34 @@ export default function RoleSelectionScreen({ navigation, route }) {
 
       console.log('✅ User data and role saved successfully');
       
-      // ✅ UPDATE REDUX STORE - Include location
+      // Update Redux store
       dispatch(loginSuccess({
         user: userData,
-        token: null, // Add token if you have one
+        token: null,
         role: role,
-        location: userLocation // ✅ ADD LOCATION TO REDUX
+        location: userLocation
       }));
 
-      // AppNavigator will automatically navigate to the correct stack
+      // ✅ ✅ ✅ CRITICAL FIX: Add Navigation Here! ✅ ✅ ✅
+      if (role === 'rider') {
+        console.log('🚗 Navigating to RiderMain (RiderStack)');
+        // Use replace so user can't go back to role selection
+        navigation.replace('RiderMain', { userData });
+      } else if (role === 'driver') {
+        console.log('🚗 Navigating to DriverVerification');
+        // Always go to verification for new drivers
+        navigation.replace('DriverVerification', { userData });
+      }
 
     } catch (err) {
       console.error('❌ Role selection error:', err);
       setError(err.message);
+      Alert.alert('Error', err.message);
+    } finally {
       setLoading(false);
     }
   };
 
-  // ... rest of your component stays the same
   const handleRetry = () => {
     setError(null);
   };
@@ -164,7 +173,7 @@ export default function RoleSelectionScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* ✅ ADDED: Location permission info */}
+        {/* Location permission info */}
         <View style={styles.contextItem}>
           <View style={[styles.checkbox]}>
             <Icon name="map-marker" size={12} color="#fff" />
@@ -200,11 +209,11 @@ export default function RoleSelectionScreen({ navigation, route }) {
           disabled={loading || error}
         >
           {loading && selectedRole === 'rider' ? (
-            <ActivityIndicator size="small" color="#4CAF50" />
+            <ActivityIndicator size="small" color="#00B894" />
           ) : (
             <>
               <View style={styles.roleIconContainer}>
-                <Icon name="user" size={24} color="#4CAF50" />
+                <Icon name="user" size={24} color="#00B894" />
               </View>
               <Text style={styles.roleButtonText}>Continue as Passenger</Text>
               <Text style={styles.roleDescription}>Book rides and get around town</Text>
@@ -224,11 +233,11 @@ export default function RoleSelectionScreen({ navigation, route }) {
           disabled={loading || error}
         >
           {loading && selectedRole === 'driver' ? (
-            <ActivityIndicator size="small" color="#4CAF50" />
+            <ActivityIndicator size="small" color="#00B894" />
           ) : (
             <>
               <View style={styles.roleIconContainer}>
-                <Icon name="car" size={24} color="#4CAF50" />
+                <Icon name="car" size={24} color="#00B894" />
               </View>
               <Text style={styles.roleButtonText}>Continue as Driver</Text>
               <Text style={styles.roleDescription}>Earn money by giving rides</Text>
@@ -241,7 +250,7 @@ export default function RoleSelectionScreen({ navigation, route }) {
       {/* Loading Message */}
       {loading && (
         <Text style={styles.loadingText}>
-          {selectedRole === 'rider' ? 'Finding your location...' : 'Setting up driver account...'}
+          {selectedRole === 'rider' ? 'Setting up passenger account...' : 'Setting up driver account...'}
         </Text>
       )}
 
@@ -265,7 +274,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 10,
-    color: '#333',
+    color: '#00B894',
   },
   title: {
     fontSize: 20,
@@ -291,11 +300,11 @@ const styles = StyleSheet.create({
     marginRight: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4CAF50', // ✅ Changed to always show green
+    backgroundColor: '#00B894',
   },
   checked: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
+    backgroundColor: '#00B894',
+    borderColor: '#00B894',
   },
   contextText: {
     fontSize: 14,
@@ -334,18 +343,18 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 20,
     paddingHorizontal: 15,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 16,
     borderWidth: 2,
     borderColor: '#e0e0e0',
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 120, // ✅ Increased height for location note
+    minHeight: 120,
   },
   roleButtonSelected: {
-    borderColor: '#4CAF50',
-    backgroundColor: 'rgba(76, 175, 80, 0.05)',
+    borderColor: '#00B894',
+    backgroundColor: 'rgba(0, 184, 148, 0.05)',
   },
   roleButtonDisabled: {
     opacity: 0.6,
@@ -368,14 +377,14 @@ const styles = StyleSheet.create({
   },
   locationNote: {
     fontSize: 12,
-    color: '#4CAF50',
+    color: '#00B894',
     textAlign: 'center',
     fontStyle: 'italic',
   },
   loadingText: {
     fontSize: 14,
     textAlign: 'center',
-    color: '#4CAF50',
+    color: '#00B894',
     marginBottom: 15,
     fontStyle: 'italic',
   },

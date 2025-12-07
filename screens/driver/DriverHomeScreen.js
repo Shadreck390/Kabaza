@@ -7,7 +7,8 @@ import {
   Platform, 
   PermissionsAndroid, 
   Alert,
-  Linking // ✅ ADDED MISSING IMPORT
+  Linking,
+  TouchableOpacity // ✅ ADDED
 } from 'react-native';
 import Header from 'components/Header';
 import Button from 'components/Button';
@@ -18,6 +19,7 @@ import { fetchNearbyRides } from 'services/api/rideAPI';
 import { subscribeToNearbyRides, unsubscribeFromNearbyRides } from 'services/socket/realtimeUpdates';
 import Geolocation from 'react-native-geolocation-service';
 import { getUserData } from '../../src/utils/userStorage';
+import Icon from 'react-native-vector-icons/FontAwesome'; // ✅ ADDED
 
 export default function DriverHomeScreen({ route, navigation }) {
   const [region, setRegion] = useState(null);
@@ -32,6 +34,19 @@ export default function DriverHomeScreen({ route, navigation }) {
   const locationWatchId = useRef(null);
 
   const driverName = userData?.userProfile?.fullName || userData?.socialUserInfo?.name || 'Driver';
+
+  // ✅ ADDED NAVIGATION FUNCTIONS
+  const handleViewRideRequests = () => {
+    navigation.navigate('RideRequests');
+  };
+
+  const handleViewTripHistory = () => {
+    navigation.navigate('TripHistory');
+  };
+
+  const handleViewProfile = () => {
+    navigation.navigate('DriverProfile');
+  };
 
   const defaultRegion = {
     latitude: -15.3875,
@@ -332,11 +347,37 @@ export default function DriverHomeScreen({ route, navigation }) {
           </View>
         ) : null}
       </View>
+
+      {/* ✅ ADDED: Quick Access Menu */}
+      <View style={styles.menuSection}>
+        <TouchableOpacity style={styles.menuItem} onPress={handleViewRideRequests}>
+          <Icon name="bell" size={24} color="#00B894" />
+          <Text style={styles.menuText}>Ride Requests</Text>
+          <Icon name="chevron-right" size={16} color="#ccc" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuItem} onPress={handleViewTripHistory}>
+          <Icon name="history" size={24} color="#00B894" />
+          <Text style={styles.menuText}>Trip History</Text>
+          <Icon name="chevron-right" size={16} color="#ccc" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Earnings')}>
+          <Icon name="money" size={24} color="#00B894" />
+          <Text style={styles.menuText}>Earnings</Text>
+          <Icon name="chevron-right" size={16} color="#ccc" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuItem} onPress={handleViewProfile}>
+          <Icon name="user" size={24} color="#00B894" />
+          <Text style={styles.menuText}>Profile & Settings</Text>
+          <Icon name="chevron-right" size={16} color="#ccc" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
-// Styles remain the same
 const styles = StyleSheet.create({
   container: { 
     flex: 1,
@@ -427,5 +468,31 @@ const styles = StyleSheet.create({
   noRidesText: {
     fontSize: 16,
     color: '#666',
+  },
+  // ✅ ADDED: Menu Styles
+  menuSection: {
+    backgroundColor: '#fff',
+    margin: 15,
+    marginTop: 5,
+    borderRadius: 12,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  menuText: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
+    marginLeft: 15,
   },
 });
