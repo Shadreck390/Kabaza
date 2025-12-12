@@ -1,0 +1,1214 @@
+diff --git a/node_modules/react-native-maps/android/build/.transforms/27434f2754ce522566fb1ed22998873e/results.bin b/node_modules/react-native-maps/android/build/.transforms/27434f2754ce522566fb1ed22998873e/results.bin
+new file mode 100644
+index 0000000..0d259dd
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/.transforms/27434f2754ce522566fb1ed22998873e/results.bin
+@@ -0,0 +1 @@
++o/classes
+diff --git a/node_modules/react-native-maps/android/build/.transforms/27434f2754ce522566fb1ed22998873e/transformed/classes/classes_dex/classes.dex b/node_modules/react-native-maps/android/build/.transforms/27434f2754ce522566fb1ed22998873e/transformed/classes/classes_dex/classes.dex
+new file mode 100644
+index 0000000..a0b3db3
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/27434f2754ce522566fb1ed22998873e/transformed/classes/classes_dex/classes.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/results.bin b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/results.bin
+new file mode 100644
+index 0000000..5ff383e
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/results.bin
+@@ -0,0 +1 @@
++o/debug
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/BuildConfig.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/BuildConfig.dex
+new file mode 100644
+index 0000000..94eca63
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/BuildConfig.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/FileUtil.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/FileUtil.dex
+new file mode 100644
+index 0000000..a0f18bc
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/FileUtil.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/FusedLocationSource$1.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/FusedLocationSource$1.dex
+new file mode 100644
+index 0000000..f993730
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/FusedLocationSource$1.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/FusedLocationSource$2.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/FusedLocationSource$2.dex
+new file mode 100644
+index 0000000..1efded6
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/FusedLocationSource$2.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/FusedLocationSource.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/FusedLocationSource.dex
+new file mode 100644
+index 0000000..3590b74
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/FusedLocationSource.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ImageReadable.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ImageReadable.dex
+new file mode 100644
+index 0000000..d9470a1
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ImageReadable.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ImageReader$1.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ImageReader$1.dex
+new file mode 100644
+index 0000000..41bbf86
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ImageReader$1.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ImageReader.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ImageReader.dex
+new file mode 100644
+index 0000000..f606f90
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ImageReader.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ImageUtil.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ImageUtil.dex
+new file mode 100644
+index 0000000..ab5c017
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ImageUtil.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/LatLngBoundsUtils.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/LatLngBoundsUtils.dex
+new file mode 100644
+index 0000000..8902094
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/LatLngBoundsUtils.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapCallout.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapCallout.dex
+new file mode 100644
+index 0000000..97ee8da
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapCallout.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapCalloutManager.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapCalloutManager.dex
+new file mode 100644
+index 0000000..45da273
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapCalloutManager.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapCircle.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapCircle.dex
+new file mode 100644
+index 0000000..5ae3a3d
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapCircle.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapCircleManager.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapCircleManager.dex
+new file mode 100644
+index 0000000..45ee3ce
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapCircleManager.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapFeature.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapFeature.dex
+new file mode 100644
+index 0000000..6ebb5d4
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapFeature.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapGradientPolyline$AirMapGradientPolylineProvider.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapGradientPolyline$AirMapGradientPolylineProvider.dex
+new file mode 100644
+index 0000000..c5bc16d
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapGradientPolyline$AirMapGradientPolylineProvider.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapGradientPolyline$MutPoint.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapGradientPolyline$MutPoint.dex
+new file mode 100644
+index 0000000..4f14074
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapGradientPolyline$MutPoint.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapGradientPolyline.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapGradientPolyline.dex
+new file mode 100644
+index 0000000..7534207
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapGradientPolyline.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapGradientPolylineManager.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapGradientPolylineManager.dex
+new file mode 100644
+index 0000000..a7d8c6b
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapGradientPolylineManager.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapHeatmap.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapHeatmap.dex
+new file mode 100644
+index 0000000..b8ca207
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapHeatmap.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapHeatmapManager.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapHeatmapManager.dex
+new file mode 100644
+index 0000000..6dc0da8
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapHeatmapManager.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapLocalTile$AIRMapLocalTileProvider.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapLocalTile$AIRMapLocalTileProvider.dex
+new file mode 100644
+index 0000000..6d91af8
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapLocalTile$AIRMapLocalTileProvider.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapLocalTile.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapLocalTile.dex
+new file mode 100644
+index 0000000..d5b87d8
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapLocalTile.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapLocalTileManager.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapLocalTileManager.dex
+new file mode 100644
+index 0000000..98e446d
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapLocalTileManager.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapManager.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapManager.dex
+new file mode 100644
+index 0000000..f9ab3c2
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapManager.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarker$1.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarker$1.dex
+new file mode 100644
+index 0000000..ec55da6
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarker$1.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarker$2.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarker$2.dex
+new file mode 100644
+index 0000000..a43c105
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarker$2.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarker.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarker.dex
+new file mode 100644
+index 0000000..870f28c
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarker.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarkerManager$AirMapMarkerSharedIcon.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarkerManager$AirMapMarkerSharedIcon.dex
+new file mode 100644
+index 0000000..aa39cf5
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarkerManager$AirMapMarkerSharedIcon.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarkerManager.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarkerManager.dex
+new file mode 100644
+index 0000000..4e619ac
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapMarkerManager.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapModule$1.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapModule$1.dex
+new file mode 100644
+index 0000000..9dfef7c
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapModule$1.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapModule.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapModule.dex
+new file mode 100644
+index 0000000..80688c4
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapModule.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapOverlay.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapOverlay.dex
+new file mode 100644
+index 0000000..ccd2944
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapOverlay.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapOverlayManager.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapOverlayManager.dex
+new file mode 100644
+index 0000000..3ffcc08
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapOverlayManager.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapPolygon.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapPolygon.dex
+new file mode 100644
+index 0000000..eb70ab7
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapPolygon.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapPolygonManager.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapPolygonManager.dex
+new file mode 100644
+index 0000000..df0cec4
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapPolygonManager.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapPolyline.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapPolyline.dex
+new file mode 100644
+index 0000000..7f37847
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapPolyline.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapPolylineManager.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapPolylineManager.dex
+new file mode 100644
+index 0000000..c98e4ab
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapPolylineManager.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapTileProvider$AIRMapUrlTileProvider.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapTileProvider$AIRMapUrlTileProvider.dex
+new file mode 100644
+index 0000000..9fa37f6
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapTileProvider$AIRMapUrlTileProvider.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapTileProvider.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapTileProvider.dex
+new file mode 100644
+index 0000000..a7f8fd7
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapTileProvider.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapTileWorker.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapTileWorker.dex
+new file mode 100644
+index 0000000..b24642a
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapTileWorker.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapUIBlock.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapUIBlock.dex
+new file mode 100644
+index 0000000..002eb84
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapUIBlock.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapUrlTile.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapUrlTile.dex
+new file mode 100644
+index 0000000..875875f
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapUrlTile.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapUrlTileManager.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapUrlTileManager.dex
+new file mode 100644
+index 0000000..ebba36c
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapUrlTileManager.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$1.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$1.dex
+new file mode 100644
+index 0000000..37efa02
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$1.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$10.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$10.dex
+new file mode 100644
+index 0000000..fcad04a
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$10.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$11.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$11.dex
+new file mode 100644
+index 0000000..74419d9
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$11.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$12.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$12.dex
+new file mode 100644
+index 0000000..320ce33
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$12.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$13.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$13.dex
+new file mode 100644
+index 0000000..64b0631
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$13.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$14.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$14.dex
+new file mode 100644
+index 0000000..0320a13
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$14.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$15.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$15.dex
+new file mode 100644
+index 0000000..0571a60
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$15.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$16.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$16.dex
+new file mode 100644
+index 0000000..8d84c97
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$16.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$17.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$17.dex
+new file mode 100644
+index 0000000..2ec56a3
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$17.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$2.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$2.dex
+new file mode 100644
+index 0000000..ca38167
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$2.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$3.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$3.dex
+new file mode 100644
+index 0000000..51a15bc
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$3.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$4.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$4.dex
+new file mode 100644
+index 0000000..a291435
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$4.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$5.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$5.dex
+new file mode 100644
+index 0000000..77b1a17
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$5.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$6.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$6.dex
+new file mode 100644
+index 0000000..8dda646
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$6.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$7.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$7.dex
+new file mode 100644
+index 0000000..5de556d
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$7.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$8.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$8.dex
+new file mode 100644
+index 0000000..31e0fa8
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$8.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$9.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$9.dex
+new file mode 100644
+index 0000000..ca72444
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView$9.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView.dex
+new file mode 100644
+index 0000000..bfdb99b
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapView.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider$AIRMapWMSTileProvider.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider$AIRMapWMSTileProvider.dex
+new file mode 100644
+index 0000000..933605e
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider$AIRMapWMSTileProvider.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider.dex
+new file mode 100644
+index 0000000..445c0c3
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapWMSTile.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapWMSTile.dex
+new file mode 100644
+index 0000000..37dab3a
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapWMSTile.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapWMSTileManager.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapWMSTileManager.dex
+new file mode 100644
+index 0000000..7e2bb28
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapWMSTileManager.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapsPackage.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapsPackage.dex
+new file mode 100644
+index 0000000..f3d8456
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/MapsPackage.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/RegionChangeEvent.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/RegionChangeEvent.dex
+new file mode 100644
+index 0000000..1c9bf81
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/RegionChangeEvent.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/SizeReportingShadowNode.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/SizeReportingShadowNode.dex
+new file mode 100644
+index 0000000..4d0a7dc
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/SizeReportingShadowNode.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/UIBlockInterface.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/UIBlockInterface.dex
+new file mode 100644
+index 0000000..000b409
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/UIBlockInterface.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ViewAttacherGroup.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ViewAttacherGroup.dex
+new file mode 100644
+index 0000000..37aee49
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ViewAttacherGroup.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ViewChangesTracker$1.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ViewChangesTracker$1.dex
+new file mode 100644
+index 0000000..b319c82
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ViewChangesTracker$1.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ViewChangesTracker.dex b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ViewChangesTracker.dex
+new file mode 100644
+index 0000000..412d8c6
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/debug_dex/com/rnmaps/maps/ViewChangesTracker.dex differ
+diff --git a/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/desugar_graph.bin b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/desugar_graph.bin
+new file mode 100644
+index 0000000..c50ce5a
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/.transforms/ba007860e8fc2f46a30dd1dd6e0dfaf9/transformed/debug/desugar_graph.bin differ
+diff --git a/node_modules/react-native-maps/android/build/generated/source/buildConfig/debug/com/rnmaps/maps/BuildConfig.java b/node_modules/react-native-maps/android/build/generated/source/buildConfig/debug/com/rnmaps/maps/BuildConfig.java
+new file mode 100644
+index 0000000..845e2d9
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/generated/source/buildConfig/debug/com/rnmaps/maps/BuildConfig.java
+@@ -0,0 +1,12 @@
++/**
++ * Automatically generated file. DO NOT MODIFY
++ */
++package com.rnmaps.maps;
++
++public final class BuildConfig {
++  public static final boolean DEBUG = Boolean.parseBoolean("true");
++  public static final String LIBRARY_PACKAGE_NAME = "com.rnmaps.maps";
++  public static final String BUILD_TYPE = "debug";
++  // Field from default config.
++  public static final boolean IS_NEW_ARCHITECTURE_ENABLED = false;
++}
+diff --git a/node_modules/react-native-maps/android/build/intermediates/aapt_friendly_merged_manifests/debug/aapt/AndroidManifest.xml b/node_modules/react-native-maps/android/build/intermediates/aapt_friendly_merged_manifests/debug/aapt/AndroidManifest.xml
+new file mode 100644
+index 0000000..07c618e
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/intermediates/aapt_friendly_merged_manifests/debug/aapt/AndroidManifest.xml
+@@ -0,0 +1,7 @@
++<?xml version="1.0" encoding="utf-8"?>
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.rnmaps.maps" >
++
++    <uses-sdk android:minSdkVersion="24" />
++
++</manifest>
+\ No newline at end of file
+diff --git a/node_modules/react-native-maps/android/build/intermediates/aapt_friendly_merged_manifests/debug/aapt/output-metadata.json b/node_modules/react-native-maps/android/build/intermediates/aapt_friendly_merged_manifests/debug/aapt/output-metadata.json
+new file mode 100644
+index 0000000..578d892
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/intermediates/aapt_friendly_merged_manifests/debug/aapt/output-metadata.json
+@@ -0,0 +1,18 @@
++{
++  "version": 3,
++  "artifactType": {
++    "type": "AAPT_FRIENDLY_MERGED_MANIFESTS",
++    "kind": "Directory"
++  },
++  "applicationId": "com.rnmaps.maps",
++  "variantName": "debug",
++  "elements": [
++    {
++      "type": "SINGLE",
++      "filters": [],
++      "attributes": [],
++      "outputFile": "AndroidManifest.xml"
++    }
++  ],
++  "elementType": "File"
++}
+\ No newline at end of file
+diff --git a/node_modules/react-native-maps/android/build/intermediates/aar_metadata/debug/aar-metadata.properties b/node_modules/react-native-maps/android/build/intermediates/aar_metadata/debug/aar-metadata.properties
+new file mode 100644
+index 0000000..1211b1e
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/intermediates/aar_metadata/debug/aar-metadata.properties
+@@ -0,0 +1,6 @@
++aarFormatVersion=1.0
++aarMetadataVersion=1.0
++minCompileSdk=1
++minCompileSdkExtension=0
++minAndroidGradlePluginVersion=1.0.0
++coreLibraryDesugaringEnabled=false
+diff --git a/node_modules/react-native-maps/android/build/intermediates/annotation_processor_list/debug/annotationProcessors.json b/node_modules/react-native-maps/android/build/intermediates/annotation_processor_list/debug/annotationProcessors.json
+new file mode 100644
+index 0000000..9e26dfe
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/intermediates/annotation_processor_list/debug/annotationProcessors.json
+@@ -0,0 +1 @@
++{}
+\ No newline at end of file
+diff --git a/node_modules/react-native-maps/android/build/intermediates/compile_library_classes_jar/debug/classes.jar b/node_modules/react-native-maps/android/build/intermediates/compile_library_classes_jar/debug/classes.jar
+new file mode 100644
+index 0000000..187e3db
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/compile_library_classes_jar/debug/classes.jar differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/compile_r_class_jar/debug/R.jar b/node_modules/react-native-maps/android/build/intermediates/compile_r_class_jar/debug/R.jar
+new file mode 100644
+index 0000000..588cd91
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/compile_r_class_jar/debug/R.jar differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/compile_symbol_list/debug/R.txt b/node_modules/react-native-maps/android/build/intermediates/compile_symbol_list/debug/R.txt
+new file mode 100644
+index 0000000..e69de29
+diff --git a/node_modules/react-native-maps/android/build/intermediates/incremental/debug/packageDebugResources/compile-file-map.properties b/node_modules/react-native-maps/android/build/intermediates/incremental/debug/packageDebugResources/compile-file-map.properties
+new file mode 100644
+index 0000000..16b577d
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/intermediates/incremental/debug/packageDebugResources/compile-file-map.properties
+@@ -0,0 +1 @@
++#Mon Dec 08 15:53:05 YEKT 2025
+diff --git a/node_modules/react-native-maps/android/build/intermediates/incremental/debug/packageDebugResources/merger.xml b/node_modules/react-native-maps/android/build/intermediates/incremental/debug/packageDebugResources/merger.xml
+new file mode 100644
+index 0000000..236328a
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/intermediates/incremental/debug/packageDebugResources/merger.xml
+@@ -0,0 +1,2 @@
++<?xml version="1.0" encoding="utf-8"?>
++<merger version="3"><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="main$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="C:\Front_End\Kabaza\node_modules\react-native-maps\android\src\main\res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="main" generated-set="main$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="C:\Front_End\Kabaza\node_modules\react-native-maps\android\src\main\res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="debug$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="C:\Front_End\Kabaza\node_modules\react-native-maps\android\src\debug\res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="debug" generated-set="debug$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="C:\Front_End\Kabaza\node_modules\react-native-maps\android\src\debug\res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="generated$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="C:\Front_End\Kabaza\node_modules\react-native-maps\android\build\generated\res\resValues\debug"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="generated" generated-set="generated$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="C:\Front_End\Kabaza\node_modules\react-native-maps\android\build\generated\res\resValues\debug"/></dataSet><mergedItems/></merger>
+\ No newline at end of file
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/BuildConfig.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/BuildConfig.class
+new file mode 100644
+index 0000000..f869e4a
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/BuildConfig.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/FileUtil.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/FileUtil.class
+new file mode 100644
+index 0000000..2ddef0c
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/FileUtil.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/FusedLocationSource$1.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/FusedLocationSource$1.class
+new file mode 100644
+index 0000000..dc8b8ac
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/FusedLocationSource$1.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/FusedLocationSource$2.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/FusedLocationSource$2.class
+new file mode 100644
+index 0000000..4794f5f
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/FusedLocationSource$2.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/FusedLocationSource.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/FusedLocationSource.class
+new file mode 100644
+index 0000000..db43dc5
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/FusedLocationSource.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ImageReadable.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ImageReadable.class
+new file mode 100644
+index 0000000..696cc70
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ImageReadable.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ImageReader$1.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ImageReader$1.class
+new file mode 100644
+index 0000000..43ccaa7
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ImageReader$1.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ImageReader.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ImageReader.class
+new file mode 100644
+index 0000000..9490744
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ImageReader.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ImageUtil.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ImageUtil.class
+new file mode 100644
+index 0000000..23b41bc
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ImageUtil.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/LatLngBoundsUtils.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/LatLngBoundsUtils.class
+new file mode 100644
+index 0000000..c0e7aa9
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/LatLngBoundsUtils.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapCallout.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapCallout.class
+new file mode 100644
+index 0000000..5312da6
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapCallout.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapCalloutManager.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapCalloutManager.class
+new file mode 100644
+index 0000000..84b5ed7
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapCalloutManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapCircle.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapCircle.class
+new file mode 100644
+index 0000000..e76b618
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapCircle.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapCircleManager.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapCircleManager.class
+new file mode 100644
+index 0000000..e402cb2
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapCircleManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapFeature.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapFeature.class
+new file mode 100644
+index 0000000..1753e54
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapFeature.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapGradientPolyline$AirMapGradientPolylineProvider.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapGradientPolyline$AirMapGradientPolylineProvider.class
+new file mode 100644
+index 0000000..18cb525
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapGradientPolyline$AirMapGradientPolylineProvider.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapGradientPolyline$MutPoint.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapGradientPolyline$MutPoint.class
+new file mode 100644
+index 0000000..0a166ce
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapGradientPolyline$MutPoint.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapGradientPolyline.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapGradientPolyline.class
+new file mode 100644
+index 0000000..0b8bc6e
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapGradientPolyline.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapGradientPolylineManager.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapGradientPolylineManager.class
+new file mode 100644
+index 0000000..b77919f
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapGradientPolylineManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapHeatmap.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapHeatmap.class
+new file mode 100644
+index 0000000..499244e
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapHeatmap.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapHeatmapManager.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapHeatmapManager.class
+new file mode 100644
+index 0000000..1609b2d
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapHeatmapManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapLocalTile$AIRMapLocalTileProvider.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapLocalTile$AIRMapLocalTileProvider.class
+new file mode 100644
+index 0000000..bbf9445
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapLocalTile$AIRMapLocalTileProvider.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapLocalTile.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapLocalTile.class
+new file mode 100644
+index 0000000..e9f8b1e
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapLocalTile.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapLocalTileManager.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapLocalTileManager.class
+new file mode 100644
+index 0000000..210202e
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapLocalTileManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapManager.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapManager.class
+new file mode 100644
+index 0000000..0b3891a
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarker$1.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarker$1.class
+new file mode 100644
+index 0000000..bba1e68
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarker$1.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarker$2.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarker$2.class
+new file mode 100644
+index 0000000..7b59afd
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarker$2.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarker.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarker.class
+new file mode 100644
+index 0000000..92e4f3a
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarker.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarkerManager$AirMapMarkerSharedIcon.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarkerManager$AirMapMarkerSharedIcon.class
+new file mode 100644
+index 0000000..9ee6d20
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarkerManager$AirMapMarkerSharedIcon.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarkerManager.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarkerManager.class
+new file mode 100644
+index 0000000..e2ae47c
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapMarkerManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapModule$1.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapModule$1.class
+new file mode 100644
+index 0000000..c6ed4e1
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapModule$1.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapModule.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapModule.class
+new file mode 100644
+index 0000000..b2fff45
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapModule.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapOverlay.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapOverlay.class
+new file mode 100644
+index 0000000..4a0af12
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapOverlay.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapOverlayManager.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapOverlayManager.class
+new file mode 100644
+index 0000000..14c7202
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapOverlayManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapPolygon.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapPolygon.class
+new file mode 100644
+index 0000000..5544155
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapPolygon.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapPolygonManager.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapPolygonManager.class
+new file mode 100644
+index 0000000..f6654aa
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapPolygonManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapPolyline.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapPolyline.class
+new file mode 100644
+index 0000000..9752dd6
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapPolyline.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapPolylineManager.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapPolylineManager.class
+new file mode 100644
+index 0000000..8dec163
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapPolylineManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapTileProvider$AIRMapUrlTileProvider.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapTileProvider$AIRMapUrlTileProvider.class
+new file mode 100644
+index 0000000..91d9647
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapTileProvider$AIRMapUrlTileProvider.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapTileProvider.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapTileProvider.class
+new file mode 100644
+index 0000000..345ff34
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapTileProvider.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapTileWorker.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapTileWorker.class
+new file mode 100644
+index 0000000..408ff57
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapTileWorker.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapUIBlock.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapUIBlock.class
+new file mode 100644
+index 0000000..7776c45
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapUIBlock.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapUrlTile.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapUrlTile.class
+new file mode 100644
+index 0000000..e236f9d
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapUrlTile.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapUrlTileManager.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapUrlTileManager.class
+new file mode 100644
+index 0000000..1b47e2c
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapUrlTileManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$1.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$1.class
+new file mode 100644
+index 0000000..a5b444d
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$1.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$10.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$10.class
+new file mode 100644
+index 0000000..7901a3b
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$10.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$11.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$11.class
+new file mode 100644
+index 0000000..6fdad72
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$11.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$12.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$12.class
+new file mode 100644
+index 0000000..283bb80
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$12.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$13.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$13.class
+new file mode 100644
+index 0000000..a4a723d
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$13.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$14.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$14.class
+new file mode 100644
+index 0000000..7834b36
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$14.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$15.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$15.class
+new file mode 100644
+index 0000000..acc3aa0
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$15.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$16.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$16.class
+new file mode 100644
+index 0000000..c9c5283
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$16.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$17.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$17.class
+new file mode 100644
+index 0000000..5a0b4fe
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$17.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$2.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$2.class
+new file mode 100644
+index 0000000..db7b3cb
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$2.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$3.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$3.class
+new file mode 100644
+index 0000000..e0e9ff4
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$3.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$4.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$4.class
+new file mode 100644
+index 0000000..0a042d9
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$4.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$5.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$5.class
+new file mode 100644
+index 0000000..0d82558
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$5.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$6.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$6.class
+new file mode 100644
+index 0000000..952ecc6
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$6.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$7.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$7.class
+new file mode 100644
+index 0000000..a423bb6
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$7.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$8.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$8.class
+new file mode 100644
+index 0000000..c3e78ef
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$8.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$9.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$9.class
+new file mode 100644
+index 0000000..174ee71
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView$9.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView.class
+new file mode 100644
+index 0000000..f253298
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapView.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider$AIRMapWMSTileProvider.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider$AIRMapWMSTileProvider.class
+new file mode 100644
+index 0000000..91f29e1
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider$AIRMapWMSTileProvider.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider.class
+new file mode 100644
+index 0000000..be52547
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapWMSTile.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapWMSTile.class
+new file mode 100644
+index 0000000..aafe4fe
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapWMSTile.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapWMSTileManager.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapWMSTileManager.class
+new file mode 100644
+index 0000000..bbafb04
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapWMSTileManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapsPackage.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapsPackage.class
+new file mode 100644
+index 0000000..408840f
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/MapsPackage.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/RegionChangeEvent.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/RegionChangeEvent.class
+new file mode 100644
+index 0000000..6663566
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/RegionChangeEvent.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/SizeReportingShadowNode.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/SizeReportingShadowNode.class
+new file mode 100644
+index 0000000..efbf4b1
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/SizeReportingShadowNode.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/UIBlockInterface.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/UIBlockInterface.class
+new file mode 100644
+index 0000000..836c597
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/UIBlockInterface.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ViewAttacherGroup.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ViewAttacherGroup.class
+new file mode 100644
+index 0000000..55b7b4e
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ViewAttacherGroup.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ViewChangesTracker$1.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ViewChangesTracker$1.class
+new file mode 100644
+index 0000000..ba59812
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ViewChangesTracker$1.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ViewChangesTracker.class b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ViewChangesTracker.class
+new file mode 100644
+index 0000000..e467567
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/javac/debug/classes/com/rnmaps/maps/ViewChangesTracker.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/local_only_symbol_list/debug/R-def.txt b/node_modules/react-native-maps/android/build/intermediates/local_only_symbol_list/debug/R-def.txt
+new file mode 100644
+index 0000000..78ac5b8
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/intermediates/local_only_symbol_list/debug/R-def.txt
+@@ -0,0 +1,2 @@
++R_DEF: Internal format may change without notice
++local
+diff --git a/node_modules/react-native-maps/android/build/intermediates/manifest_merge_blame_file/debug/manifest-merger-blame-debug-report.txt b/node_modules/react-native-maps/android/build/intermediates/manifest_merge_blame_file/debug/manifest-merger-blame-debug-report.txt
+new file mode 100644
+index 0000000..c28d4ba
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/intermediates/manifest_merge_blame_file/debug/manifest-merger-blame-debug-report.txt
+@@ -0,0 +1,7 @@
++1<?xml version="1.0" encoding="utf-8"?>
++2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++3    package="com.rnmaps.maps" >
++4
++5    <uses-sdk android:minSdkVersion="24" />
++6
++7</manifest>
+diff --git a/node_modules/react-native-maps/android/build/intermediates/merged_manifest/debug/AndroidManifest.xml b/node_modules/react-native-maps/android/build/intermediates/merged_manifest/debug/AndroidManifest.xml
+new file mode 100644
+index 0000000..07c618e
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/intermediates/merged_manifest/debug/AndroidManifest.xml
+@@ -0,0 +1,7 @@
++<?xml version="1.0" encoding="utf-8"?>
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.rnmaps.maps" >
++
++    <uses-sdk android:minSdkVersion="24" />
++
++</manifest>
+\ No newline at end of file
+diff --git a/node_modules/react-native-maps/android/build/intermediates/navigation_json/debug/navigation.json b/node_modules/react-native-maps/android/build/intermediates/navigation_json/debug/navigation.json
+new file mode 100644
+index 0000000..0637a08
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/intermediates/navigation_json/debug/navigation.json
+@@ -0,0 +1 @@
++[]
+\ No newline at end of file
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/BuildConfig.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/BuildConfig.class
+new file mode 100644
+index 0000000..f869e4a
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/BuildConfig.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/FileUtil.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/FileUtil.class
+new file mode 100644
+index 0000000..2ddef0c
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/FileUtil.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/FusedLocationSource$1.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/FusedLocationSource$1.class
+new file mode 100644
+index 0000000..dc8b8ac
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/FusedLocationSource$1.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/FusedLocationSource$2.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/FusedLocationSource$2.class
+new file mode 100644
+index 0000000..4794f5f
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/FusedLocationSource$2.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/FusedLocationSource.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/FusedLocationSource.class
+new file mode 100644
+index 0000000..db43dc5
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/FusedLocationSource.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ImageReadable.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ImageReadable.class
+new file mode 100644
+index 0000000..696cc70
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ImageReadable.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ImageReader$1.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ImageReader$1.class
+new file mode 100644
+index 0000000..43ccaa7
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ImageReader$1.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ImageReader.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ImageReader.class
+new file mode 100644
+index 0000000..9490744
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ImageReader.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ImageUtil.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ImageUtil.class
+new file mode 100644
+index 0000000..23b41bc
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ImageUtil.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/LatLngBoundsUtils.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/LatLngBoundsUtils.class
+new file mode 100644
+index 0000000..c0e7aa9
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/LatLngBoundsUtils.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapCallout.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapCallout.class
+new file mode 100644
+index 0000000..5312da6
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapCallout.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapCalloutManager.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapCalloutManager.class
+new file mode 100644
+index 0000000..84b5ed7
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapCalloutManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapCircle.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapCircle.class
+new file mode 100644
+index 0000000..e76b618
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapCircle.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapCircleManager.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapCircleManager.class
+new file mode 100644
+index 0000000..e402cb2
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapCircleManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapFeature.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapFeature.class
+new file mode 100644
+index 0000000..1753e54
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapFeature.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapGradientPolyline$AirMapGradientPolylineProvider.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapGradientPolyline$AirMapGradientPolylineProvider.class
+new file mode 100644
+index 0000000..18cb525
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapGradientPolyline$AirMapGradientPolylineProvider.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapGradientPolyline$MutPoint.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapGradientPolyline$MutPoint.class
+new file mode 100644
+index 0000000..0a166ce
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapGradientPolyline$MutPoint.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapGradientPolyline.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapGradientPolyline.class
+new file mode 100644
+index 0000000..0b8bc6e
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapGradientPolyline.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapGradientPolylineManager.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapGradientPolylineManager.class
+new file mode 100644
+index 0000000..b77919f
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapGradientPolylineManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapHeatmap.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapHeatmap.class
+new file mode 100644
+index 0000000..499244e
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapHeatmap.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapHeatmapManager.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapHeatmapManager.class
+new file mode 100644
+index 0000000..1609b2d
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapHeatmapManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapLocalTile$AIRMapLocalTileProvider.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapLocalTile$AIRMapLocalTileProvider.class
+new file mode 100644
+index 0000000..bbf9445
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapLocalTile$AIRMapLocalTileProvider.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapLocalTile.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapLocalTile.class
+new file mode 100644
+index 0000000..e9f8b1e
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapLocalTile.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapLocalTileManager.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapLocalTileManager.class
+new file mode 100644
+index 0000000..210202e
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapLocalTileManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapManager.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapManager.class
+new file mode 100644
+index 0000000..0b3891a
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarker$1.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarker$1.class
+new file mode 100644
+index 0000000..bba1e68
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarker$1.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarker$2.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarker$2.class
+new file mode 100644
+index 0000000..7b59afd
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarker$2.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarker.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarker.class
+new file mode 100644
+index 0000000..92e4f3a
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarker.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarkerManager$AirMapMarkerSharedIcon.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarkerManager$AirMapMarkerSharedIcon.class
+new file mode 100644
+index 0000000..9ee6d20
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarkerManager$AirMapMarkerSharedIcon.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarkerManager.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarkerManager.class
+new file mode 100644
+index 0000000..e2ae47c
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapMarkerManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapModule$1.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapModule$1.class
+new file mode 100644
+index 0000000..c6ed4e1
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapModule$1.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapModule.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapModule.class
+new file mode 100644
+index 0000000..b2fff45
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapModule.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapOverlay.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapOverlay.class
+new file mode 100644
+index 0000000..4a0af12
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapOverlay.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapOverlayManager.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapOverlayManager.class
+new file mode 100644
+index 0000000..14c7202
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapOverlayManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapPolygon.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapPolygon.class
+new file mode 100644
+index 0000000..5544155
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapPolygon.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapPolygonManager.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapPolygonManager.class
+new file mode 100644
+index 0000000..f6654aa
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapPolygonManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapPolyline.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapPolyline.class
+new file mode 100644
+index 0000000..9752dd6
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapPolyline.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapPolylineManager.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapPolylineManager.class
+new file mode 100644
+index 0000000..8dec163
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapPolylineManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapTileProvider$AIRMapUrlTileProvider.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapTileProvider$AIRMapUrlTileProvider.class
+new file mode 100644
+index 0000000..91d9647
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapTileProvider$AIRMapUrlTileProvider.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapTileProvider.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapTileProvider.class
+new file mode 100644
+index 0000000..345ff34
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapTileProvider.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapTileWorker.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapTileWorker.class
+new file mode 100644
+index 0000000..408ff57
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapTileWorker.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapUIBlock.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapUIBlock.class
+new file mode 100644
+index 0000000..7776c45
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapUIBlock.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapUrlTile.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapUrlTile.class
+new file mode 100644
+index 0000000..e236f9d
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapUrlTile.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapUrlTileManager.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapUrlTileManager.class
+new file mode 100644
+index 0000000..1b47e2c
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapUrlTileManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$1.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$1.class
+new file mode 100644
+index 0000000..a5b444d
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$1.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$10.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$10.class
+new file mode 100644
+index 0000000..7901a3b
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$10.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$11.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$11.class
+new file mode 100644
+index 0000000..6fdad72
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$11.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$12.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$12.class
+new file mode 100644
+index 0000000..283bb80
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$12.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$13.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$13.class
+new file mode 100644
+index 0000000..a4a723d
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$13.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$14.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$14.class
+new file mode 100644
+index 0000000..7834b36
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$14.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$15.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$15.class
+new file mode 100644
+index 0000000..acc3aa0
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$15.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$16.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$16.class
+new file mode 100644
+index 0000000..c9c5283
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$16.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$17.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$17.class
+new file mode 100644
+index 0000000..5a0b4fe
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$17.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$2.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$2.class
+new file mode 100644
+index 0000000..db7b3cb
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$2.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$3.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$3.class
+new file mode 100644
+index 0000000..e0e9ff4
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$3.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$4.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$4.class
+new file mode 100644
+index 0000000..0a042d9
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$4.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$5.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$5.class
+new file mode 100644
+index 0000000..0d82558
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$5.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$6.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$6.class
+new file mode 100644
+index 0000000..952ecc6
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$6.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$7.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$7.class
+new file mode 100644
+index 0000000..a423bb6
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$7.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$8.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$8.class
+new file mode 100644
+index 0000000..c3e78ef
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$8.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$9.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$9.class
+new file mode 100644
+index 0000000..174ee71
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView$9.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView.class
+new file mode 100644
+index 0000000..f253298
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapView.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider$AIRMapWMSTileProvider.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider$AIRMapWMSTileProvider.class
+new file mode 100644
+index 0000000..91f29e1
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider$AIRMapWMSTileProvider.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider.class
+new file mode 100644
+index 0000000..be52547
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapWMSTile$AIRMapGSUrlTileProvider.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapWMSTile.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapWMSTile.class
+new file mode 100644
+index 0000000..aafe4fe
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapWMSTile.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapWMSTileManager.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapWMSTileManager.class
+new file mode 100644
+index 0000000..bbafb04
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapWMSTileManager.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapsPackage.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapsPackage.class
+new file mode 100644
+index 0000000..408840f
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/MapsPackage.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/RegionChangeEvent.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/RegionChangeEvent.class
+new file mode 100644
+index 0000000..6663566
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/RegionChangeEvent.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/SizeReportingShadowNode.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/SizeReportingShadowNode.class
+new file mode 100644
+index 0000000..efbf4b1
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/SizeReportingShadowNode.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/UIBlockInterface.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/UIBlockInterface.class
+new file mode 100644
+index 0000000..836c597
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/UIBlockInterface.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ViewAttacherGroup.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ViewAttacherGroup.class
+new file mode 100644
+index 0000000..55b7b4e
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ViewAttacherGroup.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ViewChangesTracker$1.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ViewChangesTracker$1.class
+new file mode 100644
+index 0000000..ba59812
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ViewChangesTracker$1.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ViewChangesTracker.class b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ViewChangesTracker.class
+new file mode 100644
+index 0000000..e467567
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_dir/debug/com/rnmaps/maps/ViewChangesTracker.class differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_jar/debug/classes.jar b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_jar/debug/classes.jar
+new file mode 100644
+index 0000000..39449a9
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/intermediates/runtime_library_classes_jar/debug/classes.jar differ
+diff --git a/node_modules/react-native-maps/android/build/intermediates/symbol_list_with_package_name/debug/package-aware-r.txt b/node_modules/react-native-maps/android/build/intermediates/symbol_list_with_package_name/debug/package-aware-r.txt
+new file mode 100644
+index 0000000..d2faa16
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/intermediates/symbol_list_with_package_name/debug/package-aware-r.txt
+@@ -0,0 +1 @@
++com.rnmaps.maps
+diff --git a/node_modules/react-native-maps/android/build/outputs/logs/manifest-merger-debug-report.txt b/node_modules/react-native-maps/android/build/outputs/logs/manifest-merger-debug-report.txt
+new file mode 100644
+index 0000000..3bda5f9
+--- /dev/null
++++ b/node_modules/react-native-maps/android/build/outputs/logs/manifest-merger-debug-report.txt
+@@ -0,0 +1,16 @@
++-- Merging decision tree log ---
++manifest
++ADDED from C:\Front_End\Kabaza\node_modules\react-native-maps\android\src\main\AndroidManifest.xml:1:1-2:12
++INJECTED from C:\Front_End\Kabaza\node_modules\react-native-maps\android\src\main\AndroidManifest.xml:1:1-2:12
++	package
++		INJECTED from C:\Front_End\Kabaza\node_modules\react-native-maps\android\src\main\AndroidManifest.xml
++	xmlns:android
++		ADDED from C:\Front_End\Kabaza\node_modules\react-native-maps\android\src\main\AndroidManifest.xml:1:11-69
++uses-sdk
++INJECTED from C:\Front_End\Kabaza\node_modules\react-native-maps\android\src\main\AndroidManifest.xml reason: use-sdk injection requested
++INJECTED from C:\Front_End\Kabaza\node_modules\react-native-maps\android\src\main\AndroidManifest.xml
++INJECTED from C:\Front_End\Kabaza\node_modules\react-native-maps\android\src\main\AndroidManifest.xml
++	android:targetSdkVersion
++		INJECTED from C:\Front_End\Kabaza\node_modules\react-native-maps\android\src\main\AndroidManifest.xml
++	android:minSdkVersion
++		INJECTED from C:\Front_End\Kabaza\node_modules\react-native-maps\android\src\main\AndroidManifest.xml
+diff --git a/node_modules/react-native-maps/android/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin b/node_modules/react-native-maps/android/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin
+new file mode 100644
+index 0000000..34b9e99
+Binary files /dev/null and b/node_modules/react-native-maps/android/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin differ
+diff --git a/node_modules/react-native-maps/lib/MapCallout.js b/node_modules/react-native-maps/lib/MapCallout.js
+index 568ddfe..73d920e 100644
+--- a/node_modules/react-native-maps/lib/MapCallout.js
++++ b/node_modules/react-native-maps/lib/MapCallout.js
+@@ -28,7 +28,6 @@ const React = __importStar(require("react"));
+ const react_native_1 = require("react-native");
+ const decorateMapComponent_1 = __importStar(require("./decorateMapComponent"));
+ class MapCallout extends React.Component {
+-    getNativeComponent;
+     getMapManagerCommand;
+     getUIManagerCommand;
+     render() {
+diff --git a/node_modules/react-native-maps/lib/MapCalloutSubview.js b/node_modules/react-native-maps/lib/MapCalloutSubview.js
+index 40cc7f3..09c8b04 100644
+--- a/node_modules/react-native-maps/lib/MapCalloutSubview.js
++++ b/node_modules/react-native-maps/lib/MapCalloutSubview.js
+@@ -28,7 +28,6 @@ const React = __importStar(require("react"));
+ const react_native_1 = require("react-native");
+ const decorateMapComponent_1 = __importStar(require("./decorateMapComponent"));
+ class MapCalloutSubview extends React.Component {
+-    getNativeComponent;
+     getMapManagerCommand;
+     getUIManagerCommand;
+     render() {
+diff --git a/node_modules/react-native-maps/lib/MapCircle.js b/node_modules/react-native-maps/lib/MapCircle.js
+index 0bd1636..1d56ca2 100644
+--- a/node_modules/react-native-maps/lib/MapCircle.js
++++ b/node_modules/react-native-maps/lib/MapCircle.js
+@@ -27,7 +27,6 @@ exports.MapCircle = void 0;
+ const React = __importStar(require("react"));
+ const decorateMapComponent_1 = __importStar(require("./decorateMapComponent"));
+ class MapCircle extends React.Component {
+-    getNativeComponent;
+     getMapManagerCommand;
+     getUIManagerCommand;
+     circle;
+diff --git a/node_modules/react-native-maps/lib/MapHeatmap.js b/node_modules/react-native-maps/lib/MapHeatmap.js
+index d23a5a6..2d12db0 100644
+--- a/node_modules/react-native-maps/lib/MapHeatmap.js
++++ b/node_modules/react-native-maps/lib/MapHeatmap.js
+@@ -28,7 +28,6 @@ const React = __importStar(require("react"));
+ const react_native_1 = require("react-native");
+ const decorateMapComponent_1 = __importStar(require("./decorateMapComponent"));
+ class MapHeatmap extends React.Component {
+-    getNativeComponent;
+     getMapManagerCommand;
+     getUIManagerCommand;
+     heatmap;
+diff --git a/node_modules/react-native-maps/lib/MapLocalTile.js b/node_modules/react-native-maps/lib/MapLocalTile.js
+index 68efbcd..7d394ac 100644
+--- a/node_modules/react-native-maps/lib/MapLocalTile.js
++++ b/node_modules/react-native-maps/lib/MapLocalTile.js
+@@ -27,7 +27,6 @@ exports.MapLocalTile = void 0;
+ const React = __importStar(require("react"));
+ const decorateMapComponent_1 = __importStar(require("./decorateMapComponent"));
+ class MapLocalTile extends React.Component {
+-    getNativeComponent;
+     getMapManagerCommand;
+     getUIManagerCommand;
+     render() {
+diff --git a/node_modules/react-native-maps/lib/MapMarker.js b/node_modules/react-native-maps/lib/MapMarker.js
+index 90b689e..0df64b6 100644
+--- a/node_modules/react-native-maps/lib/MapMarker.js
++++ b/node_modules/react-native-maps/lib/MapMarker.js
+@@ -29,7 +29,6 @@ const react_native_1 = require("react-native");
+ const decorateMapComponent_1 = __importStar(require("./decorateMapComponent"));
+ const MapMarkerNativeComponent_1 = require("./MapMarkerNativeComponent");
+ class MapMarker extends React.Component {
+-    getNativeComponent;
+     getMapManagerCommand;
+     getUIManagerCommand;
+     static Animated;
+diff --git a/node_modules/react-native-maps/lib/MapOverlay.js b/node_modules/react-native-maps/lib/MapOverlay.js
+index a3d7f50..ab2e833 100644
+--- a/node_modules/react-native-maps/lib/MapOverlay.js
++++ b/node_modules/react-native-maps/lib/MapOverlay.js
+@@ -28,7 +28,6 @@ const React = __importStar(require("react"));
+ const react_native_1 = require("react-native");
+ const decorateMapComponent_1 = __importStar(require("./decorateMapComponent"));
+ class MapOverlay extends React.Component {
+-    getNativeComponent;
+     getMapManagerCommand;
+     getUIManagerCommand;
+     static Animated;
+diff --git a/node_modules/react-native-maps/lib/MapPolygon.js b/node_modules/react-native-maps/lib/MapPolygon.js
+index 86b8fee..ad91c1b 100644
+--- a/node_modules/react-native-maps/lib/MapPolygon.js
++++ b/node_modules/react-native-maps/lib/MapPolygon.js
+@@ -27,7 +27,6 @@ exports.MapPolygon = void 0;
+ const React = __importStar(require("react"));
+ const decorateMapComponent_1 = __importStar(require("./decorateMapComponent"));
+ class MapPolygon extends React.Component {
+-    getNativeComponent;
+     getMapManagerCommand;
+     getUIManagerCommand;
+     polygon;
+diff --git a/node_modules/react-native-maps/lib/MapPolyline.js b/node_modules/react-native-maps/lib/MapPolyline.js
+index b0efda7..b1a7731 100644
+--- a/node_modules/react-native-maps/lib/MapPolyline.js
++++ b/node_modules/react-native-maps/lib/MapPolyline.js
+@@ -27,7 +27,6 @@ exports.MapPolyline = void 0;
+ const React = __importStar(require("react"));
+ const decorateMapComponent_1 = __importStar(require("./decorateMapComponent"));
+ class MapPolyline extends React.Component {
+-    getNativeComponent;
+     getMapManagerCommand;
+     getUIManagerCommand;
+     polyline;
+diff --git a/node_modules/react-native-maps/lib/MapUrlTile.js b/node_modules/react-native-maps/lib/MapUrlTile.js
+index 1a079e2..612ed7f 100644
+--- a/node_modules/react-native-maps/lib/MapUrlTile.js
++++ b/node_modules/react-native-maps/lib/MapUrlTile.js
+@@ -27,7 +27,6 @@ exports.MapUrlTile = void 0;
+ const React = __importStar(require("react"));
+ const decorateMapComponent_1 = __importStar(require("./decorateMapComponent"));
+ class MapUrlTile extends React.Component {
+-    getNativeComponent;
+     getMapManagerCommand;
+     getUIManagerCommand;
+     render() {
+diff --git a/node_modules/react-native-maps/lib/MapWMSTile.js b/node_modules/react-native-maps/lib/MapWMSTile.js
+index 4619972..3a160ec 100644
+--- a/node_modules/react-native-maps/lib/MapWMSTile.js
++++ b/node_modules/react-native-maps/lib/MapWMSTile.js
+@@ -27,7 +27,6 @@ exports.MapWMSTile = void 0;
+ const React = __importStar(require("react"));
+ const decorateMapComponent_1 = __importStar(require("./decorateMapComponent"));
+ class MapWMSTile extends React.Component {
+-    getNativeComponent;
+     getMapManagerCommand;
+     getUIManagerCommand;
+     render() {

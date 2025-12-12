@@ -1,7 +1,10 @@
 module.exports = {
   presets: ['module:@react-native/babel-preset'],
+
   plugins: [
     ['@babel/plugin-transform-private-methods', { loose: true }],
+
+    // ✅ FIX: Reanimated must always be LAST
     [
       'module-resolver',
       {
@@ -9,7 +12,7 @@ module.exports = {
         extensions: ['.js', '.jsx', '.ts', '.tsx'],
         alias: {
           screens: './screens',
-          navigation: './navigation', 
+          navigation: './navigation',
           components: './src/components',
           services: './services',
           src: './src',
@@ -17,15 +20,16 @@ module.exports = {
         },
       },
     ],
+
+    // ⚠️ MUST ALWAYS BE LAST PLUGIN
     'react-native-reanimated/plugin',
   ],
-  // ✅ ADD THIS SECTION FOR JEST
+
+  // Jest config
   env: {
     test: {
       presets: ['module:@react-native/babel-preset'],
-      plugins: [
-        ['@babel/plugin-transform-private-methods', { loose: true }],
-      ],
+      plugins: [['@babel/plugin-transform-private-methods', { loose: true }]],
     },
   },
 };

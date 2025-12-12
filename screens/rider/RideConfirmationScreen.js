@@ -1,364 +1,347 @@
 // screens/rider/RideConfirmationScreen.js
-import React, { useState, useEffect } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Alert, ActivityIndicator
+import React, { useState } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  StatusBar, 
+  Alert,
+  ActivityIndicator 
 } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
-import { getUserData } from '../../src/utils/userStorage'; // ✅ ADDED: For consistency
+import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import { useDispatch, useSelector } from 'react-redux'; // or your state management
+import { requestRide } from '../../store/slices/rideSlice'; // adjust path
+import socket from '../../services/socket'; // adjust path
+
+// Helper function to format Malawi Kwacha
+const formatMK = (amount) => {
+  const rounded = Math.round(amount);
+  return `MK${rounded.toLocaleString()}`;
+};
 
 export default function RideConfirmationScreen({ route, navigation }) {
-  const { ride, destination, pickupLocation, riderInfo } = route.params || {};
+  const dispatch = useDispatch();
+  const { user } = useSelector(state => state.auth); // adjust based on your state
   
-  const [searchingDriver, setSearchingDriver] = useState(true);
-  const [driverFound, setDriverFound] = useState(false);
-  const [driverInfo, setDriverInfo] = useState(null);
-  const [countdown, setCountdown] = useState(30);
-  const [userData, setUserData] = useState(null); // ✅ ADDED: For consistency
+  const { ride, destination, destinationAddress, pickupLocation, riderInfo, pickupCoords, destinationCoords } = route.params || {};
+  const { paymentMethod, usePromo } = riderInfo || {};
+  
+  const [loading, setLoading] = useState(false);
 
-  // ✅ ADDED: Load user data for consistency
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const data = await getUserData();
-        setUserData(data);
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      }
-    };
+  const price = ride?.basePrice * ride?.multiplier;
+  const discountedPrice = usePromo ? Math.round(price * 0.8) : Math.round(price);
 
-    loadUserData();
-  }, []);
-
-  // Simulate driver search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearchingDriver(false);
-      setDriverFound(true);
+  const handleConfirmRide = async () => {
+    try {
+      setLoading(true);
       
-      // Sample driver info
-      setDriverInfo({
-        name: 'John Banda',
-        rating: 4.8,
-        vehicle: 'Bajaj Boxer',
-        plate: 'BL 1234',
-        eta: '3 min',
-        phone: '+265 991 234 567'
-      });
-    }, 5000);
+      // Prepare ride data for backend
+      const rideData = {
+        userId: user.id,
+        rideType: ride.name,
+        vehicleType: ride.vehicleType,
+        pickupLocation: {
+          address: pickupLocation,
+          coordinates: pickupCoords // should be { latitude, longitude }
+        },
+        destination: {
+          address: destinationAddress || destination,
+          coordinates: destinationCoords // should be { latitude, longitude }
+        },
+        paymentMethod: paymentMethod || 'cash',
+        estimatedPrice: discountedPrice,
+        actualPrice: discountedPrice,
+        promoCode: usePromo ? 'PROMO20' : null,
+        status: 'pending', // pending, accepted, in_progress, completed, cancelled
+        createdAt: new Date().toISOString()
+      };
 
-    return () => clearTimeout(timer);
-  }, []);
+      // Option 1: Using Redux/State Management
+      const result = await dispatch(requestRide(rideData)).unwrap();
+      
+      // Option 2: Direct API call (if not using Redux)
+      // const response = await api.post('/rides/request', rideData);
+      
+      if (result.success) {
+        // Emit socket event for real-time driver matching
+        socket.emit('ride-request', {
+          rideId: result.ride.id,
+          ...rideData,
+          riderLocation: pickupCoords,
+          riderName: user.name,
+          riderRating: user.rating || 4.5
+        });
 
-  // Countdown timer
-  useEffect(() => {
-    if (searchingDriver) {
-      const interval = setInterval(() => {
-        setCountdown(prev => prev > 0 ? prev - 1 : 0);
-      }, 1000);
-      return () => clearInterval(interval);
+        // Navigate to waiting screen
+        navigation.navigate('RideWaiting', {
+          rideId: result.ride.id,
+          estimatedTime: ride.estimatedTime || '5-10',
+          driverSearch: true
+        });
+      } else {
+        Alert.alert('Error', result.message || 'Failed to request ride');
+      }
+    } catch (error) {
+      console.error('Ride request error:', error);
+      Alert.alert('Error', 'Failed to request ride. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  }, [searchingDriver]);
-
-  const cancelRide = () => {
-    Alert.alert(
-      'Cancel Ride',
-      'Are you sure you want to cancel this ride?',
-      [
-        { text: 'No', style: 'cancel' },
-        { 
-          text: 'Yes', 
-          onPress: () => navigation.navigate('RiderHome')
-        }
-      ]
-    );
-  };
-
-  const contactDriver = () => {
-    Alert.alert(
-      'Contact Driver',
-      `Call ${driverInfo.name} at ${driverInfo.phone}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Call', 
-          onPress: () => {
-            // Here you would implement actual calling functionality
-            Alert.alert('Calling...', `Would call ${driverInfo.phone}`);
-          }
-        }
-      ]
-    );
   };
 
   return (
     <View style={styles.container}>
-      {/* Map View */}
-      <View style={styles.mapContainer}>
-        <MapView
-          style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          initialRegion={{
-            latitude: -15.3875,
-            longitude: 28.3228,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
-          showsUserLocation={true}
-        />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} disabled={loading}>
+          <MaterialIcon name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Confirm Your Ride</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* Bottom Panel */}
-      <View style={styles.bottomPanel}>
-        {searchingDriver ? (
-          // Searching for Driver State
-          <View style={styles.searchingContainer}>
-            <ActivityIndicator size="large" color="#4CAF50" />
-            <Text style={styles.searchingTitle}>Finding you a driver</Text>
-            <Text style={styles.searchingSubtitle}>
-              Searching for available {ride?.name} drivers near you...
+      <View style={styles.rideDetails}>
+        <View style={styles.rideRow}>
+          <FontAwesome5 name={ride.icon} size={28} color={ride.color} />
+          <Text style={styles.rideName}>{ride.name}</Text>
+          {ride.estimatedTime && (
+            <Text style={styles.etaText}>• ETA: {ride.estimatedTime} min</Text>
+          )}
+        </View>
+
+        <View style={styles.locationRow}>
+          <View style={styles.locationDot} />
+          <Text style={styles.rideLocation} numberOfLines={2}>
+            {pickupLocation}
+          </Text>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.locationRow}>
+          <View style={[styles.locationDot, { backgroundColor: '#34A853' }]} />
+          <Text style={styles.rideLocation} numberOfLines={2}>
+            {destinationAddress || destination}
+          </Text>
+        </View>
+
+        <View style={styles.priceSection}>
+          {usePromo && (
+            <View style={styles.promoBadge}>
+              <Text style={styles.promoText}>20% OFF</Text>
+            </View>
+          )}
+          <View>
+            {usePromo && (
+              <Text style={styles.originalPrice}>{formatMK(price)}</Text>
+            )}
+            <Text style={styles.finalPrice}>{formatMK(discountedPrice)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.paymentSection}>
+          <Text style={styles.paymentLabel}>Payment Method:</Text>
+          <View style={styles.paymentMethod}>
+            <MaterialIcon 
+              name={paymentMethod === 'cash' ? 'attach-money' : 'credit-card'} 
+              size={20} 
+              color="#06C167" 
+            />
+            <Text style={styles.paymentValue}>
+              {paymentMethod === 'cash' ? 'Cash' : paymentMethod}
             </Text>
-            <Text style={styles.countdown}>Estimated time: {countdown}s</Text>
-            
-            <View style={styles.rideSummary}>
-              <Text style={styles.rideType}>{ride?.name}</Text>
-              <Text style={styles.ridePrice}>MK{ride?.price}</Text>
-            </View>
-            
-            <TouchableOpacity 
-              style={styles.cancelButton}
-              onPress={cancelRide}
-            >
-              <Text style={styles.cancelButtonText}>Cancel Ride</Text>
-            </TouchableOpacity>
           </View>
-        ) : driverFound ? (
-          // Driver Found State
-          <View style={styles.driverFoundContainer}>
-            <View style={styles.driverHeader}>
-              <Icon name="check-circle" size={30} color="#4CAF50" />
-              <Text style={styles.driverFoundTitle}>Driver Found!</Text>
-            </View>
-            
-            <View style={styles.driverInfo}>
-              <View style={styles.driverAvatar}>
-                <Icon name="user" size={24} color="#666" />
-              </View>
-              <View style={styles.driverDetails}>
-                <Text style={styles.driverName}>{driverInfo.name}</Text>
-                <View style={styles.ratingContainer}>
-                  <Icon name="star" size={16} color="#FFD700" />
-                  <Text style={styles.driverRating}>{driverInfo.rating}</Text>
-                </View>
-                <Text style={styles.vehicleInfo}>
-                  {driverInfo.vehicle} • {driverInfo.plate}
-                </Text>
-              </View>
-              <Text style={styles.eta}>{driverInfo.eta}</Text>
-            </View>
-            
-            <View style={styles.rideDetails}>
-              <View style={styles.routePoint}>
-                <View style={styles.dot} />
-                <Text style={styles.routeText}>{pickupLocation}</Text>
-              </View>
-              <View style={styles.routePoint}>
-                <Icon name="map-marker" size={16} color="#4CAF50" />
-                <Text style={styles.routeText}>{destination}</Text>
-              </View>
-            </View>
-            
-            <View style={styles.rideActions}>
-              <TouchableOpacity 
-                style={styles.secondaryButton}
-                onPress={contactDriver}
-              >
-                <Text style={styles.secondaryButtonText}>Contact Driver</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={cancelRide}
-              >
-                <Text style={styles.cancelButtonText}>Cancel Ride</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : null}
+        </View>
+
+        <View style={styles.distanceSection}>
+          <Text style={styles.distanceLabel}>Estimated distance:</Text>
+          <Text style={styles.distanceValue}>
+            {ride.distance ? `${ride.distance} km` : 'Calculating...'}
+          </Text>
+        </View>
       </View>
+
+      <TouchableOpacity 
+        style={[styles.confirmButton, loading && styles.confirmButtonDisabled]} 
+        onPress={handleConfirmRide}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#FFF" />
+        ) : (
+          <Text style={styles.confirmButtonText}>
+            Confirm Ride • {formatMK(discountedPrice)}
+          </Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
+  container: { 
+    flex: 1, 
+    backgroundColor: '#F7F6F3' 
   },
-  mapContainer: {
-    flex: 1,
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 16, 
+    paddingTop: Platform.OS === 'ios' ? 60 : 40, 
+    paddingBottom: 16, 
+    backgroundColor: '#FFFFFF', 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F0F0F0' 
   },
-  map: {
-    flex: 1,
+  headerTitle: { 
+    fontSize: 18, 
+    fontWeight: '600', 
+    color: '#000' 
   },
-  bottomPanel: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    elevation: 10,
+  rideDetails: { 
+    margin: 16, 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 12, 
+    padding: 16, 
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    maxHeight: '50%',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  searchingContainer: {
-    alignItems: 'center',
-    padding: 10,
+  rideRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 16 
   },
-  searchingTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 15,
-    marginBottom: 5,
+  rideName: { 
+    fontSize: 18, 
+    fontWeight: '600', 
+    color: '#000', 
+    marginLeft: 12,
+    flex: 1 
   },
-  searchingSubtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  countdown: {
+  etaText: {
     fontSize: 14,
-    color: '#4CAF50',
-    fontWeight: '500',
-    marginBottom: 20,
+    color: '#666',
+    marginLeft: 8
   },
-  rideSummary: {
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginVertical: 8
+  },
+  locationDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#EA4335',
+    marginTop: 6,
+    marginRight: 12
+  },
+  rideLocation: { 
+    fontSize: 16, 
+    color: '#333', 
+    flex: 1 
+  },
+  divider: {
+    height: 20,
+    width: 2,
+    backgroundColor: '#DDD',
+    marginLeft: 5,
+    marginVertical: 4
+  },
+  priceSection: { 
+    marginTop: 20, 
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    width: '100%',
-    padding: 15,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    marginBottom: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0'
   },
-  rideType: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+  promoBadge: {
+    backgroundColor: '#FFE5E5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20
   },
-  ridePrice: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#4CAF50',
+  promoText: {
+    color: '#EA4335',
+    fontWeight: '600',
+    fontSize: 14
   },
-  cancelButton: {
-    backgroundColor: '#FF6B6B',
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-    width: '100%',
+  originalPrice: { 
+    fontSize: 16, 
+    color: '#999', 
+    textDecorationLine: 'line-through',
+    textAlign: 'right'
   },
-  cancelButtonText: {
-    color: '#fff',
+  finalPrice: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    color: '#EA4335',
+    marginTop: 2
+  },
+  paymentSection: { 
+    marginTop: 20, 
+    flexDirection: 'row', 
+    justifyContent: 'space-between',
+    alignItems: 'center' 
+  },
+  paymentLabel: { 
+    fontSize: 16, 
+    color: '#666' 
+  },
+  paymentMethod: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  paymentValue: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#000',
+    marginLeft: 8
+  },
+  distanceSection: {
+    marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0'
+  },
+  distanceLabel: {
     fontSize: 16,
-    fontWeight: 'bold',
+    color: '#666'
   },
-  driverFoundContainer: {
-    padding: 10,
-  },
-  driverHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  driverFoundTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginLeft: 10,
-  },
-  driverInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  driverAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#e0e0e0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 15,
-  },
-  driverDetails: {
-    flex: 1,
-  },
-  driverName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  driverRating: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  vehicleInfo: {
-    fontSize: 14,
-    color: '#666',
-  },
-  eta: {
+  distanceValue: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#4CAF50',
+    fontWeight: '600',
+    color: '#000'
   },
-  rideDetails: {
-    marginBottom: 20,
-  },
-  routePoint: {
-    flexDirection: 'row',
+  confirmButton: { 
+    backgroundColor: '#06C167', 
+    margin: 16, 
+    paddingVertical: 16, 
+    borderRadius: 12, 
     alignItems: 'center',
-    marginBottom: 10,
+    elevation: 3,
+    shadowColor: '#06C167',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4CAF50',
-    marginRight: 12,
+  confirmButtonDisabled: {
+    backgroundColor: '#CCC'
   },
-  routeText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  rideActions: {
-    gap: 10,
-  },
-  secondaryButton: {
-    backgroundColor: '#2196F3',
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  confirmButtonText: { 
+    fontSize: 18, 
+    color: '#FFF', 
+    fontWeight: 'bold' 
   },
 });

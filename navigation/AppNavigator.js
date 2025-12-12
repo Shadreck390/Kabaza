@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { useSelector } from 'react-redux';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import { getUserData, getUserRole } from '../src/utils/userStorage';
 
 const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
 
-// Import ALL screens directly (no dynamic requires)
 // ===================== IMPORT ALL SCREENS =====================
 
 // Auth Screens
@@ -18,7 +19,9 @@ import RoleSelectionScreen from '../screens/auth/RoleSelectionScreen';
 
 // Rider Screens
 import RiderHomeScreen from '../screens/rider/RiderHomeScreen';
+import RideSelectionScreen from '../screens/rider/RideSelectionScreen';
 import RideConfirmationScreen from '../screens/rider/RideConfirmationScreen';
+import RidesScreen from '../screens/rider/RidesScreen';
 
 // Driver Screens
 import DriverHomeScreen from '../screens/driver/DriverHomeScreen';
@@ -34,16 +37,75 @@ import DriverSettingsScreen from '../screens/driver/DriverSettingsScreen';
 import AddVehicleScreen from '../screens/driver/AddVehicleScreen';
 import VehicleScreen from '../screens/driver/VehicleScreen';
 
-// Common Screens
+// Profile Screen
 import ProfileScreen from '../screens/profile/ProfileScreen';
-// ===================== CREATE STACKS =====================
+
+// ===================== CREATE BOTTOM TABS FOR RIDER =====================
+
+// ----- Rider Bottom Tabs -----
+const RiderTabs = () => {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+
+          if (route.name === 'Home') {
+            iconName = 'home';
+          } else if (route.name === 'Rides') {
+            iconName = 'directions-car';
+          } else if (route.name === 'Account') {
+            iconName = 'person';
+          }
+
+          return <MaterialIcon name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#000',
+        tabBarInactiveTintColor: '#666',
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopWidth: 1,
+          borderTopColor: '#e0e0e0',
+          paddingTop: 8,
+          paddingBottom: 8,
+          height: 60,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
+          marginBottom: 4,
+        },
+        headerShown: false,
+      })}
+    >
+      <Tab.Screen 
+        name="Home" 
+        component={RiderHomeScreen}
+        options={{ tabBarLabel: 'Home' }}
+      />
+      <Tab.Screen 
+        name="Rides" 
+        component={RidesScreen}
+        options={{ tabBarLabel: 'Rides' }}
+      />
+      <Tab.Screen 
+        name="Account" 
+        component={ProfileScreen}
+        options={{ tabBarLabel: 'Account' }}
+        initialParams={{ userRole: 'rider' }}
+      />
+    </Tab.Navigator>
+  );
+};
 
 // ----- Rider Stack -----
 const RiderStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="RiderHome" component={RiderHomeScreen} />
+  <Stack.Navigator 
+    screenOptions={{ headerShown: false }}
+  >
+    <Stack.Screen name="RiderTabs" component={RiderTabs} />
+    <Stack.Screen name="RideSelection" component={RideSelectionScreen} />
     <Stack.Screen name="RideConfirmation" component={RideConfirmationScreen} />
-    <Stack.Screen name="Profile" component={ProfileScreen} />
   </Stack.Navigator>
 );
 
@@ -77,21 +139,13 @@ export default function AppNavigator() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState('PhoneOrGoogle');
 
-  // Load saved user data on app start
   useEffect(() => {
     const loadSavedUser = async () => {
       try {
         const userData = await getUserData();
         const userRole = await getUserRole();
         
-        console.log('📱 Loaded saved user:', {
-          hasData: !!userData,
-          role: userRole,
-          isDriverVerified: userData?.driverProfile?.isVerified
-        });
-        
         if (userData && userRole) {
-          // Determine initial route
           if (userRole === 'driver') {
             const isDriverVerified = userData?.driverProfile?.isVerified || false;
             setInitialRoute(isDriverVerified ? 'DriverMain' : 'DriverVerification');
@@ -109,10 +163,6 @@ export default function AppNavigator() {
     loadSavedUser();
   }, []);
 
-  // Safe Redux state access
-  const authState = useSelector(state => state?.auth || { user: null, role: null });
-  const { user, role } = authState;
-
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -128,16 +178,14 @@ export default function AppNavigator() {
         screenOptions={{ headerShown: false }}
         initialRouteName={initialRoute}
       >
-        {/* 🔐 AUTH FLOW */}
+        {/* Auth Flow */}
         <Stack.Screen name="PhoneOrGoogle" component={PhoneOrGoogleScreen} />
         <Stack.Screen name="OtpVerification" component={OtpVerificationScreen} />
         <Stack.Screen name="ProfileCompletion" component={ProfileCompletionScreen} />
         <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
         
-        {/* 🛵 RIDER FLOW */}
+        {/* Main App */}
         <Stack.Screen name="RiderMain" component={RiderStack} />
-        
-        {/* 🚗 DRIVER FLOW */}
         <Stack.Screen name="DriverVerification" component={DriverVerificationFlow} />
         <Stack.Screen name="DriverMain" component={DriverMainStack} />
       </Stack.Navigator>
