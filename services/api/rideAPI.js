@@ -2,355 +2,600 @@
 
 const API_BASE_URL = 'https://your-backend-url.com/api';
 
+// Socket.io client for real-time updates
+import { io } from 'socket.io-client';
+let socket = null;
+
+// Initialize socket connection
+export const initSocket = (token = null) => {
+  if (!socket) {
+    socket = io(API_BASE_URL, {
+      transports: ['websocket', 'polling'],
+      auth: token ? { token } : undefined,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    // Socket event handlers
+    socket.on('connect', () => {
+      console.log('Socket connected:', socket.id);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason);
+    });
+  }
+  return socket;
+};
+
+// Get socket instance
+export const getSocket = () => socket;
+
 // Generic API request handler
 const apiRequest = async (endpoint, options = {}) => {
   try {
+    // Get auth token from storage
+    const token = await getAuthToken();
+    
     const url = `${API_BASE_URL}${endpoint}`;
     const config = {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        // Add authentication token if available
-        // 'Authorization': `Bearer ${await getAuthToken()}`,
+        ...(token && { 'Authorization': `Bearer ${token}` }),
       },
-      timeout: 10000, // 10 second timeout
+      timeout: 15000, // 15 second timeout for ride requests
       ...options,
     };
 
+    // Add body if present
+    if (options.body && typeof options.body !== 'string') {
+      config.body = JSON.stringify(options.body);
+    }
+
+    console.log(`API Request: ${config.method} ${url}`);
+    
     const response = await fetch(url, config);
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('API Request failed:', error);
+    console.error('API Request failed:', error.message, endpoint);
+    
+    // Check if it's a network error
+    if (error.message.includes('Network request failed')) {
+      throw new Error('Network error. Please check your internet connection.');
+    }
+    
     throw error;
   }
 };
 
-// Fetch nearby available rides
-export const fetchNearbyRides = async (location, radius = 5) => {
-  try {
-    const rides = await apiRequest(
-      `/rides/nearby?lat=${location.latitude}&lng=${location.longitude}&radius=${radius}`
-    );
-    
-    // Transform API response to expected format
-    return rides.map(ride => ({
-      id: ride.id || ride._id,
-      driverId: ride.driverId,
-      driverName: ride.driver?.name || 'Driver',
-      driverRating: ride.driver?.rating || 4.5,
-      driverPhone: ride.driver?.phone,
-      pickupLocation: {
-        latitude: ride.pickupLocation?.latitude || ride.pickupLat,
-        longitude: ride.pickupLocation?.longitude || ride.pickupLng,
-      },
-      pickupName: ride.pickupName || 'Pickup Location',
-      destination: ride.destination || 'Destination',
-      destinationLocation: ride.destinationLocation ? {
-        latitude: ride.destinationLocation.latitude,
-        longitude: ride.destinationLocation.longitude,
-      } : null,
-      amount: ride.amount || ride.fare || '0',
-      currency: ride.currency || 'MWK',
-      estimatedTime: ride.estimatedTime || '5 min',
-      distance: ride.distance || '1.2 km',
-      vehicleType: ride.vehicleType || 'Motorcycle',
-      vehicleColor: ride.vehicle?.color || 'Unknown',
-      vehiclePlate: ride.vehicle?.plateNumber || 'Unknown',
-      status: ride.status || 'available',
-      createdAt: ride.createdAt || new Date().toISOString(),
-    }));
-  } catch (error) {
-    console.error('Error fetching nearby rides:', error);
-    
-    // Fallback to mock data for development
-    return getMockRides(location);
-  }
+// Get auth token from storage (you need to implement this)
+const getAuthToken = async () => {
+  // Implement your token retrieval logic
+  // Example: return await AsyncStorage.getItem('auth_token');
+  return null;
 };
 
-// Book a specific ride
-export const bookRide = async (rideId, riderInfo) => {
-  try {
-    const bookingData = {
-      rideId,
-      riderId: riderInfo.id, // From your auth system
-      riderName: riderInfo.name,
-      riderPhone: riderInfo.phone,
-      pickupLocation: riderInfo.currentLocation,
-      notes: riderInfo.notes || '',
-    };
+// ========== REAL-TIME RIDE FUNCTIONS ==========
 
-    const result = await apiRequest('/rides/book', {
+// Request a ride (real-time)
+export const requestRide = async (rideData) => {
+  try {
+    const result = await apiRequest('/rides/request', {
       method: 'POST',
-      body: JSON.stringify(bookingData),
+      body: rideData,
     });
+
+    // Emit socket event for real-time matching
+    if (socket?.connected) {
+      socket.emit('ride-requested', {
+        rideId: result.ride.id,
+        ...rideData,
+      });
+    }
 
     return {
       success: true,
-      bookingId: result.bookingId,
-      driverInfo: result.driver,
-      estimatedArrival: result.estimatedArrival,
-      fare: result.fare,
+      ride: result.ride,
+      estimatedMatchTime: result.estimatedMatchTime || '2-5',
+      message: 'Ride request sent. Searching for drivers...',
     };
   } catch (error) {
-    console.error('Error booking ride:', error);
-    throw new Error('Failed to book ride. Please try again.');
+    console.error('Error requesting ride:', error);
+    throw new Error(error.message || 'Failed to request ride. Please try again.');
   }
 };
 
-// Cancel a booked ride
-export const cancelRide = async (bookingId, reason = '') => {
+// Cancel a ride request (real-time)
+export const cancelRideRequest = async (rideId, reason = '') => {
   try {
-    const result = await apiRequest(`/rides/${bookingId}/cancel`, {
+    const result = await apiRequest(`/rides/${rideId}/cancel-request`, {
       method: 'POST',
-      body: JSON.stringify({ reason }),
+      body: { reason },
     });
+
+    // Emit cancellation event
+    if (socket?.connected) {
+      socket.emit('ride-cancelled', { rideId, reason });
+    }
 
     return {
       success: true,
       cancellationFee: result.cancellationFee || 0,
-      refundAmount: result.refundAmount || 0,
+      message: result.message || 'Ride request cancelled successfully',
     };
   } catch (error) {
-    console.error('Error canceling ride:', error);
-    throw new Error('Failed to cancel ride. Please try again.');
+    console.error('Error cancelling ride request:', error);
+    throw new Error(error.message || 'Failed to cancel ride request.');
   }
 };
 
-// Get ride details by ID
-export const getRideDetails = async (rideId) => {
+// Get real-time ride status
+export const getRideStatus = async (rideId) => {
   try {
-    const ride = await apiRequest(`/rides/${rideId}`);
-    return transformRideData(ride);
+    const result = await apiRequest(`/rides/${rideId}/status`);
+    
+    return {
+      status: result.status, // pending, accepted, enroute, arrived, in_progress, completed, cancelled
+      driver: result.driver,
+      estimatedArrival: result.estimatedArrival,
+      currentLocation: result.currentLocation,
+      polyline: result.polyline,
+      updatedAt: result.updatedAt,
+    };
   } catch (error) {
-    console.error('Error fetching ride details:', error);
-    throw new Error('Failed to fetch ride details.');
+    console.error('Error fetching ride status:', error);
+    throw new Error('Failed to fetch ride status.');
   }
 };
 
-// Get rider's ride history
-export const getRideHistory = async (riderId, page = 1, limit = 20) => {
+// Fetch nearby available drivers in real-time
+export const fetchNearbyDrivers = async (location, radius = 5, vehicleTypes = ['bike', 'car']) => {
   try {
-    const history = await apiRequest(
-      `/rides/history/${riderId}?page=${page}&limit=${limit}`
+    const result = await apiRequest(
+      `/drivers/nearby?lat=${location.latitude}&lng=${location.longitude}&radius=${radius}&vehicleTypes=${vehicleTypes.join(',')}`
     );
     
-    return history.map(ride => ({
-      id: ride.id,
-      driverName: ride.driverName,
-      pickupLocation: ride.pickupLocation,
-      destination: ride.destination,
-      amount: ride.amount,
-      status: ride.status,
-      date: ride.createdAt,
-      rating: ride.rating,
-      review: ride.review,
+    return result.drivers.map(driver => ({
+      id: driver.id,
+      name: driver.name,
+      rating: driver.rating || 4.5,
+      phone: driver.phone,
+      location: driver.location,
+      vehicleType: driver.vehicleType,
+      vehicleModel: driver.vehicleModel,
+      vehiclePlate: driver.vehiclePlate,
+      status: driver.status, // online, offline, busy, available
+      online: driver.status === 'available' || driver.status === 'online',
+      estimatedArrival: driver.estimatedArrival,
+      distance: driver.distance,
+      fareMultiplier: driver.fareMultiplier || 1.0,
     }));
   } catch (error) {
-    console.error('Error fetching ride history:', error);
-    return getMockRideHistory();
+    console.error('Error fetching nearby drivers:', error);
+    
+    // Fallback to mock data for development
+    return getMockDrivers(location, vehicleTypes);
   }
 };
 
-// Rate a completed ride
-export const rateRide = async (bookingId, rating, review = '') => {
+// Calculate real-time fare estimate with surge pricing
+export const getRealTimeFareEstimate = async (pickup, destination, vehicleType = 'bike') => {
   try {
-    const result = await apiRequest(`/rides/${bookingId}/rate`, {
+    const result = await apiRequest('/rides/fare-estimate', {
       method: 'POST',
-      body: JSON.stringify({ rating, review }),
-    });
-
-    return { success: true, newRating: result.newRating };
-  } catch (error) {
-    console.error('Error rating ride:', error);
-    throw new Error('Failed to submit rating.');
-  }
-};
-
-// Get estimated fare for a route
-export const getFareEstimate = async (pickupLocation, destination) => {
-  try {
-    const estimate = await apiRequest('/rides/estimate-fare', {
-      method: 'POST',
-      body: JSON.stringify({
-        pickupLocation,
+      body: {
+        pickup,
         destination,
-        vehicleType: 'motorcycle', // Default for Kabaza
-      }),
+        vehicleType,
+        timestamp: new Date().toISOString(),
+      },
     });
 
     return {
-      baseFare: estimate.baseFare,
-      distanceFare: estimate.distanceFare,
-      timeFare: estimate.timeFare,
-      totalFare: estimate.totalFare,
-      currency: estimate.currency || 'MWK',
-      estimatedTime: estimate.estimatedTime,
-      estimatedDistance: estimate.estimatedDistance,
+      baseFare: result.baseFare,
+      distanceFare: result.distanceFare,
+      timeFare: result.timeFare,
+      surgeMultiplier: result.surgeMultiplier || 1.0,
+      totalFare: result.totalFare,
+      currency: result.currency || 'MWK',
+      estimatedTime: result.estimatedTime,
+      estimatedDistance: result.estimatedDistance,
+      breakdown: result.breakdown,
+      surgeActive: result.surgeMultiplier > 1.0,
+      surgeReason: result.surgeReason,
     };
   } catch (error) {
-    console.error('Error getting fare estimate:', error);
+    console.error('Error getting real-time fare estimate:', error);
     
     // Mock estimate for development
     return {
       baseFare: 300,
       distanceFare: 200,
       timeFare: 100,
+      surgeMultiplier: 1.0,
       totalFare: 600,
       currency: 'MWK',
-      estimatedTime: '8 min',
+      estimatedTime: '8-12 min',
       estimatedDistance: '2.5 km',
+      surgeActive: false,
     };
   }
 };
 
-// Get active booking for rider
-export const getActiveBooking = async (riderId) => {
+// Track driver location in real-time
+export const trackDriverLocation = (rideId, callback) => {
+  if (!socket?.connected) {
+    console.warn('Socket not connected for driver tracking');
+    return () => {};
+  }
+
+  // Listen for driver location updates
+  const eventName = `driver-location-${rideId}`;
+  socket.on(eventName, (locationData) => {
+    callback({
+      latitude: locationData.latitude,
+      longitude: locationData.longitude,
+      bearing: locationData.bearing,
+      speed: locationData.speed,
+      timestamp: locationData.timestamp,
+    });
+  });
+
+  // Request initial location
+  socket.emit('request-driver-location', { rideId });
+
+  // Return cleanup function
+  return () => {
+    socket.off(eventName);
+    socket.emit('stop-tracking', { rideId });
+  };
+};
+
+// Listen for ride status updates
+export const subscribeToRideUpdates = (rideId, callback) => {
+  if (!socket?.connected) {
+    console.warn('Socket not connected for ride updates');
+    return () => {};
+  }
+
+  const eventName = `ride-update-${rideId}`;
+  socket.on(eventName, (update) => {
+    callback({
+      status: update.status,
+      driverId: update.driverId,
+      estimatedArrival: update.estimatedArrival,
+      driverLocation: update.driverLocation,
+      message: update.message,
+      timestamp: update.timestamp,
+    });
+  });
+
+  // Subscribe to this ride
+  socket.emit('subscribe-ride', { rideId });
+
+  return () => {
+    socket.off(eventName);
+    socket.emit('unsubscribe-ride', { rideId });
+  };
+};
+
+// Send SOS alert
+export const sendSOSAlert = async (rideId, location, reason = 'emergency') => {
   try {
-    const booking = await apiRequest(`/rides/active/${riderId}`);
-    return booking ? transformRideData(booking) : null;
+    const result = await apiRequest('/rides/sos', {
+      method: 'POST',
+      body: {
+        rideId,
+        location,
+        reason,
+        timestamp: new Date().toISOString(),
+      },
+    });
+
+    // Emit SOS event via socket for immediate attention
+    if (socket?.connected) {
+      socket.emit('sos-alert', {
+        rideId,
+        location,
+        reason,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    return {
+      success: true,
+      alertId: result.alertId,
+      responded: result.responded,
+      responseTime: result.responseTime,
+      message: result.message || 'SOS alert sent successfully',
+    };
   } catch (error) {
-    console.error('Error fetching active booking:', error);
+    console.error('Error sending SOS alert:', error);
+    throw new Error('Failed to send SOS alert. Please try again or contact emergency services.');
+  }
+};
+
+// Rate and review a completed ride
+export const rateRide = async (rideId, rating, review = '', tip = 0) => {
+  try {
+    const result = await apiRequest(`/rides/${rideId}/rate`, {
+      method: 'POST',
+      body: { rating, review, tip },
+    });
+
+    return {
+      success: true,
+      message: result.message || 'Thank you for your feedback!',
+      newDriverRating: result.newDriverRating,
+    };
+  } catch (error) {
+    console.error('Error rating ride:', error);
+    throw new Error('Failed to submit rating. Please try again.');
+  }
+};
+
+// Get active ride for user
+export const getActiveRide = async (userId) => {
+  try {
+    const result = await apiRequest(`/rides/active/${userId}`);
+    
+    if (!result.ride) return null;
+
+    return {
+      id: result.ride.id,
+      status: result.ride.status,
+      driver: result.ride.driver,
+      pickup: result.ride.pickup,
+      destination: result.ride.destination,
+      estimatedFare: result.ride.estimatedFare,
+      estimatedTime: result.ride.estimatedTime,
+      startedAt: result.ride.startedAt,
+      currentLocation: result.ride.currentLocation,
+      polyline: result.ride.polyline,
+    };
+  } catch (error) {
+    console.error('Error fetching active ride:', error);
     return null;
   }
 };
 
-// Helper function to transform ride data
-const transformRideData = (ride) => ({
-  id: ride.id || ride._id,
-  driverId: ride.driverId,
-  driverName: ride.driver?.name || 'Driver',
-  driverRating: ride.driver?.rating || 4.5,
-  driverPhone: ride.driver?.phone,
-  pickupLocation: ride.pickupLocation,
-  pickupName: ride.pickupName,
-  destination: ride.destination,
-  destinationLocation: ride.destinationLocation,
-  amount: ride.amount,
-  currency: ride.currency,
-  estimatedTime: ride.estimatedTime,
-  distance: ride.distance,
-  vehicleType: ride.vehicleType,
-  vehicleColor: ride.vehicle?.color,
-  vehiclePlate: ride.vehicle?.plateNumber,
-  status: ride.status,
-  createdAt: ride.createdAt,
-});
+// Get ride history with pagination
+export const getRideHistory = async (userId, page = 1, limit = 20) => {
+  try {
+    const result = await apiRequest(`/rides/history/${userId}?page=${page}&limit=${limit}`);
+    
+    return {
+      rides: result.rides.map(ride => ({
+        id: ride.id,
+        driverName: ride.driverName,
+        driverRating: ride.driverRating,
+        pickup: ride.pickup,
+        destination: ride.destination,
+        fare: ride.fare,
+        status: ride.status,
+        date: ride.date,
+        rating: ride.rating,
+        review: ride.review,
+        vehicleType: ride.vehicleType,
+        distance: ride.distance,
+        duration: ride.duration,
+      })),
+      total: result.total,
+      page: result.page,
+      pages: result.pages,
+    };
+  } catch (error) {
+    console.error('Error fetching ride history:', error);
+    return getMockRideHistory();
+  }
+};
 
-// Mock data for development
-const getMockRides = (location) => {
-  const baseLat = location?.latitude || -15.3875;
-  const baseLng = location?.longitude || 28.3228;
+// Share ride details
+export const shareRideDetails = async (rideId, contacts = []) => {
+  try {
+    const result = await apiRequest(`/rides/${rideId}/share`, {
+      method: 'POST',
+      body: { contacts },
+    });
+
+    return {
+      success: true,
+      sharedWith: result.sharedWith,
+      shareLink: result.shareLink,
+      message: result.message || 'Ride details shared successfully',
+    };
+  } catch (error) {
+    console.error('Error sharing ride details:', error);
+    throw new Error('Failed to share ride details.');
+  }
+};
+
+// ========== SOCKET EVENT HANDLERS ==========
+
+// Listen for nearby driver updates
+export const listenForDriverUpdates = (callback) => {
+  if (!socket?.connected) {
+    console.warn('Socket not connected for driver updates');
+    return () => {};
+  }
+
+  socket.on('driver-update', (driverUpdate) => {
+    callback(driverUpdate);
+  });
+
+  return () => {
+    socket.off('driver-update');
+  };
+};
+
+// Listen for price surge updates
+export const listenForPriceSurges = (callback) => {
+  if (!socket?.connected) {
+    console.warn('Socket not connected for price surges');
+    return () => {};
+  }
+
+  socket.on('price-surge', (surgeData) => {
+    callback(surgeData);
+  });
+
+  return () => {
+    socket.off('price-surge');
+  };
+};
+
+// ========== MOCK DATA FOR DEVELOPMENT ==========
+
+const getMockDrivers = (location, vehicleTypes = ['bike', 'car']) => {
+  const baseLat = location?.latitude || -13.9626;
+  const baseLng = location?.longitude || 33.7741;
   
-  return [
+  const mockDrivers = [
     {
-      id: 1,
-      driverId: 'driver_1',
-      driverName: 'John Banda',
-      driverRating: 4.8,
-      driverPhone: '+265991234567',
-      pickupLocation: {
+      id: 'driver_1',
+      name: 'John Banda',
+      rating: 4.8,
+      phone: '+265991234567',
+      location: {
         latitude: baseLat + 0.002,
         longitude: baseLng + 0.002,
       },
-      pickupName: 'Shoprite Complex',
-      destination: 'City Center',
-      amount: '500',
-      currency: 'MWK',
-      estimatedTime: '3 min',
-      distance: '0.8 km',
-      vehicleType: 'Motorcycle',
-      vehicleColor: 'Red',
+      vehicleType: 'bike',
+      vehicleModel: 'TVS Star City',
       vehiclePlate: 'BL 1234',
       status: 'available',
-      createdAt: new Date().toISOString(),
+      online: true,
+      estimatedArrival: '3 min',
+      distance: 0.8,
+      fareMultiplier: 1.0,
     },
     {
-      id: 2,
-      driverId: 'driver_2',
-      driverName: 'Mike Phiri',
-      driverRating: 4.9,
-      driverPhone: '+265992345678',
-      pickupLocation: {
+      id: 'driver_2',
+      name: 'Mike Phiri',
+      rating: 4.9,
+      phone: '+265992345678',
+      location: {
         latitude: baseLat - 0.003,
         longitude: baseLng - 0.001,
       },
-      pickupName: 'Game Complex',
-      destination: 'Airport Road',
-      amount: '800',
-      currency: 'MWK',
-      estimatedTime: '5 min',
-      distance: '1.5 km',
-      vehicleType: 'Motorcycle',
-      vehicleColor: 'Blue',
+      vehicleType: 'car',
+      vehicleModel: 'Toyota Corolla',
       vehiclePlate: 'BL 5678',
       status: 'available',
-      createdAt: new Date().toISOString(),
+      online: true,
+      estimatedArrival: '5 min',
+      distance: 1.2,
+      fareMultiplier: 1.2,
     },
     {
-      id: 3,
-      driverId: 'driver_3',
-      driverName: 'Sarah Juma',
-      driverRating: 4.7,
-      driverPhone: '+265993456789',
-      pickupLocation: {
+      id: 'driver_3',
+      name: 'Sarah Juma',
+      rating: 4.7,
+      phone: '+265993456789',
+      location: {
         latitude: baseLat + 0.001,
         longitude: baseLng - 0.002,
       },
-      pickupName: 'Area 3',
-      destination: 'KCH',
-      amount: '600',
-      currency: 'MWK',
-      estimatedTime: '2 min',
-      distance: '0.5 km',
-      vehicleType: 'Motorcycle',
-      vehicleColor: 'Green',
+      vehicleType: 'bike',
+      vehicleModel: 'Honda CG125',
       vehiclePlate: 'BL 9012',
       status: 'available',
-      createdAt: new Date().toISOString(),
+      online: true,
+      estimatedArrival: '2 min',
+      distance: 0.5,
+      fareMultiplier: 1.0,
     },
   ];
+
+  // Filter by vehicle types if specified
+  return vehicleTypes.length > 0 
+    ? mockDrivers.filter(driver => vehicleTypes.includes(driver.vehicleType))
+    : mockDrivers;
 };
 
 const getMockRideHistory = () => {
-  return [
-    {
-      id: 1,
-      driverName: 'John Banda',
-      pickupLocation: 'Shoprite Complex',
-      destination: 'City Center',
-      amount: '500',
-      status: 'completed',
-      date: '2024-01-15T10:30:00Z',
-      rating: 5,
-      review: 'Great service!',
-    },
-    {
-      id: 2,
-      driverName: 'Mike Phiri',
-      pickupLocation: 'Home',
-      destination: 'Airport',
-      amount: '1200',
-      status: 'completed',
-      date: '2024-01-14T15:45:00Z',
-      rating: 4,
-      review: 'Safe driver',
-    },
-  ];
+  return {
+    rides: [
+      {
+        id: 1,
+        driverName: 'John Banda',
+        driverRating: 4.8,
+        pickup: 'Shoprite Complex, Lilongwe',
+        destination: 'City Center, Lilongwe',
+        fare: 500,
+        status: 'completed',
+        date: '2024-01-15T10:30:00Z',
+        rating: 5,
+        review: 'Great service! Very professional.',
+        vehicleType: 'bike',
+        distance: '2.3 km',
+        duration: '8 min',
+      },
+      {
+        id: 2,
+        driverName: 'Mike Phiri',
+        driverRating: 4.9,
+        pickup: 'Home, Area 3',
+        destination: 'Kamuzu International Airport',
+        fare: 1200,
+        status: 'completed',
+        date: '2024-01-14T15:45:00Z',
+        rating: 4,
+        review: 'Safe and timely driver.',
+        vehicleType: 'car',
+        distance: '8.5 km',
+        duration: '15 min',
+      },
+    ],
+    total: 2,
+    page: 1,
+    pages: 1,
+  };
 };
 
-// Export all API functions
+// ========== EXPORT ALL FUNCTIONS ==========
+
 export default {
-  fetchNearbyRides,
-  bookRide,
-  cancelRide,
-  getRideDetails,
-  getRideHistory,
+  // Socket management
+  initSocket,
+  getSocket,
+  
+  // Ride operations
+  requestRide,
+  cancelRideRequest,
+  getRideStatus,
+  getActiveRide,
   rateRide,
-  getFareEstimate,
-  getActiveBooking,
+  sendSOSAlert,
+  shareRideDetails,
+  
+  // Driver operations
+  fetchNearbyDrivers,
+  
+  // Pricing
+  getRealTimeFareEstimate,
+  
+  // Real-time tracking
+  trackDriverLocation,
+  subscribeToRideUpdates,
+  
+  // History
+  getRideHistory,
+  
+  // Event listeners
+  listenForDriverUpdates,
+  listenForPriceSurges,
 };

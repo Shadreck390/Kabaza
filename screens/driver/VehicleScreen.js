@@ -1,59 +1,190 @@
 // screens/driver/VehicleScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, 
   Image, Alert, RefreshControl, ActivityIndicator, Modal 
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AuthContext } from '../../context/AuthContext';
+
+// API Service functions (create these in a separate file and import)
+const API_BASE_URL = 'https://your-api-domain.com/api';
+
+const vehicleAPI = {
+  getVehicles: async (token) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/driver/vehicles`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch vehicles');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  addVehicle: async (vehicleData, token) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/driver/vehicles`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(vehicleData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to add vehicle');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateVehicle: async (vehicleId, vehicleData, token) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/driver/vehicles/${vehicleId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(vehicleData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update vehicle');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  deleteVehicle: async (vehicleId, token) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/driver/vehicles/${vehicleId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete vehicle');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  uploadVehicleImage: async (image, vehicleId, imageType, token) => {
+    try {
+      const formData = new FormData();
+      formData.append('image', {
+        uri: image.uri,
+        type: image.type || 'image/jpeg',
+        name: image.fileName || `vehicle_${vehicleId}_${imageType}.jpg`,
+      });
+      formData.append('imageType', imageType);
+      
+      const response = await fetch(`${API_BASE_URL}/driver/vehicles/${vehicleId}/upload-image`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  setPrimaryVehicle: async (vehicleId, token) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/driver/vehicles/${vehicleId}/set-primary`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to set primary vehicle');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
+  },
+};
 
 export default function VehicleScreen({ navigation }) {
+  const { userToken } = useContext(AuthContext);
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [vehicleToDelete, setVehicleToDelete] = useState(null);
+  const [primaryVehicleId, setPrimaryVehicleId] = useState(null);
+  const [isSettingPrimary, setIsSettingPrimary] = useState(false);
 
-  // Load vehicles from storage
+  // Load vehicles from API
   const loadVehicles = async () => {
     try {
-      const savedVehicles = await AsyncStorage.getItem('driver_vehicles');
-      if (savedVehicles) {
-        setVehicles(JSON.parse(savedVehicles));
-      } else {
-        // Default vehicles if none exist
-        const defaultVehicles = [
-          {
-            id: '1',
-            type: 'motorcycle',
-            make: 'TVS',
-            model: 'Apache RTR 160',
-            year: '2022',
-            color: 'Red',
-            plate: 'LL 1234',
-            engineNumber: 'TVS2022XYZ123',
-            chassisNumber: 'CHS2022XYZ456',
-            insuranceExpiry: '31/12/2024',
-            roadTaxExpiry: '31/12/2024',
-            status: 'approved', // pending, approved, rejected
-            statusMessage: 'Vehicle approved and ready for rides',
-            images: {
-              front: null,
-              back: null,
-              side: null,
-              registration: null,
-            },
-            addedDate: '2024-01-15',
-            verificationDate: '2024-01-16'
-          }
-        ];
-        setVehicles(defaultVehicles);
-        await AsyncStorage.setItem('driver_vehicles', JSON.stringify(defaultVehicles));
-      }
+      const data = await vehicleAPI.getVehicles(userToken);
+      setVehicles(data.vehicles || []);
+      setPrimaryVehicleId(data.primaryVehicleId || null);
+      
+      // Cache vehicles locally for offline access
+      await AsyncStorage.setItem('driver_vehicles_cache', JSON.stringify({
+        vehicles: data.vehicles || [],
+        primaryVehicleId: data.primaryVehicleId || null,
+        timestamp: Date.now(),
+      }));
     } catch (error) {
       console.error('Error loading vehicles:', error);
-      Alert.alert('Error', 'Failed to load vehicles');
+      
+      // Try to load from cache
+      try {
+        const cachedData = await AsyncStorage.getItem('driver_vehicles_cache');
+        if (cachedData) {
+          const { vehicles: cachedVehicles, primaryVehicleId: cachedPrimaryId } = JSON.parse(cachedData);
+          setVehicles(cachedVehicles || []);
+          setPrimaryVehicleId(cachedPrimaryId || null);
+          Alert.alert('Info', 'Showing cached data. Check your internet connection.');
+        } else {
+          Alert.alert('Error', 'Failed to load vehicles. Please check your internet connection.');
+        }
+      } catch (cacheError) {
+        console.error('Cache error:', cacheError);
+        Alert.alert('Error', 'Failed to load vehicles');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -62,6 +193,22 @@ export default function VehicleScreen({ navigation }) {
 
   useEffect(() => {
     loadVehicles();
+    
+    // Set up real-time updates (using WebSocket or polling)
+    const updateInterval = setInterval(() => {
+      // Poll for updates every 30 seconds
+      loadVehicles();
+    }, 30000);
+    
+    // Listen for vehicle updates from other screens
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadVehicles();
+    });
+    
+    return () => {
+      clearInterval(updateInterval);
+      unsubscribe();
+    };
   }, []);
 
   const onRefresh = () => {
@@ -70,28 +217,50 @@ export default function VehicleScreen({ navigation }) {
   };
 
   const handleAddVehicle = () => {
-    navigation.navigate('AddVehicle', { onSave: handleVehicleSaved });
+    navigation.navigate('AddVehicle', { 
+      onSave: handleVehicleSaved,
+      token: userToken,
+    });
   };
 
-  const handleVehicleSaved = (newVehicle) => {
-    const updatedVehicles = [...vehicles, newVehicle];
-    setVehicles(updatedVehicles);
-    saveVehicles(updatedVehicles);
+  const handleVehicleSaved = async (newVehicle) => {
+    try {
+      // Add vehicle to API
+      const response = await vehicleAPI.addVehicle(newVehicle, userToken);
+      
+      // Update local state
+      setVehicles(prev => [...prev, response.vehicle]);
+      
+      Alert.alert('Success', 'Vehicle added successfully! It will be reviewed by our team.');
+    } catch (error) {
+      console.error('Error adding vehicle:', error);
+      Alert.alert('Error', 'Failed to add vehicle. Please try again.');
+    }
   };
 
   const handleEditVehicle = (vehicle) => {
     navigation.navigate('AddVehicle', { 
       vehicle, 
-      onSave: (updatedVehicle) => handleVehicleUpdated(updatedVehicle, vehicle.id) 
+      onSave: (updatedVehicle) => handleVehicleUpdated(updatedVehicle, vehicle.id),
+      token: userToken,
     });
   };
 
-  const handleVehicleUpdated = (updatedVehicle, oldId) => {
-    const updatedVehicles = vehicles.map(vehicle => 
-      vehicle.id === oldId ? { ...updatedVehicle, id: oldId } : vehicle
-    );
-    setVehicles(updatedVehicles);
-    saveVehicles(updatedVehicles);
+  const handleVehicleUpdated = async (updatedVehicle, vehicleId) => {
+    try {
+      // Update vehicle in API
+      const response = await vehicleAPI.updateVehicle(vehicleId, updatedVehicle, userToken);
+      
+      // Update local state
+      setVehicles(prev => prev.map(vehicle => 
+        vehicle.id === vehicleId ? { ...response.vehicle } : vehicle
+      ));
+      
+      Alert.alert('Success', 'Vehicle updated successfully!');
+    } catch (error) {
+      console.error('Error updating vehicle:', error);
+      Alert.alert('Error', 'Failed to update vehicle. Please try again.');
+    }
   };
 
   const handleDeleteVehicle = (vehicle) => {
@@ -102,26 +271,46 @@ export default function VehicleScreen({ navigation }) {
   const confirmDelete = async () => {
     if (!vehicleToDelete) return;
 
-    const updatedVehicles = vehicles.filter(v => v.id !== vehicleToDelete.id);
-    setVehicles(updatedVehicles);
-    
     try {
-      await AsyncStorage.setItem('driver_vehicles', JSON.stringify(updatedVehicles));
+      // Delete from API
+      await vehicleAPI.deleteVehicle(vehicleToDelete.id, userToken);
+      
+      // Update local state
+      const updatedVehicles = vehicles.filter(v => v.id !== vehicleToDelete.id);
+      setVehicles(updatedVehicles);
+      
+      // Update primary vehicle if deleted vehicle was primary
+      if (primaryVehicleId === vehicleToDelete.id) {
+        setPrimaryVehicleId(null);
+      }
+      
       Alert.alert('Success', 'Vehicle deleted successfully');
     } catch (error) {
       console.error('Error deleting vehicle:', error);
-      Alert.alert('Error', 'Failed to delete vehicle');
+      Alert.alert('Error', 'Failed to delete vehicle. Please try again.');
     }
     
     setDeleteModalVisible(false);
     setVehicleToDelete(null);
   };
 
-  const saveVehicles = async (vehiclesList) => {
+  const handleSetPrimary = async (vehicleId) => {
+    if (primaryVehicleId === vehicleId) return;
+    
+    setIsSettingPrimary(true);
     try {
-      await AsyncStorage.setItem('driver_vehicles', JSON.stringify(vehiclesList));
+      // Set as primary in API
+      await vehicleAPI.setPrimaryVehicle(vehicleId, userToken);
+      
+      // Update local state
+      setPrimaryVehicleId(vehicleId);
+      
+      Alert.alert('Success', 'Vehicle set as primary');
     } catch (error) {
-      console.error('Error saving vehicles:', error);
+      console.error('Error setting primary vehicle:', error);
+      Alert.alert('Error', 'Failed to set primary vehicle. Please try again.');
+    } finally {
+      setIsSettingPrimary(false);
     }
   };
 
@@ -130,6 +319,8 @@ export default function VehicleScreen({ navigation }) {
       case 'approved': return '#4CAF50';
       case 'pending': return '#FFA726';
       case 'rejected': return '#FF6B6B';
+      case 'under_review': return '#2196F3';
+      case 'expired': return '#9C27B0';
       default: return '#666';
     }
   };
@@ -139,6 +330,8 @@ export default function VehicleScreen({ navigation }) {
       case 'approved': return 'check-circle';
       case 'pending': return 'clock-o';
       case 'rejected': return 'times-circle';
+      case 'under_review': return 'search';
+      case 'expired': return 'calendar-times-o';
       default: return 'question-circle';
     }
   };
@@ -149,6 +342,8 @@ export default function VehicleScreen({ navigation }) {
       case 'car': return 'car';
       case 'minibus': return 'bus';
       case 'bicycle': return 'bicycle';
+      case 'truck': return 'truck';
+      case 'scooter': return 'motorcycle';
       default: return 'car';
     }
   };
@@ -170,7 +365,15 @@ export default function VehicleScreen({ navigation }) {
         <View style={styles.vehicleInfo}>
           <Icon name={getVehicleIcon(vehicle.type)} size={24} color="#00B894" />
           <View style={styles.vehicleTitle}>
-            <Text style={styles.vehicleMakeModel}>{vehicle.make} {vehicle.model}</Text>
+            <View style={styles.vehicleTitleRow}>
+              <Text style={styles.vehicleMakeModel}>{vehicle.make} {vehicle.model}</Text>
+              {primaryVehicleId === vehicle.id && (
+                <View style={styles.primaryBadge}>
+                  <Icon name="star" size={12} color="#FFD700" />
+                  <Text style={styles.primaryText}>Primary</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.vehicleYearColor}>{vehicle.year} • {vehicle.color}</Text>
           </View>
         </View>
@@ -195,25 +398,39 @@ export default function VehicleScreen({ navigation }) {
         <View style={styles.detailRow}>
           <Icon name="hashtag" size={14} color="#666" />
           <Text style={styles.detailLabel}>Plate:</Text>
-          <Text style={styles.detailValue}>{vehicle.plate}</Text>
+          <Text style={styles.detailValue}>{vehicle.plate_number || vehicle.plate}</Text>
         </View>
         
         <View style={styles.detailRow}>
           <Icon name="calendar" size={14} color="#666" />
           <Text style={styles.detailLabel}>Added:</Text>
-          <Text style={styles.detailValue}>{formatDate(vehicle.addedDate)}</Text>
+          <Text style={styles.detailValue}>{formatDate(vehicle.created_at)}</Text>
         </View>
 
         <View style={styles.detailRow}>
           <Icon name="file-text" size={14} color="#666" />
           <Text style={styles.detailLabel}>Insurance:</Text>
-          <Text style={styles.detailValue}>{vehicle.insuranceExpiry || 'N/A'}</Text>
+          <Text style={[
+            styles.detailValue,
+            vehicle.insurance_expiry && new Date(vehicle.insurance_expiry) < new Date() 
+              ? { color: '#FF6B6B' } 
+              : {}
+          ]}>
+            {vehicle.insurance_expiry ? formatDate(vehicle.insurance_expiry) : 'N/A'}
+          </Text>
         </View>
 
         <View style={styles.detailRow}>
           <Icon name="road" size={14} color="#666" />
           <Text style={styles.detailLabel}>Tax:</Text>
-          <Text style={styles.detailValue}>{vehicle.roadTaxExpiry || 'N/A'}</Text>
+          <Text style={[
+            styles.detailValue,
+            vehicle.road_tax_expiry && new Date(vehicle.road_tax_expiry) < new Date() 
+              ? { color: '#FF6B6B' } 
+              : {}
+          ]}>
+            {vehicle.road_tax_expiry ? formatDate(vehicle.road_tax_expiry) : 'N/A'}
+          </Text>
         </View>
       </View>
 
@@ -226,11 +443,13 @@ export default function VehicleScreen({ navigation }) {
             color={getStatusColor(vehicle.status)} 
           />
           <Text style={[styles.statusText, { color: getStatusColor(vehicle.status) }]}>
-            {vehicle.status.charAt(0).toUpperCase() + vehicle.status.slice(1)}
+            {vehicle.status.split('_').map(word => 
+              word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ')}
           </Text>
         </View>
-        {vehicle.statusMessage && (
-          <Text style={styles.statusMessage}>{vehicle.statusMessage}</Text>
+        {vehicle.status_message && (
+          <Text style={styles.statusMessage}>{vehicle.status_message}</Text>
         )}
       </View>
 
@@ -242,9 +461,28 @@ export default function VehicleScreen({ navigation }) {
         </TouchableOpacity>
         
         {vehicle.status === 'approved' && (
-          <TouchableOpacity style={styles.setPrimaryButton}>
-            <Icon name="star" size={14} color="#FFD700" />
-            <Text style={styles.setPrimaryText}>Set as Primary</Text>
+          <TouchableOpacity 
+            style={styles.setPrimaryButton}
+            onPress={() => handleSetPrimary(vehicle.id)}
+            disabled={isSettingPrimary || primaryVehicleId === vehicle.id}
+          >
+            {isSettingPrimary && primaryVehicleId === vehicle.id ? (
+              <ActivityIndicator size="small" color="#FFD700" />
+            ) : (
+              <>
+                <Icon 
+                  name={primaryVehicleId === vehicle.id ? "star" : "star-o"} 
+                  size={14} 
+                  color={primaryVehicleId === vehicle.id ? "#FFD700" : "#666"} 
+                />
+                <Text style={[
+                  styles.setPrimaryText,
+                  { color: primaryVehicleId === vehicle.id ? "#FFD700" : "#666" }
+                ]}>
+                  {primaryVehicleId === vehicle.id ? 'Primary' : 'Set as Primary'}
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
         )}
       </View>
@@ -290,7 +528,7 @@ export default function VehicleScreen({ navigation }) {
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>
-            {vehicles.filter(v => v.status === 'pending').length}
+            {vehicles.filter(v => v.status === 'pending' || v.status === 'under_review').length}
           </Text>
           <Text style={styles.statLabel}>Pending</Text>
         </View>
@@ -352,24 +590,24 @@ export default function VehicleScreen({ navigation }) {
 
                 <ScrollView style={styles.modalBody}>
                   {/* Vehicle Images */}
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
-                    {Object.entries(selectedVehicle.images || {}).map(([key, image]) => (
-                      image ? (
-                        <Image
-                          key={key}
-                          source={{ uri: image.uri }}
-                          style={styles.vehicleImage}
-                        />
-                      ) : (
-                        <View key={key} style={styles.imagePlaceholder}>
-                          <Icon name="image" size={30} color="#ccc" />
-                          <Text style={styles.imagePlaceholderText}>
-                            {key.charAt(0).toUpperCase() + key.slice(1)} Photo
-                          </Text>
-                        </View>
-                      )
-                    ))}
-                  </ScrollView>
+                  {selectedVehicle.images && Object.keys(selectedVehicle.images).length > 0 ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
+                      {Object.entries(selectedVehicle.images).map(([key, image]) => (
+                        image?.url ? (
+                          <Image
+                            key={key}
+                            source={{ uri: image.url }}
+                            style={styles.vehicleImage}
+                          />
+                        ) : null
+                      ))}
+                    </ScrollView>
+                  ) : (
+                    <View style={styles.noImagesContainer}>
+                      <Icon name="image" size={40} color="#ccc" />
+                      <Text style={styles.noImagesText}>No images available</Text>
+                    </View>
+                  )}
 
                   {/* Basic Info */}
                   <View style={styles.modalSection}>
@@ -380,7 +618,10 @@ export default function VehicleScreen({ navigation }) {
                         <Text style={styles.modalDetailValue}>
                           {selectedVehicle.type === 'motorcycle' ? 'Motorcycle (Kabaza)' : 
                            selectedVehicle.type === 'car' ? 'Car' : 
-                           selectedVehicle.type === 'minibus' ? 'Minibus' : 'Bicycle'}
+                           selectedVehicle.type === 'minibus' ? 'Minibus' : 
+                           selectedVehicle.type === 'truck' ? 'Truck' : 
+                           selectedVehicle.type === 'scooter' ? 'Scooter' : 
+                           selectedVehicle.type === 'bicycle' ? 'Bicycle' : 'Vehicle'}
                         </Text>
                       </View>
                       <View style={styles.modalDetailRow}>
@@ -397,7 +638,9 @@ export default function VehicleScreen({ navigation }) {
                       </View>
                       <View style={styles.modalDetailRow}>
                         <Text style={styles.modalDetailLabel}>Plate Number:</Text>
-                        <Text style={styles.modalDetailValue}>{selectedVehicle.plate}</Text>
+                        <Text style={styles.modalDetailValue}>
+                          {selectedVehicle.plate_number || selectedVehicle.plate}
+                        </Text>
                       </View>
                     </View>
                   </View>
@@ -409,13 +652,19 @@ export default function VehicleScreen({ navigation }) {
                       <View style={styles.modalDetailRow}>
                         <Text style={styles.modalDetailLabel}>Engine No:</Text>
                         <Text style={styles.modalDetailValue}>
-                          {selectedVehicle.engineNumber || 'N/A'}
+                          {selectedVehicle.engine_number || 'N/A'}
                         </Text>
                       </View>
                       <View style={styles.modalDetailRow}>
                         <Text style={styles.modalDetailLabel}>Chassis No:</Text>
                         <Text style={styles.modalDetailValue}>
-                          {selectedVehicle.chassisNumber || 'N/A'}
+                          {selectedVehicle.chassis_number || 'N/A'}
+                        </Text>
+                      </View>
+                      <View style={styles.modalDetailRow}>
+                        <Text style={styles.modalDetailLabel}>VIN:</Text>
+                        <Text style={styles.modalDetailValue}>
+                          {selectedVehicle.vin || 'N/A'}
                         </Text>
                       </View>
                     </View>
@@ -429,18 +678,30 @@ export default function VehicleScreen({ navigation }) {
                         <Text style={styles.modalDetailLabel}>Insurance Expiry:</Text>
                         <Text style={[
                           styles.modalDetailValue,
-                          !selectedVehicle.insuranceExpiry && { color: '#FF6B6B' }
+                          selectedVehicle.insurance_expiry && new Date(selectedVehicle.insurance_expiry) < new Date() 
+                            ? { color: '#FF6B6B', fontWeight: 'bold' } 
+                            : {}
                         ]}>
-                          {selectedVehicle.insuranceExpiry || 'Not Provided'}
+                          {selectedVehicle.insurance_expiry ? formatDate(selectedVehicle.insurance_expiry) : 'Not Provided'}
+                          {selectedVehicle.insurance_expiry && new Date(selectedVehicle.insurance_expiry) < new Date() && ' (Expired)'}
                         </Text>
                       </View>
                       <View style={styles.modalDetailRow}>
                         <Text style={styles.modalDetailLabel}>Road Tax Expiry:</Text>
                         <Text style={[
                           styles.modalDetailValue,
-                          !selectedVehicle.roadTaxExpiry && { color: '#FF6B6B' }
+                          selectedVehicle.road_tax_expiry && new Date(selectedVehicle.road_tax_expiry) < new Date() 
+                            ? { color: '#FF6B6B', fontWeight: 'bold' } 
+                            : {}
                         ]}>
-                          {selectedVehicle.roadTaxExpiry || 'Not Provided'}
+                          {selectedVehicle.road_tax_expiry ? formatDate(selectedVehicle.road_tax_expiry) : 'Not Provided'}
+                          {selectedVehicle.road_tax_expiry && new Date(selectedVehicle.road_tax_expiry) < new Date() && ' (Expired)'}
+                        </Text>
+                      </View>
+                      <View style={styles.modalDetailRow}>
+                        <Text style={styles.modalDetailLabel}>Registration No:</Text>
+                        <Text style={styles.modalDetailValue}>
+                          {selectedVehicle.registration_number || 'N/A'}
                         </Text>
                       </View>
                     </View>
@@ -463,15 +724,22 @@ export default function VehicleScreen({ navigation }) {
                         color: getStatusColor(selectedVehicle.status),
                         fontSize: 14,
                       }]}>
-                        {selectedVehicle.status.charAt(0).toUpperCase() + selectedVehicle.status.slice(1)}
+                        {selectedVehicle.status.split('_').map(word => 
+                          word.charAt(0).toUpperCase() + word.slice(1)
+                        ).join(' ')}
                       </Text>
                     </View>
                     <Text style={styles.statusDescription}>
-                      {selectedVehicle.statusMessage || 'No status message available'}
+                      {selectedVehicle.status_message || 'No status message available'}
                     </Text>
-                    {selectedVehicle.verificationDate && (
+                    {selectedVehicle.verified_at && (
                       <Text style={styles.verificationDate}>
-                        Verified on: {formatDate(selectedVehicle.verificationDate)}
+                        Verified on: {formatDate(selectedVehicle.verified_at)}
+                      </Text>
+                    )}
+                    {selectedVehicle.updated_at && (
+                      <Text style={styles.verificationDate}>
+                        Last updated: {formatDate(selectedVehicle.updated_at)}
                       </Text>
                     )}
                   </View>
@@ -510,6 +778,10 @@ export default function VehicleScreen({ navigation }) {
               Are you sure you want to delete {vehicleToDelete?.make} {vehicleToDelete?.model}?
               This action cannot be undone.
             </Text>
+            <Text style={styles.warningText}>
+              {primaryVehicleId === vehicleToDelete?.id && 
+                'Warning: This is your primary vehicle. You need to set another vehicle as primary before deleting.'}
+            </Text>
             <View style={styles.confirmModalButtons}>
               <TouchableOpacity 
                 style={styles.cancelButton}
@@ -518,10 +790,16 @@ export default function VehicleScreen({ navigation }) {
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={styles.deleteConfirmButton}
+                style={[
+                  styles.deleteConfirmButton,
+                  primaryVehicleId === vehicleToDelete?.id && styles.disabledDeleteButton
+                ]}
                 onPress={confirmDelete}
+                disabled={primaryVehicleId === vehicleToDelete?.id}
               >
-                <Text style={styles.deleteConfirmText}>Delete</Text>
+                <Text style={styles.deleteConfirmText}>
+                  {primaryVehicleId === vehicleToDelete?.id ? 'Cannot Delete' : 'Delete'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -608,8 +886,19 @@ const styles = StyleSheet.create({
   },
   vehicleInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   vehicleTitle: { marginLeft: 15, flex: 1 },
-  vehicleMakeModel: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 2 },
+  vehicleTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  vehicleMakeModel: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 2, flex: 1 },
   vehicleYearColor: { fontSize: 14, color: '#666' },
+  primaryBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFF9C4', 
+    paddingHorizontal: 8, 
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  primaryText: { fontSize: 10, color: '#F57C00', fontWeight: '600' },
   vehicleActions: { flexDirection: 'row', gap: 10 },
   actionButton: { 
     width: 36, 
@@ -658,7 +947,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     gap: 6,
   },
-  setPrimaryText: { fontSize: 14, color: '#FFD700', fontWeight: '500' },
+  setPrimaryText: { fontSize: 14, fontWeight: '500' },
   floatingAddButton: {
     position: 'absolute',
     bottom: 30,
@@ -701,16 +990,15 @@ const styles = StyleSheet.create({
   modalBody: { padding: 20 },
   imageScroll: { marginBottom: 20 },
   vehicleImage: { width: 200, height: 150, borderRadius: 10, marginRight: 10 },
-  imagePlaceholder: { 
-    width: 200, 
-    height: 150, 
-    borderRadius: 10, 
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center', 
+  noImagesContainer: {
+    height: 150,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+    marginBottom: 20,
   },
-  imagePlaceholderText: { fontSize: 12, color: '#999', marginTop: 8 },
+  noImagesText: { fontSize: 14, color: '#999', marginTop: 10 },
   modalSection: { marginBottom: 25 },
   modalSectionTitle: { fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 15 },
   modalDetails: { backgroundColor: '#f8f9fa', padding: 15, borderRadius: 10 },
@@ -752,7 +1040,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   confirmModalTitle: { fontSize: 20, fontWeight: 'bold', color: '#333', marginTop: 15, marginBottom: 10 },
-  confirmModalText: { fontSize: 15, color: '#666', textAlign: 'center', lineHeight: 22, marginBottom: 25 },
+  confirmModalText: { fontSize: 15, color: '#666', textAlign: 'center', lineHeight: 22, marginBottom: 15 },
+  warningText: { fontSize: 13, color: '#FF6B6B', textAlign: 'center', marginBottom: 20, fontWeight: '500' },
   confirmModalButtons: { flexDirection: 'row', gap: 15, width: '100%' },
   cancelButton: { 
     flex: 1, 
@@ -770,5 +1059,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6B6B',
     alignItems: 'center',
   },
+  disabledDeleteButton: { backgroundColor: '#cccccc' },
   deleteConfirmText: { fontSize: 16, color: '#fff', fontWeight: 'bold' },
 });

@@ -10,9 +10,10 @@ import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
 
-// Import your services
+// Import your services - ADD THESE IMPORTS
 import api from '../../services/api';
-import socket from '../../services/socket';
+import realTimeService from '../../services/socket/realtimeUpdates'; // CHANGED FROM 'socket' to 'realTimeService'
+import { getUserData } from '../../src/utils/userStorage'; // ADD THIS IMPORT for user data
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -47,6 +48,7 @@ export default function RideSelectionScreen({ route, navigation }) {
   const [estimatedTime, setEstimatedTime] = useState('5 min');
   const [currentLocation, setCurrentLocation] = useState(null);
   const [ridePrices, setRidePrices] = useState({});
+  const [user, setUser] = useState(null); // ADD USER STATE
   
   const mapRef = useRef(null);
   const promoCode = 'PROMO20';
@@ -134,6 +136,32 @@ export default function RideSelectionScreen({ route, navigation }) {
   ];
 
   useEffect(() => {
+    // Load user data first
+    const loadUserData = async () => {
+      try {
+        const userData = await getUserData();
+        setUser(userData);
+        
+        // Initialize socket with user data
+        if (userData) {
+          realTimeService.initializeSocket({
+            id: userData.id,
+            name: userData.name || 'Rider',
+            role: 'rider',
+          });
+          
+          // Listen for connection status
+          realTimeService.addConnectionListener((connected) => {
+            console.log('Socket connection status:', connected);
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load user data:', error);
+      }
+    };
+    
+    loadUserData();
+    
     fetchCurrentLocation();
     calculateRouteDistance();
     
@@ -145,8 +173,29 @@ export default function RideSelectionScreen({ route, navigation }) {
     
     return () => {
       cleanupSocketListeners();
+      // Remove connection listener on unmount
+      realTimeService.removeConnectionListener();
     };
   }, []);
+
+  // ADD THIS EFFECT FOR NEARBY DRIVERS SUBSCRIPTION
+  useEffect(() => {
+    if (currentLocation && user) {
+      // Subscribe to nearby drivers when location is available
+      const unsubscribe = realTimeService.subscribeToNearbyDrivers(
+        currentLocation,
+        5, // 5km radius
+        ['bike', 'car'], // Vehicle types
+        (drivers) => {
+          console.log('Real-time nearby drivers update:', drivers);
+          setNearbyDrivers(drivers);
+          updateRideAvailability(drivers);
+        }
+      );
+      
+      return unsubscribe; // Cleanup on unmount or location change
+    }
+  }, [currentLocation, user]);
 
   const fetchCurrentLocation = () => {
     Geolocation.getCurrentPosition(
@@ -250,45 +299,22 @@ export default function RideSelectionScreen({ route, navigation }) {
   };
 
   const setupSocketListeners = () => {
-    const socketInstance = socket;
+    // Socket is now handled by realTimeService, but you can add additional listeners here
     
-    if (socketInstance) {
-      // Listen for driver location updates
-      socketInstance.on('driver-location-update', (driverData) => {
-        setNearbyDrivers(prevDrivers => {
-          const updatedDrivers = [...prevDrivers];
-          const index = updatedDrivers.findIndex(d => d.id === driverData.id);
-          if (index > -1) {
-            updatedDrivers[index] = { ...updatedDrivers[index], ...driverData };
-          }
-          return updatedDrivers;
-        });
-      });
-      
-      // Listen for new drivers coming online
-      socketInstance.on('driver-available', (newDriver) => {
-        setNearbyDrivers(prevDrivers => {
-          if (!prevDrivers.find(d => d.id === newDriver.id)) {
-            return [...prevDrivers, newDriver];
-          }
-          return prevDrivers;
-        });
-      });
-      
-      // Listen for price surge updates
-      socketInstance.on('price-surge', (surgeData) => {
+    // Listen for surge pricing updates via socket
+    const surgeUnsubscribe = realTimeService.subscribeToSurgePricing(
+      'lilongwe', // Area ID - you might want to determine this based on location
+      (surgeData) => {
+        console.log('Real-time surge pricing update:', surgeData);
         updateSurgePricing(surgeData);
-      });
-    }
+      }
+    );
+    
+    return surgeUnsubscribe; // Return cleanup function
   };
 
   const cleanupSocketListeners = () => {
-    const socketInstance = socket;
-    if (socketInstance) {
-      socketInstance.off('driver-location-update');
-      socketInstance.off('driver-available');
-      socketInstance.off('price-surge');
-    }
+    // Cleanup will be handled by the unsubscribe functions returned from setupSocketListeners
   };
 
   const updateRideAvailability = (drivers) => {
@@ -338,17 +364,12 @@ export default function RideSelectionScreen({ route, navigation }) {
     setSelectedRide(ride.id);
     
     // Emit socket event for driver availability check
-    const socketInstance = socket;
-    if (socketInstance) {
-      socketInstance.emit('check-driver-availability', {
-        rideId: ride.id,
-        vehicleType: ride.vehicleType,
-        location: pickupCoordinates || currentLocation,
-      });
-    }
+    // This is now handled by the realTimeService
+    // You could add additional logic here if needed
   };
 
-  const handleConfirmRide = () => {
+  // UPDATED handleConfirmRide FUNCTION FOR REAL-TIME RIDE REQUEST
+  const handleConfirmRide = async () => {
     if (!selectedRide) {
       alert('Please select a ride option');
       return;
@@ -365,27 +386,106 @@ export default function RideSelectionScreen({ route, navigation }) {
       return;
     }
     
-    navigation.navigate('RideConfirmation', {
-      ride: {
-        ...rideData,
-        price: calculatePrice(rideData),
-        formattedPrice: formatMK(calculatePrice(rideData)),
-        estimatedTime: estimatedTime,
+    // Check if user data is loaded
+    if (!user) {
+      Alert.alert('Error', 'User data not loaded. Please try again.');
+      return;
+    }
+    
+    // Check if socket is connected
+    const connectionStatus = realTimeService.getConnectionStatus();
+    if (!connectionStatus.isConnected) {
+      Alert.alert(
+        'Connection Issue',
+        'Real-time connection not established. Trying to reconnect...',
+        [
+          { 
+            text: 'Try Again', 
+            onPress: () => {
+              realTimeService.connectSocket();
+              // Retry after a delay
+              setTimeout(handleConfirmRide, 2000);
+            }
+          },
+          { 
+            text: 'Continue Anyway', 
+            onPress: () => proceedWithRideRequest(rideData) 
+          }
+        ]
+      );
+      return;
+    }
+    
+    proceedWithRideRequest(rideData);
+  };
+
+  // NEW FUNCTION: Process ride request with real-time service
+  const proceedWithRideRequest = (rideData) => {
+    setLoading(true);
+    
+    try {
+      // Prepare ride request data
+      const rideRequest = {
+        riderId: user.id,
+        riderName: user.name || 'Rider',
+        riderPhone: user.phone,
+        pickup: {
+          address: pickupLocation || 'Your Location',
+          coordinates: pickupCoordinates || currentLocation,
+        },
+        destination: {
+          address: destination || destinationAddress,
+          coordinates: destinationCoordinates,
+        },
+        vehicleType: rideData.vehicleType,
+        estimatedFare: calculatePrice(rideData),
+        paymentMethod: paymentMethod,
+        promoCode: usePromo ? 'PROMO20' : null,
         distance: distance,
-        availableDrivers: rideData.availableDrivers,
-        surgeMultiplier: ridePrices[rideData.id] || 1.0
-      },
-      destination: destination || 'Selected Destination',
-      destinationAddress: destinationAddress || 'Malawi Location',
-      destinationCoords: destinationCoordinates,
-      pickupLocation: pickupLocation || 'Your Current Location',
-      pickupCoords: pickupCoordinates || currentLocation,
-      riderInfo: { 
-        paymentMethod, 
-        usePromo,
-        promoCode: usePromo ? promoCode : null
+        estimatedTime: estimatedTime,
+      };
+      
+      // Send real-time ride request via socket
+      const requestId = realTimeService.requestRide(rideRequest);
+      
+      if (requestId) {
+        console.log('Ride requested successfully with ID:', requestId);
+        
+        // Navigate to confirmation screen with ride ID
+        navigation.navigate('RideConfirmation', {
+          ride: {
+            ...rideData,
+            price: calculatePrice(rideData),
+            formattedPrice: formatMK(calculatePrice(rideData)),
+            estimatedTime: estimatedTime,
+            distance: distance,
+            availableDrivers: rideData.availableDrivers,
+            surgeMultiplier: ridePrices[rideData.id] || 1.0,
+            requestId: requestId, // Add request ID for tracking
+          },
+          destination: destination || 'Selected Destination',
+          destinationAddress: destinationAddress || 'Malawi Location',
+          destinationCoords: destinationCoordinates,
+          pickupLocation: pickupLocation || 'Your Current Location',
+          pickupCoords: pickupCoordinates || currentLocation,
+          riderInfo: { 
+            paymentMethod, 
+            usePromo,
+            promoCode: usePromo ? promoCode : null,
+            userId: user.id,
+            userName: user.name || 'Rider',
+          },
+          socketRequestId: requestId, // Pass socket request ID
+        });
+      } else {
+        Alert.alert('Request Failed', 'Failed to send ride request. Please try again.');
       }
-    });
+    } catch (error) {
+      console.error('Error requesting ride:', error);
+      Alert.alert('Error', 'Failed to request ride. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getDriverCount = (vehicleType) => {
@@ -403,6 +503,7 @@ export default function RideSelectionScreen({ route, navigation }) {
           longitude: driver.location?.longitude || 33.7750
         }}
         title={`${driver.vehicleType?.includes('bike') ? 'Bike' : 'Car'} Driver`}
+        description={`${driver.name || 'Driver'} - ${driver.rating || '5.0'} ★`}
       >
         <View style={[
           styles.driverMarker,
@@ -512,6 +613,17 @@ export default function RideSelectionScreen({ route, navigation }) {
               <FontAwesome5 name="car" size={14} color="#34A853" />
               <Text style={styles.driverCountText}>
                 {getDriverCount('car')} car {getDriverCount('car') === 1 ? 'driver' : 'drivers'}
+              </Text>
+            </View>
+            
+            {/* Socket connection status indicator */}
+            <View style={styles.connectionStatus}>
+              <View style={[
+                styles.connectionDot, 
+                { backgroundColor: realTimeService.getConnectionStatus().isConnected ? '#06C167' : '#EA4335' }
+              ]} />
+              <Text style={styles.connectionText}>
+                {realTimeService.getConnectionStatus().isConnected ? 'Live' : 'Offline'}
               </Text>
             </View>
           </View>
@@ -705,12 +817,19 @@ export default function RideSelectionScreen({ route, navigation }) {
             {rideOptions.find(r => r.id === selectedRide)?.availableDrivers || 0} drivers available in your area
           </Text>
         )}
+        
+        {/* Socket status indicator */}
+        <View style={styles.socketStatus}>
+          <Text style={styles.socketStatusText}>
+            Status: {realTimeService.getConnectionStatus().isConnected ? 'Connected ✓' : 'Connecting...'}
+          </Text>
+        </View>
       </View>
     </View>
   );
 }
 
-// Updated styles with real-time features
+// Updated styles with real-time features - ADD NEW STYLES
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F6F3' },
   header: { 
@@ -832,6 +951,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#333',
     marginLeft: 6,
+    fontWeight: '500',
+  },
+  // NEW STYLES FOR CONNECTION STATUS
+  connectionStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  connectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  connectionText: {
+    fontSize: 11,
+    color: '#666',
     fontWeight: '500',
   },
   promoSection: { 
@@ -1084,6 +1219,16 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 8,
+    fontStyle: 'italic',
+  },
+  // NEW STYLES FOR SOCKET STATUS
+  socketStatus: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  socketStatusText: {
+    fontSize: 10,
+    color: '#666',
     fontStyle: 'italic',
   },
 });

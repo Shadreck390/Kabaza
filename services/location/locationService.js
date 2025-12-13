@@ -1,9 +1,21 @@
-// services/LocationService.js
-import { Platform, PermissionsAndroid, Alert } from 'react-native';
+// services/location/LocationService.js
+import { Platform, PermissionsAndroid, Alert, Linking } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
+import realTimeService from '../socket/realtimeUpdates'; // Import for real-time updates
 
 class LocationService {
   static locationWatchers = new Map();
+  static currentUser = null;
+  static isTrackingForRide = false;
+  static currentRideId = null;
+
+  /**
+   * Initialize with user context
+   */
+  static initialize = (userData) => {
+    this.currentUser = userData;
+    console.log('📍 Location service initialized for user:', userData?.id);
+  };
 
   /**
    * Comprehensive location permission request
@@ -56,18 +68,16 @@ class LocationService {
   static showPermissionAlert = () => {
     Alert.alert(
       'Location Access Required',
-      'Kabaza needs location access to:\n• Find rides near you\n• Show accurate pickup locations\n• Provide safe and efficient service\n\nPlease enable location permissions in your device settings.',
+      'Kabaza needs location access to:\n• Find rides near you\n• Show accurate pickup locations\n• Provide safe and efficient service\n• Enable real-time ride tracking\n\nPlease enable location permissions in your device settings.',
       [
         { text: 'OK', style: 'default' },
         { 
           text: 'Open Settings', 
           onPress: () => {
             if (Platform.OS === 'ios') {
-              // iOS settings deep link
-              // Linking.openURL('app-settings:');
+              Linking.openURL('app-settings:');
             } else {
-              // Android settings deep link
-              // Linking.openSettings();
+              Linking.openSettings();
             }
           } 
         }
@@ -82,33 +92,47 @@ class LocationService {
     return new Promise((resolve, reject) => {
       const defaultOptions = {
         enableHighAccuracy: true,
-        timeout: 20000, // Increased timeout for better reliability
-        maximumAge: 30000, // Accept cached location up to 30 seconds
-        distanceFilter: 5, // More precise updates
+        timeout: 15000,
+        maximumAge: 10000,
+        distanceFilter: 0,
       };
 
       Geolocation.getCurrentPosition(
         (position) => {
-          console.log('📍 Current location obtained:', {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            timestamp: new Date(position.timestamp).toLocaleTimeString(),
-          });
-          resolve(position);
+          const enhancedLocation = this.enhanceLocationData(position);
+          console.log('📍 Current location obtained:', enhancedLocation);
+          resolve(enhancedLocation);
         },
         (error) => {
-          console.error('❌ Error getting location:', {
-            code: error.code,
-            message: error.message,
-          });
-          
+          console.error('❌ Error getting location:', error);
           const errorMessage = this.getLocationError(error);
           reject(new Error(errorMessage));
         },
         { ...defaultOptions, ...options }
       );
     });
+  };
+
+  /**
+   * Enhance location data with additional information
+   */
+  static enhanceLocationData = (position) => {
+    return {
+      coords: {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        altitude: position.coords.altitude,
+        heading: position.coords.heading || 0,
+        speed: position.coords.speed || 0,
+        altitudeAccuracy: position.coords.altitudeAccuracy,
+      },
+      timestamp: position.timestamp,
+      batteryLevel: 1.0, // You can get this from Battery API if needed
+      networkType: 'wifi/cellular', // You can get this from NetInfo
+      isMock: position.coords.isFromMockProvider || false,
+      provider: position.coords.provider || 'gps',
+    };
   };
 
   /**
@@ -153,6 +177,10 @@ class LocationService {
           timestamp: location.timestamp,
         },
         coords: location.coords,
+        metadata: {
+          isMalawi: this.isValidMalawiLocation(location.coords),
+          accuracyLevel: this.getAccuracyLevel(location.coords.accuracy),
+        }
       };
     } catch (error) {
       console.error('❌ Failed to initialize location:', error);
@@ -160,21 +188,127 @@ class LocationService {
       return {
         success: false,
         error: error.message,
-        fallbackLocation: this.getDefaultLocation(), // Provide fallback
+        fallbackLocation: this.getDefaultLocation(),
       };
     }
   };
 
   /**
-   * Get default location (Malawi coordinates)
+   * Get default location (Lilongwe, Malawi)
    */
   static getDefaultLocation = () => {
     return {
-      latitude: -15.3875, // Lilongwe, Malawi
-      longitude: 28.3228,
+      latitude: -13.9626, // Lilongwe City Center
+      longitude: 33.7741,
       latitudeDelta: 0.05,
       longitudeDelta: 0.05,
     };
+  };
+
+  /**
+   * Get accuracy level description
+   */
+  static getAccuracyLevel = (accuracy) => {
+    if (accuracy < 20) return 'high';
+    if (accuracy < 100) return 'medium';
+    return 'low';
+  };
+
+  /**
+   * Watch position with real-time updates for ride tracking
+   */
+  static watchPositionForRide = (rideId, onUpdate, onError, options = {}) => {
+    try {
+      this.currentRideId = rideId;
+      this.isTrackingForRide = true;
+
+      const defaultWatchOptions = {
+        enableHighAccuracy: true,
+        distanceFilter: 10, // Update every 10 meters
+        interval: 5000, // Update every 5 seconds
+        fastestInterval: 2000,
+        useSignificantChanges: false,
+      };
+
+      const watchOptions = { ...defaultWatchOptions, ...options };
+      const watchId = `ride_${rideId}`;
+
+      console.log(`📍 Starting ride location tracking for: ${rideId}`);
+
+      const id = Geolocation.watchPosition(
+        (position) => {
+          const enhancedLocation = this.enhanceLocationData(position);
+          
+          // Send location update via socket
+          this.sendRealTimeLocationUpdate(rideId, enhancedLocation);
+          
+          // Call the provided update callback
+          if (onUpdate) {
+            onUpdate(enhancedLocation);
+          }
+
+          console.log('📍 Ride location update:', {
+            rideId,
+            latitude: enhancedLocation.coords.latitude,
+            longitude: enhancedLocation.coords.longitude,
+            accuracy: enhancedLocation.coords.accuracy,
+          });
+        },
+        (error) => {
+          console.error('❌ Ride location tracking error:', error);
+          if (onError) {
+            onError(error);
+          }
+        },
+        watchOptions
+      );
+
+      this.locationWatchers.set(watchId, id);
+      return id;
+    } catch (error) {
+      console.error('❌ Failed to start ride location tracking:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Send real-time location update via socket
+   */
+  static sendRealTimeLocationUpdate = (rideId, location) => {
+    try {
+      if (!realTimeService.getConnectionStatus().isConnected) {
+        console.warn('⚠️ Socket not connected, skipping location update');
+        return;
+      }
+
+      const locationData = {
+        userId: this.currentUser?.id,
+        rideId: rideId,
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        bearing: location.coords.heading,
+        speed: location.coords.speed,
+        accuracy: location.coords.accuracy,
+        timestamp: Date.now(),
+        isRider: true,
+      };
+
+      realTimeService.updateLocation(
+        this.currentUser?.id,
+        {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          bearing: location.coords.heading,
+          speed: location.coords.speed,
+        },
+        false, // isDriver
+        rideId
+      );
+
+      console.log('📡 Sent real-time location update:', locationData);
+    } catch (error) {
+      console.error('❌ Failed to send real-time location update:', error);
+    }
   };
 
   /**
@@ -184,9 +318,9 @@ class LocationService {
     try {
       const defaultWatchOptions = {
         enableHighAccuracy: true,
-        distanceFilter: 10, // Update every 10 meters
-        interval: 5000, // Update every 5 seconds
-        fastestInterval: 2000, // Fastest update interval
+        distanceFilter: 10,
+        interval: 5000,
+        fastestInterval: 2000,
         useSignificantChanges: false,
       };
 
@@ -194,20 +328,8 @@ class LocationService {
 
       const id = Geolocation.watchPosition(
         (position) => {
-          const enhancedLocation = {
-            coords: {
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              accuracy: position.coords.accuracy,
-              altitude: position.coords.altitude,
-              altitudeAccuracy: position.coords.altitudeAccuracy,
-              heading: position.coords.heading,
-              speed: position.coords.speed,
-            },
-            timestamp: position.timestamp,
-            watchId: id,
-          };
-
+          const enhancedLocation = this.enhanceLocationData(position);
+          
           console.log('📍 Location update:', {
             latitude: enhancedLocation.coords.latitude,
             longitude: enhancedLocation.coords.longitude,
@@ -225,7 +347,6 @@ class LocationService {
         watchOptions
       );
 
-      // Store watcher for management
       this.locationWatchers.set(watchId, id);
       console.log(`📍 Started location watcher: ${watchId}`);
 
@@ -244,6 +365,13 @@ class LocationService {
     if (id) {
       Geolocation.clearWatch(id);
       this.locationWatchers.delete(watchId);
+      
+      // If stopping ride tracking, reset flags
+      if (watchId.startsWith('ride_')) {
+        this.isTrackingForRide = false;
+        this.currentRideId = null;
+      }
+      
       console.log(`📍 Stopped location watcher: ${watchId}`);
       return true;
     }
@@ -259,7 +387,11 @@ class LocationService {
       Geolocation.clearWatch(id);
       console.log(`📍 Stopped location watcher: ${watchId}`);
     });
+    
     this.locationWatchers.clear();
+    this.isTrackingForRide = false;
+    this.currentRideId = null;
+    
     console.log('📍 All location watchers stopped');
   };
 
@@ -300,6 +432,15 @@ class LocationService {
   };
 
   /**
+   * Calculate estimated travel time
+   */
+  static calculateEstimatedTime = (distanceInKm, averageSpeed = 30) => {
+    const hours = distanceInKm / averageSpeed;
+    const minutes = Math.round(hours * 60);
+    return Math.max(3, minutes); // Minimum 3 minutes
+  };
+
+  /**
    * Check if location is within reasonable bounds (Malawi)
    */
   static isValidMalawiLocation = (location) => {
@@ -319,28 +460,60 @@ class LocationService {
   };
 
   /**
-   * Get address from coordinates (mock - integrate with real geocoding service)
+   * Get city based on coordinates
+   */
+  static getMalawiCityFromCoords = (coords) => {
+    const cities = [
+      { name: 'Lilongwe', lat: -13.9626, lng: 33.7741, radius: 0.5 },
+      { name: 'Blantyre', lat: -15.7861, lng: 35.0058, radius: 0.5 },
+      { name: 'Mzuzu', lat: -11.4528, lng: 34.0219, radius: 0.5 },
+      { name: 'Zomba', lat: -15.3861, lng: 35.3189, radius: 0.3 },
+    ];
+
+    for (const city of cities) {
+      const distance = this.calculateDistance(coords, { latitude: city.lat, longitude: city.lng });
+      if (distance <= city.radius) {
+        return city.name;
+      }
+    }
+
+    return 'Malawi';
+  };
+
+  /**
+   * Get address from coordinates
    */
   static getAddressFromCoords = async (coords) => {
     try {
-      // Mock implementation - replace with actual geocoding service
-      const mockAddresses = [
-        'Lilongwe City Center',
-        'Blantyre Commercial Area', 
-        'Mzuzu Downtown',
-        'Zomba Central',
-      ];
+      const city = this.getMalawiCityFromCoords(coords);
       
-      // Simple mock based on coordinates
-      const randomAddress = mockAddresses[
-        Math.floor(Math.random() * mockAddresses.length)
-      ];
+      // Mock addresses - in production, use Google Maps Geocoding API
+      const addressTemplates = {
+        'Lilongwe': [
+          'City Center, Lilongwe',
+          'Area 3, Lilongwe',
+          'Old Town, Lilongwe',
+          'Kanengo, Lilongwe',
+        ],
+        'Blantyre': [
+          'City Center, Blantyre',
+          'Chichiri, Blantyre',
+          'Nyambadwe, Blantyre',
+          'Limbe, Blantyre',
+        ],
+        'Mzuzu': ['City Center, Mzuzu', 'Katoto, Mzuzu'],
+        'Zomba': ['City Center, Zomba', 'Chancellor College, Zomba'],
+      };
+
+      const addresses = addressTemplates[city] || ['Unknown Location, Malawi'];
+      const randomAddress = addresses[Math.floor(Math.random() * addresses.length)];
       
       return {
         address: randomAddress,
-        city: 'Lilongwe', // Default city
+        city: city,
         country: 'Malawi',
-        fullAddress: `${randomAddress}, Malawi`,
+        fullAddress: `${randomAddress}, ${city}, Malawi`,
+        coordinates: coords,
       };
     } catch (error) {
       console.error('❌ Geocoding error:', error);
@@ -349,10 +522,28 @@ class LocationService {
   };
 
   /**
+   * Get nearby points of interest
+   */
+  static getNearbyPOI = async (coords, radius = 1) => {
+    // Mock implementation - integrate with Google Places API
+    const mockPOIs = [
+      { name: 'Shoprite', type: 'shopping', distance: 0.3 },
+      { name: 'KCH Hospital', type: 'hospital', distance: 0.5 },
+      { name: 'Bingu Stadium', type: 'stadium', distance: 1.2 },
+      { name: 'Game Complex', type: 'shopping', distance: 0.8 },
+    ];
+
+    return mockPOIs.filter(poi => poi.distance <= radius);
+  };
+
+  /**
    * Clean up resources
    */
   static cleanup = () => {
     this.stopAllWatchers();
+    this.currentUser = null;
+    this.isTrackingForRide = false;
+    this.currentRideId = null;
     console.log('📍 Location service cleanup completed');
   };
 }
