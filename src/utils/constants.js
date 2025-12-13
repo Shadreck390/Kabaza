@@ -1,1 +1,955 @@
+// src/store/utils/constants.js
+
+/**
+ * Application Constants
+ * Centralized constants for Redux store, actions, and real-time functionality
+ */
+
+// ====================
+// APP INFORMATION
+// ====================
 export const APP_NAME = "Kabaza";
+export const APP_DISPLAY_NAME = "Kabaza Ride";
+export const APP_VERSION = "1.0.0";
+export const APP_BUILD_NUMBER = "1";
+
+// ====================
+// STORAGE & PERSISTENCE
+// ====================
+
+// Storage Keys
+export const STORAGE_KEYS = {
+  // Redux Persist
+  REDUX_ROOT: 'root',
+  REDUX_AUTH: 'auth',
+  REDUX_APP: 'app',
+  REDUX_DRIVER: 'driver',
+  REDUX_PAYMENT: 'payment',
+  
+  // Async Storage Keys
+  USER_TOKEN: '@Kabaza:userToken',
+  USER_REFRESH_TOKEN: '@Kabaza:userRefreshToken',
+  USER_PROFILE: '@Kabaza:userProfile',
+  USER_SETTINGS: '@Kabaza:userSettings',
+  USER_PREFERENCES: '@Kabaza:userPreferences',
+  DRIVER_VEHICLE: '@Kabaza:driverVehicle',
+  DRIVER_DOCUMENTS: '@Kabaza:driverDocuments',
+  RIDE_HISTORY: '@Kabaza:rideHistory',
+  PAYMENT_METHODS: '@Kabaza:paymentMethods',
+  FAVORITE_LOCATIONS: '@Kabaza:favoriteLocations',
+  RECENT_SEARCHES: '@Kabaza:recentSearches',
+  
+  // Cache Keys
+  CACHE_TIMESTAMP: '@Kabaza:cacheTimestamp',
+  LAST_LOCATION: '@Kabaza:lastLocation',
+  LAST_SOCKET_CONNECTION: '@Kabaza:lastSocketConnection',
+  
+  // Settings
+  ONBOARDING_COMPLETE: '@Kabaza:onboardingComplete',
+  NOTIFICATION_PERMISSION: '@Kabaza:notificationPermission',
+  LOCATION_PERMISSION: '@Kabaza:locationPermission',
+  APP_LAUNCH_COUNT: '@Kabaza:appLaunchCount',
+};
+
+// Persistence Configuration
+export const PERSIST_CONFIG = {
+  TIMEOUT: 10000,
+  VERSION: 1,
+  MIGRATE: (state) => {
+    // Migration logic for future versions
+    if (!state) return Promise.resolve(null);
+    return Promise.resolve(state);
+  },
+};
+
+// ====================
+// ACTION TYPES
+// ====================
+
+// Auth Action Types
+export const AUTH_ACTIONS = {
+  // Authentication
+  LOGIN_REQUEST: 'AUTH/LOGIN_REQUEST',
+  LOGIN_SUCCESS: 'AUTH/LOGIN_SUCCESS',
+  LOGIN_FAILURE: 'AUTH/LOGIN_FAILURE',
+  LOGOUT: 'AUTH/LOGOUT',
+  
+  // Registration
+  REGISTER_REQUEST: 'AUTH/REGISTER_REQUEST',
+  REGISTER_SUCCESS: 'AUTH/REGISTER_SUCCESS',
+  REGISTER_FAILURE: 'AUTH/REGISTER_FAILURE',
+  
+  // Verification
+  VERIFY_OTP_REQUEST: 'AUTH/VERIFY_OTP_REQUEST',
+  VERIFY_OTP_SUCCESS: 'AUTH/VERIFY_OTP_SUCCESS',
+  VERIFY_OTP_FAILURE: 'AUTH/VERIFY_OTP_FAILURE',
+  
+  // Profile
+  UPDATE_PROFILE_REQUEST: 'AUTH/UPDATE_PROFILE_REQUEST',
+  UPDATE_PROFILE_SUCCESS: 'AUTH/UPDATE_PROFILE_SUCCESS',
+  UPDATE_PROFILE_FAILURE: 'AUTH/UPDATE_PROFILE_FAILURE',
+  
+  // Token Management
+  REFRESH_TOKEN_REQUEST: 'AUTH/REFRESH_TOKEN_REQUEST',
+  REFRESH_TOKEN_SUCCESS: 'AUTH/REFRESH_TOKEN_SUCCESS',
+  REFRESH_TOKEN_FAILURE: 'AUTH/REFRESH_TOKEN_FAILURE',
+  
+  // Real-time Presence
+  SET_ONLINE: 'AUTH/SET_ONLINE',
+  SET_OFFLINE: 'AUTH/SET_OFFLINE',
+  UPDATE_PRESENCE: 'AUTH/UPDATE_PRESENCE',
+};
+
+// App Action Types
+export const APP_ACTIONS = {
+  // App State
+  SET_LOADING: 'APP/SET_LOADING',
+  SET_APP_READY: 'APP/SET_APP_READY',
+  SET_APP_STATE: 'APP/SET_APP_STATE',
+  
+  // Network
+  SET_NETWORK_STATUS: 'APP/SET_NETWORK_STATUS',
+  SET_SOCKET_STATUS: 'APP/SET_SOCKET_STATUS',
+  
+  // Notifications
+  ADD_NOTIFICATION: 'APP/ADD_NOTIFICATION',
+  REMOVE_NOTIFICATION: 'APP/REMOVE_NOTIFICATION',
+  CLEAR_NOTIFICATIONS: 'APP/CLEAR_NOTIFICATIONS',
+  MARK_NOTIFICATION_READ: 'APP/MARK_NOTIFICATION_READ',
+  
+  // Errors
+  SET_ERROR: 'APP/SET_ERROR',
+  CLEAR_ERROR: 'APP/CLEAR_ERROR',
+  CLEAR_ALL_ERRORS: 'APP/CLEAR_ALL_ERRORS',
+  
+  // Settings
+  UPDATE_SETTINGS: 'APP/UPDATE_SETTINGS',
+  UPDATE_PREFERENCES: 'APP/UPDATE_PREFERENCES',
+  
+  // Cache
+  UPDATE_CACHE_TIMESTAMP: 'APP/UPDATE_CACHE_TIMESTAMP',
+  CLEAR_CACHE: 'APP/CLEAR_CACHE',
+};
+
+// Driver Action Types
+export const DRIVER_ACTIONS = {
+  // Status Management
+  GO_ONLINE_REQUEST: 'DRIVER/GO_ONLINE_REQUEST',
+  GO_ONLINE_SUCCESS: 'DRIVER/GO_ONLINE_SUCCESS',
+  GO_ONLINE_FAILURE: 'DRIVER/GO_ONLINE_FAILURE',
+  
+  GO_OFFLINE_REQUEST: 'DRIVER/GO_OFFLINE_REQUEST',
+  GO_OFFLINE_SUCCESS: 'DRIVER/GO_OFFLINE_SUCCESS',
+  GO_OFFLINE_FAILURE: 'DRIVER/GO_OFFLINE_FAILURE',
+  
+  SET_DRIVER_STATUS: 'DRIVER/SET_DRIVER_STATUS',
+  TAKE_BREAK: 'DRIVER/TAKE_BREAK',
+  
+  // Ride Management
+  ACCEPT_RIDE_REQUEST: 'DRIVER/ACCEPT_RIDE_REQUEST',
+  ACCEPT_RIDE_SUCCESS: 'DRIVER/ACCEPT_RIDE_SUCCESS',
+  ACCEPT_RIDE_FAILURE: 'DRIVER/ACCEPT_RIDE_FAILURE',
+  
+  START_RIDE_REQUEST: 'DRIVER/START_RIDE_REQUEST',
+  START_RIDE_SUCCESS: 'DRIVER/START_RIDE_SUCCESS',
+  START_RIDE_FAILURE: 'DRIVER/START_RIDE_FAILURE',
+  
+  COMPLETE_RIDE_REQUEST: 'DRIVER/COMPLETE_RIDE_REQUEST',
+  COMPLETE_RIDE_SUCCESS: 'DRIVER/COMPLETE_RIDE_SUCCESS',
+  COMPLETE_RIDE_FAILURE: 'DRIVER/COMPLETE_RIDE_FAILURE',
+  
+  CANCEL_RIDE_REQUEST: 'DRIVER/CANCEL_RIDE_REQUEST',
+  CANCEL_RIDE_SUCCESS: 'DRIVER/CANCEL_RIDE_SUCCESS',
+  CANCEL_RIDE_FAILURE: 'DRIVER/CANCEL_RIDE_FAILURE',
+  
+  // Location
+  UPDATE_LOCATION_REQUEST: 'DRIVER/UPDATE_LOCATION_REQUEST',
+  UPDATE_LOCATION_SUCCESS: 'DRIVER/UPDATE_LOCATION_SUCCESS',
+  UPDATE_LOCATION_FAILURE: 'DRIVER/UPDATE_LOCATION_FAILURE',
+  
+  SET_LOCATION_PERMISSION: 'DRIVER/SET_LOCATION_PERMISSION',
+  
+  // Real-time
+  SOCKET_CONNECTED: 'DRIVER/SOCKET_CONNECTED',
+  SOCKET_DISCONNECTED: 'DRIVER/SOCKET_DISCONNECTED',
+  NEW_RIDE_REQUEST: 'DRIVER/NEW_RIDE_REQUEST',
+  RIDE_REQUEST_EXPIRED: 'DRIVER/RIDE_REQUEST_EXPIRED',
+  
+  // Earnings & Stats
+  UPDATE_EARNINGS: 'DRIVER/UPDATE_EARNINGS',
+  UPDATE_STATS: 'DRIVER/UPDATE_STATS',
+  UPDATE_RATING: 'DRIVER/UPDATE_RATING',
+  
+  // Vehicle & Documents
+  UPDATE_VEHICLE_INFO: 'DRIVER/UPDATE_VEHICLE_INFO',
+  UPDATE_DOCUMENTS: 'DRIVER/UPDATE_DOCUMENTS',
+  SET_VERIFICATION_STATUS: 'DRIVER/SET_VERIFICATION_STATUS',
+  
+  // Preferences
+  UPDATE_DRIVER_PREFERENCES: 'DRIVER/UPDATE_PREFERENCES',
+  UPDATE_FILTERS: 'DRIVER/UPDATE_FILTERS',
+  TOGGLE_AUTO_ACCEPT: 'DRIVER/TOGGLE_AUTO_ACCEPT',
+};
+
+// Ride Action Types
+export const RIDE_ACTIONS = {
+  // Ride Lifecycle
+  REQUEST_RIDE_REQUEST: 'RIDE/REQUEST_RIDE_REQUEST',
+  REQUEST_RIDE_SUCCESS: 'RIDE/REQUEST_RIDE_SUCCESS',
+  REQUEST_RIDE_FAILURE: 'RIDE/REQUEST_RIDE_FAILURE',
+  
+  UPDATE_RIDE_STATUS: 'RIDE/UPDATE_RIDE_STATUS',
+  SET_CURRENT_RIDE: 'RIDE/SET_CURRENT_RIDE',
+  CLEAR_CURRENT_RIDE: 'RIDE/CLEAR_CURRENT_RIDE',
+  
+  // Location Tracking
+  UPDATE_RIDE_LOCATION: 'RIDE/UPDATE_RIDE_LOCATION',
+  UPDATE_DRIVER_LOCATION: 'RIDE/UPDATE_DRIVER_LOCATION',
+  
+  // ETA & Distance
+  UPDATE_ETA: 'RIDE/UPDATE_ETA',
+  UPDATE_DISTANCE: 'RIDE/UPDATE_DISTANCE',
+  
+  // Payment
+  UPDATE_FARE: 'RIDE/UPDATE_FARE',
+  PROCESS_PAYMENT_REQUEST: 'RIDE/PROCESS_PAYMENT_REQUEST',
+  PROCESS_PAYMENT_SUCCESS: 'RIDE/PROCESS_PAYMENT_SUCCESS',
+  PROCESS_PAYMENT_FAILURE: 'RIDE/PROCESS_PAYMENT_FAILURE',
+  
+  // Ratings
+  SUBMIT_RATING_REQUEST: 'RIDE/SUBMIT_RATING_REQUEST',
+  SUBMIT_RATING_SUCCESS: 'RIDE/SUBMIT_RATING_SUCCESS',
+  SUBMIT_RATING_FAILURE: 'RIDE/SUBMIT_RATING_FAILURE',
+  
+  // Real-time
+  RIDE_STATUS_UPDATE: 'RIDE/STATUS_UPDATE',
+  DRIVER_LOCATION_UPDATE: 'RIDE/DRIVER_LOCATION_UPDATE',
+  ARRIVAL_UPDATE: 'RIDE/ARRIVAL_UPDATE',
+};
+
+// Location Action Types
+export const LOCATION_ACTIONS = {
+  // Permissions
+  REQUEST_PERMISSION_REQUEST: 'LOCATION/REQUEST_PERMISSION_REQUEST',
+  REQUEST_PERMISSION_SUCCESS: 'LOCATION/REQUEST_PERMISSION_SUCCESS',
+  REQUEST_PERMISSION_FAILURE: 'LOCATION/REQUEST_PERMISSION_FAILURE',
+  
+  // Current Location
+  GET_CURRENT_LOCATION_REQUEST: 'LOCATION/GET_CURRENT_LOCATION_REQUEST',
+  GET_CURRENT_LOCATION_SUCCESS: 'LOCATION/GET_CURRENT_LOCATION_SUCCESS',
+  GET_CURRENT_LOCATION_FAILURE: 'LOCATION/GET_CURRENT_LOCATION_FAILURE',
+  
+  UPDATE_CURRENT_LOCATION: 'LOCATION/UPDATE_CURRENT_LOCATION',
+  
+  // Tracking
+  START_TRACKING: 'LOCATION/START_TRACKING',
+  STOP_TRACKING: 'LOCATION/STOP_TRACKING',
+  UPDATE_TRACKING_SETTINGS: 'LOCATION/UPDATE_TRACKING_SETTINGS',
+  
+  // Geocoding
+  REVERSE_GEOCODE_REQUEST: 'LOCATION/REVERSE_GEOCODE_REQUEST',
+  REVERSE_GEOCODE_SUCCESS: 'LOCATION/REVERSE_GEOCODE_SUCCESS',
+  REVERSE_GEOCODE_FAILURE: 'LOCATION/REVERSE_GEOCODE_FAILURE',
+  
+  // Nearby
+  GET_NEARBY_DRIVERS_REQUEST: 'LOCATION/GET_NEARBY_DRIVERS_REQUEST',
+  GET_NEARBY_DRIVERS_SUCCESS: 'LOCATION/GET_NEARBY_DRIVERS_SUCCESS',
+  GET_NEARBY_DRIVERS_FAILURE: 'LOCATION/GET_NEARBY_DRIVERS_FAILURE',
+};
+
+// Notification Action Types
+export const NOTIFICATION_ACTIONS = {
+  // Push Notifications
+  REGISTER_PUSH_TOKEN_REQUEST: 'NOTIFICATION/REGISTER_PUSH_TOKEN_REQUEST',
+  REGISTER_PUSH_TOKEN_SUCCESS: 'NOTIFICATION/REGISTER_PUSH_TOKEN_SUCCESS',
+  REGISTER_PUSH_TOKEN_FAILURE: 'NOTIFICATION/REGISTER_PUSH_TOKEN_FAILURE',
+  
+  // In-app Notifications
+  ADD_NOTIFICATION: 'NOTIFICATION/ADD_NOTIFICATION',
+  REMOVE_NOTIFICATION: 'NOTIFICATION/REMOVE_NOTIFICATION',
+  MARK_AS_READ: 'NOTIFICATION/MARK_AS_READ',
+  MARK_ALL_AS_READ: 'NOTIFICATION/MARK_ALL_AS_READ',
+  CLEAR_ALL: 'NOTIFICATION/CLEAR_ALL',
+  
+  // Settings
+  UPDATE_NOTIFICATION_SETTINGS: 'NOTIFICATION/UPDATE_NOTIFICATION_SETTINGS',
+  
+  // Real-time
+  RECEIVE_PUSH_NOTIFICATION: 'NOTIFICATION/RECEIVE_PUSH_NOTIFICATION',
+  HANDLE_NOTIFICATION_CLICK: 'NOTIFICATION/HANDLE_NOTIFICATION_CLICK',
+};
+
+// Chat Action Types
+export const CHAT_ACTIONS = {
+  // Connection
+  CONNECT_CHAT_REQUEST: 'CHAT/CONNECT_CHAT_REQUEST',
+  CONNECT_CHAT_SUCCESS: 'CHAT/CONNECT_CHAT_SUCCESS',
+  CONNECT_CHAT_FAILURE: 'CHAT/CONNECT_CHAT_FAILURE',
+  
+  DISCONNECT_CHAT: 'CHAT/DISCONNECT_CHAT',
+  
+  // Messages
+  SEND_MESSAGE_REQUEST: 'CHAT/SEND_MESSAGE_REQUEST',
+  SEND_MESSAGE_SUCCESS: 'CHAT/SEND_MESSAGE_SUCCESS',
+  SEND_MESSAGE_FAILURE: 'CHAT/SEND_MESSAGE_FAILURE',
+  
+  RECEIVE_MESSAGE: 'CHAT/RECEIVE_MESSAGE',
+  MARK_MESSAGES_READ: 'CHAT/MARK_MESSAGES_READ',
+  
+  // Typing Indicators
+  SEND_TYPING_INDICATOR: 'CHAT/SEND_TYPING_INDICATOR',
+  RECEIVE_TYPING_INDICATOR: 'CHAT/RECEIVE_TYPING_INDICATOR',
+  
+  // Read Receipts
+  SEND_READ_RECEIPT: 'CHAT/SEND_READ_RECEIPT',
+  RECEIVE_READ_RECEIPT: 'CHAT/RECEIVE_READ_RECEIPT',
+};
+
+// Payment Action Types
+export const PAYMENT_ACTIONS = {
+  // Wallet
+  GET_WALLET_BALANCE_REQUEST: 'PAYMENT/GET_WALLET_BALANCE_REQUEST',
+  GET_WALLET_BALANCE_SUCCESS: 'PAYMENT/GET_WALLET_BALANCE_SUCCESS',
+  GET_WALLET_BALANCE_FAILURE: 'PAYMENT/GET_WALLET_BALANCE_FAILURE',
+  
+  UPDATE_WALLET_BALANCE: 'PAYMENT/UPDATE_WALLET_BALANCE',
+  
+  // Transactions
+  GET_TRANSACTIONS_REQUEST: 'PAYMENT/GET_TRANSACTIONS_REQUEST',
+  GET_TRANSACTIONS_SUCCESS: 'PAYMENT/GET_TRANSACTIONS_SUCCESS',
+  GET_TRANSACTIONS_FAILURE: 'PAYMENT/GET_TRANSACTIONS_FAILURE',
+  
+  ADD_TRANSACTION: 'PAYMENT/ADD_TRANSACTION',
+  
+  // Payment Methods
+  GET_PAYMENT_METHODS_REQUEST: 'PAYMENT/GET_PAYMENT_METHODS_REQUEST',
+  GET_PAYMENT_METHODS_SUCCESS: 'PAYMENT/GET_PAYMENT_METHODS_SUCCESS',
+  GET_PAYMENT_METHODS_FAILURE: 'PAYMENT/GET_PAYMENT_METHODS_FAILURE',
+  
+  ADD_PAYMENT_METHOD_REQUEST: 'PAYMENT/ADD_PAYMENT_METHOD_REQUEST',
+  ADD_PAYMENT_METHOD_SUCCESS: 'PAYMENT/ADD_PAYMENT_METHOD_SUCCESS',
+  ADD_PAYMENT_METHOD_FAILURE: 'PAYMENT/ADD_PAYMENT_METHOD_FAILURE',
+  
+  REMOVE_PAYMENT_METHOD: 'PAYMENT/REMOVE_PAYMENT_METHOD',
+  
+  // Payouts
+  REQUEST_PAYOUT_REQUEST: 'PAYMENT/REQUEST_PAYOUT_REQUEST',
+  REQUEST_PAYOUT_SUCCESS: 'PAYMENT/REQUEST_PAYOUT_SUCCESS',
+  REQUEST_PAYOUT_FAILURE: 'PAYMENT/REQUEST_PAYOUT_FAILURE',
+};
+
+// Socket Action Types
+export const SOCKET_ACTIONS = {
+  // Connection
+  CONNECT_REQUEST: 'SOCKET/CONNECT_REQUEST',
+  CONNECT_SUCCESS: 'SOCKET/CONNECT_SUCCESS',
+  CONNECT_FAILURE: 'SOCKET/CONNECT_FAILURE',
+  
+  DISCONNECT: 'SOCKET/DISCONNECT',
+  RECONNECT: 'SOCKET/RECONNECT',
+  
+  // Events
+  EMIT_EVENT: 'SOCKET/EMIT_EVENT',
+  SUBSCRIBE_EVENT: 'SOCKET/SUBSCRIBE_EVENT',
+  UNSUBSCRIBE_EVENT: 'SOCKET/UNSUBSCRIBE_EVENT',
+  
+  // Real-time Updates
+  LOCATION_UPDATE: 'SOCKET/LOCATION_UPDATE',
+  RIDE_UPDATE: 'SOCKET/RIDE_UPDATE',
+  CHAT_UPDATE: 'SOCKET/CHAT_UPDATE',
+  PAYMENT_UPDATE: 'SOCKET/PAYMENT_UPDATE',
+};
+
+// ====================
+// STATE CONSTANTS
+// ====================
+
+// User Roles
+export const USER_ROLES = {
+  RIDER: 'rider',
+  DRIVER: 'driver',
+  ADMIN: 'admin',
+};
+
+// Driver Status
+export const DRIVER_STATUS = {
+  OFFLINE: 'offline',
+  ONLINE: 'online',
+  AVAILABLE: 'available',
+  UNAVAILABLE: 'unavailable',
+  ON_TRIP: 'on_trip',
+  ON_BREAK: 'on_break',
+  SOS: 'sos',
+};
+
+// Ride Status
+export const RIDE_STATUS = {
+  SEARCHING: 'searching',
+  MATCHED: 'matched',
+  ACCEPTED: 'accepted',
+  ARRIVING: 'arriving',
+  ARRIVED: 'arrived',
+  ONGOING: 'ongoing',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+  NO_DRIVERS: 'no_drivers',
+  EXPIRED: 'expired',
+};
+
+// Vehicle Types
+export const VEHICLE_TYPES = {
+  MOTORCYCLE: 'motorcycle',
+  BODA_BODA: 'boda_boda',
+  STANDARD: 'standard',
+  PREMIUM: 'premium',
+  GROUP: 'group',
+};
+
+// Payment Methods
+export const PAYMENT_METHODS = {
+  CASH: 'cash',
+  WALLET: 'wallet',
+  MOBILE_MONEY: 'mobile_money',
+  CARD: 'card',
+};
+
+// Payment Status
+export const PAYMENT_STATUS = {
+  PENDING: 'pending',
+  PROCESSING: 'processing',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+  REFUNDED: 'refunded',
+};
+
+// Notification Types
+export const NOTIFICATION_TYPES = {
+  RIDE_REQUEST: 'ride_request',
+  RIDE_ACCEPTED: 'ride_accepted',
+  RIDE_STARTED: 'ride_started',
+  RIDE_COMPLETED: 'ride_completed',
+  RIDE_CANCELLED: 'ride_cancelled',
+  DRIVER_ARRIVING: 'driver_arriving',
+  DRIVER_ARRIVED: 'driver_arrived',
+  PAYMENT_RECEIVED: 'payment_received',
+  PAYMENT_FAILED: 'payment_failed',
+  CHAT_MESSAGE: 'chat_message',
+  SOS_ALERT: 'sos_alert',
+  SYSTEM: 'system',
+  PROMOTION: 'promotion',
+};
+
+// Network Status
+export const NETWORK_STATUS = {
+  UNKNOWN: 'unknown',
+  CONNECTED: 'connected',
+  DISCONNECTED: 'disconnected',
+  CONNECTING: 'connecting',
+};
+
+// Socket Status
+export const SOCKET_STATUS = {
+  DISCONNECTED: 'disconnected',
+  CONNECTING: 'connecting',
+  CONNECTED: 'connected',
+  RECONNECTING: 'reconnecting',
+  ERROR: 'error',
+};
+
+// App State
+export const APP_STATE = {
+  ACTIVE: 'active',
+  BACKGROUND: 'background',
+  INACTIVE: 'inactive',
+};
+
+// Location Accuracy
+export const LOCATION_ACCURACY = {
+  HIGH: 'high',
+  MEDIUM: 'medium',
+  LOW: 'low',
+  LOWEST: 'lowest',
+};
+
+// Verification Status
+export const VERIFICATION_STATUS = {
+  PENDING: 'pending',
+  VERIFIED: 'verified',
+  REJECTED: 'rejected',
+  EXPIRED: 'expired',
+  SUBMITTED: 'submitted',
+};
+
+// ====================
+// REAL-TIME CONSTANTS
+// ====================
+
+// Socket Events (for both emitting and listening)
+export const SOCKET_EVENTS = {
+  // Connection
+  CONNECT: 'connect',
+  DISCONNECT: 'disconnect',
+  CONNECT_ERROR: 'connect_error',
+  RECONNECT: 'reconnect',
+  RECONNECT_ERROR: 'reconnect_error',
+  RECONNECT_FAILED: 'reconnect_failed',
+  
+  // Authentication
+  AUTHENTICATE: 'authenticate',
+  AUTHENTICATED: 'authenticated',
+  
+  // Presence
+  USER_ONLINE: 'user_online',
+  USER_OFFLINE: 'user_offline',
+  PRESENCE_UPDATE: 'presence_update',
+  
+  // Location
+  LOCATION_UPDATE: 'location_update',
+  LOCATION_BATCH: 'location_batch',
+  DRIVER_LOCATION_UPDATE: 'driver_location_update',
+  SUBSCRIBE_LOCATION: 'subscribe_location',
+  UNSUBSCRIBE_LOCATION: 'unsubscribe_location',
+  
+  // Rides
+  RIDE_REQUEST: 'ride_request',
+  RIDE_REQUESTED: 'ride_requested',
+  RIDE_ACCEPTED: 'ride_accepted',
+  RIDE_REJECTED: 'ride_rejected',
+  RIDE_STARTED: 'ride_started',
+  RIDE_COMPLETED: 'ride_completed',
+  RIDE_CANCELLED: 'ride_cancelled',
+  RIDE_STATUS_UPDATE: 'ride_status_update',
+  
+  // Driver Matching
+  DRIVER_AVAILABLE: 'driver_available',
+  DRIVER_UNAVAILABLE: 'driver_unavailable',
+  DRIVER_ASSIGNED: 'driver_assigned',
+  DRIVER_ARRIVING: 'driver_arriving',
+  DRIVER_ARRIVED: 'driver_arrived',
+  NEARBY_DRIVERS: 'nearby_drivers',
+  
+  // Trip Updates
+  TRIP_UPDATE: 'trip_update',
+  ETA_UPDATE: 'eta_update',
+  ROUTE_UPDATE: 'route_update',
+  TRAFFIC_UPDATE: 'traffic_update',
+  ARRIVAL_UPDATE: 'arrival_update',
+  
+  // Chat
+  JOIN_CHAT: 'join_chat',
+  CHAT_MESSAGE: 'chat_message',
+  TYPING: 'typing',
+  READ_RECEIPT: 'read_receipt',
+  
+  // Payments
+  PAYMENT_INITIATED: 'payment_initiated',
+  PAYMENT_CONFIRMED: 'payment_confirmed',
+  PAYMENT_FAILED: 'payment_failed',
+  
+  // Notifications
+  NOTIFICATION: 'notification',
+  SOS_ALERT: 'sos_alert',
+  EMERGENCY: 'emergency',
+  
+  // System
+  PING: 'ping',
+  PONG: 'pong',
+  ERROR: 'error',
+  HEARTBEAT: 'heartbeat',
+};
+
+// Real-time Intervals (in milliseconds)
+export const REAL_TIME_INTERVALS = {
+  // Location Updates
+  LOCATION_UPDATE_FOREGROUND: 5000,      // 5 seconds
+  LOCATION_UPDATE_BACKGROUND: 15000,     // 15 seconds
+  DRIVER_LOCATION_UPDATE: 3000,          // 3 seconds
+  LOCATION_BATCH_INTERVAL: 30000,        // 30 seconds
+  
+  // Ride Updates
+  RIDE_STATUS_POLL: 10000,               // 10 seconds
+  ETA_UPDATE_INTERVAL: 10000,            // 10 seconds
+  
+  // Connection
+  PING_INTERVAL: 25000,                  // 25 seconds
+  RECONNECT_DELAY: 2000,                 // 2 seconds
+  MAX_RECONNECT_ATTEMPTS: 5,
+  
+  // Chat
+  TYPING_TIMEOUT: 3000,                  // 3 seconds
+  
+  // Offline Sync
+  OFFLINE_SYNC_INTERVAL: 30000,          // 30 seconds
+};
+
+// Socket Configuration
+export const SOCKET_CONFIG = {
+  RECONNECTION: true,
+  RECONNECTION_ATTEMPTS: 5,
+  RECONNECTION_DELAY: 1000,
+  RECONNECTION_DELAY_MAX: 5000,
+  TIMEOUT: 20000,
+  TRANSPORTS: ['websocket', 'polling'],
+  AUTO_CONNECT: true,
+  FORCE_NEW: true,
+};
+
+// ====================
+// ERROR CODES & MESSAGES
+// ====================
+
+// Error Types
+export const ERROR_TYPES = {
+  NETWORK: 'network',
+  AUTH: 'auth',
+  LOCATION: 'location',
+  RIDE: 'ride',
+  PAYMENT: 'payment',
+  SOCKET: 'socket',
+  VALIDATION: 'validation',
+  SERVER: 'server',
+  UNKNOWN: 'unknown',
+};
+
+// Error Codes
+export const ERROR_CODES = {
+  // Network Errors
+  NETWORK_TIMEOUT: 'NETWORK_TIMEOUT',
+  NETWORK_OFFLINE: 'NETWORK_OFFLINE',
+  NETWORK_ERROR: 'NETWORK_ERROR',
+  
+  // Auth Errors
+  INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
+  TOKEN_EXPIRED: 'TOKEN_EXPIRED',
+  UNAUTHORIZED: 'UNAUTHORIZED',
+  ACCOUNT_LOCKED: 'ACCOUNT_LOCKED',
+  USER_NOT_FOUND: 'USER_NOT_FOUND',
+  
+  // Location Errors
+  LOCATION_PERMISSION_DENIED: 'LOCATION_PERMISSION_DENIED',
+  LOCATION_UNAVAILABLE: 'LOCATION_UNAVAILABLE',
+  LOCATION_TIMEOUT: 'LOCATION_TIMEOUT',
+  
+  // Ride Errors
+  NO_DRIVERS_AVAILABLE: 'NO_DRIVERS_AVAILABLE',
+  RIDE_EXPIRED: 'RIDE_EXPIRED',
+  RIDE_CANCELLED: 'RIDE_CANCELLED',
+  DRIVER_CANCELLED: 'DRIVER_CANCELLED',
+  INSUFFICIENT_BALANCE: 'INSUFFICIENT_BALANCE',
+  
+  // Payment Errors
+  PAYMENT_FAILED: 'PAYMENT_FAILED',
+  PAYMENT_DECLINED: 'PAYMENT_DECLINED',
+  PAYMENT_PROCESSING_ERROR: 'PAYMENT_PROCESSING_ERROR',
+  
+  // Socket Errors
+  SOCKET_CONNECTION_FAILED: 'SOCKET_CONNECTION_FAILED',
+  SOCKET_TIMEOUT: 'SOCKET_TIMEOUT',
+  SOCKET_DISCONNECTED: 'SOCKET_DISCONNECTED',
+  
+  // Validation Errors
+  INVALID_INPUT: 'INVALID_INPUT',
+  REQUIRED_FIELD: 'REQUIRED_FIELD',
+  INVALID_FORMAT: 'INVALID_FORMAT',
+  
+  // Server Errors
+  SERVER_ERROR: 'SERVER_ERROR',
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+  MAINTENANCE: 'MAINTENANCE',
+};
+
+// Error Messages
+export const ERROR_MESSAGES = {
+  [ERROR_CODES.NETWORK_TIMEOUT]: 'Request timeout. Please check your internet connection.',
+  [ERROR_CODES.NETWORK_OFFLINE]: 'You are offline. Please check your internet connection.',
+  [ERROR_CODES.INVALID_CREDENTIALS]: 'Invalid phone number or PIN.',
+  [ERROR_CODES.TOKEN_EXPIRED]: 'Your session has expired. Please login again.',
+  [ERROR_CODES.LOCATION_PERMISSION_DENIED]: 'Location permission is required to use this feature.',
+  [ERROR_CODES.NO_DRIVERS_AVAILABLE]: 'No drivers available in your area. Please try again later.',
+  [ERROR_CODES.PAYMENT_FAILED]: 'Payment failed. Please try another payment method.',
+  [ERROR_CODES.SOCKET_CONNECTION_FAILED]: 'Unable to connect to server. Please check your internet.',
+  DEFAULT: 'Something went wrong. Please try again.',
+};
+
+// ====================
+// PRICING & FARE CONSTANTS
+// ====================
+
+// Base Fares (in MWK - Malawi Kwacha)
+export const BASE_FARES = {
+  MOTORCYCLE: 500,
+  BODA_BODA: 500,
+  STANDARD: 800,
+  PREMIUM: 1200,
+  GROUP: 1500,
+};
+
+// Per Kilometer Rates
+export const PER_KM_RATES = {
+  MOTORCYCLE: 300,
+  BODA_BODA: 300,
+  STANDARD: 500,
+  PREMIUM: 700,
+  GROUP: 600,
+};
+
+// Per Minute Rates
+export const PER_MINUTE_RATES = {
+  MOTORCYCLE: 20,
+  BODA_BODA: 20,
+  STANDARD: 30,
+  PREMIUM: 40,
+  GROUP: 35,
+};
+
+// Minimum Fares
+export const MINIMUM_FARES = {
+  MOTORCYCLE: 800,
+  BODA_BODA: 800,
+  STANDARD: 1200,
+  PREMIUM: 1800,
+  GROUP: 2000,
+};
+
+// Cancellation Fees
+export const CANCELLATION_FEES = {
+  RIDER: 200,
+  DRIVER: 0, // Drivers don't pay cancellation fees
+};
+
+// Waiting Fees (per minute after free waiting period)
+export const WAITING_FEE_PER_MINUTE = 50;
+export const FREE_WAITING_MINUTES = 3;
+
+// Surge Pricing Multipliers
+export const SURGE_MULTIPLIERS = [1.0, 1.2, 1.5, 2.0, 2.5];
+
+// ====================
+// TIME CONSTANTS
+// ====================
+
+// Time in milliseconds
+export const TIME = {
+  SECOND: 1000,
+  MINUTE: 60 * 1000,
+  HOUR: 60 * 60 * 1000,
+  DAY: 24 * 60 * 60 * 1000,
+};
+
+// Ride Timeouts
+export const RIDE_TIMEOUTS = {
+  SEARCH_TIMEOUT: 2 * TIME.MINUTE,      // 2 minutes
+  ACCEPTANCE_TIMEOUT: 30 * TIME.SECOND, // 30 seconds
+  PICKUP_TIMEOUT: 10 * TIME.MINUTE,     // 10 minutes
+  RIDE_TIMEOUT: 3 * TIME.HOUR,          // 3 hours
+  CANCELLATION_WINDOW: 30 * TIME.SECOND, // 30 seconds free cancellation
+};
+
+// Cache Durations
+export const CACHE_DURATIONS = {
+  REAL_TIME: 5 * TIME.SECOND,          // 5 seconds
+  SHORT: 5 * TIME.MINUTE,              // 5 minutes
+  MEDIUM: 30 * TIME.MINUTE,            // 30 minutes
+  LONG: 24 * TIME.HOUR,                // 24 hours
+  PERMANENT: 7 * 24 * TIME.HOUR,       // 7 days
+};
+
+// ====================
+// GEOGRAPHICAL CONSTANTS
+// ====================
+
+// Default Location (Lilongwe, Malawi)
+export const DEFAULT_LOCATION = {
+  LATITUDE: -13.9626,
+  LONGITUDE: 33.7741,
+  LATITUDE_DELTA: 0.0922,
+  LONGITUDE_DELTA: 0.0421,
+};
+
+// Distance Constants
+export const DISTANCE = {
+  MAX_DRIVER_DISTANCE: 5000,          // 5km max distance for driver matching
+  PREFERRED_DRIVER_DISTANCE: 2000,    // 2km preferred distance
+  PICKUP_RADIUS: 50,                  // 50 meters pickup radius
+  DESTINATION_RADIUS: 50,             // 50 meters destination radius
+  ARRIVAL_THRESHOLD: 100,             // 100 meters arrival threshold
+};
+
+// ====================
+// UI & DISPLAY CONSTANTS
+// ====================
+
+// Status Colors
+export const STATUS_COLORS = {
+  [RIDE_STATUS.SEARCHING]: '#FF9500',  // Orange
+  [RIDE_STATUS.MATCHED]: '#007AFF',    // Blue
+  [RIDE_STATUS.ACCEPTED]: '#34C759',   // Green
+  [RIDE_STATUS.ARRIVING]: '#5856D6',   // Purple
+  [RIDE_STATUS.ARRIVED]: '#AF52DE',    // Pink
+  [RIDE_STATUS.ONGOING]: '#4A90E2',    // Light Blue
+  [RIDE_STATUS.COMPLETED]: '#8E8E93',  // Gray
+  [RIDE_STATUS.CANCELLED]: '#FF3B30',  // Red
+};
+
+// Map Colors
+export const MAP_COLORS = {
+  ROUTE: '#4A90E2',
+  PICKUP: '#34C759',
+  DESTINATION: '#FF3B30',
+  DRIVER: '#007AFF',
+  CURRENT_LOCATION: '#5856D6',
+  ETA_LINE: '#8E8E93',
+};
+
+// Animation Durations
+export const ANIMATION_DURATIONS = {
+  FAST: 150,
+  NORMAL: 300,
+  SLOW: 500,
+  REAL_TIME: 200,
+  MARKER_UPDATE: 500,
+};
+
+// ====================
+// VALIDATION CONSTANTS
+// ====================
+
+// Phone Number Validation
+export const PHONE_REGEX = /^(\+?265|0)(88|99|98|31)\d{7}$/;
+export const PHONE_MIN_LENGTH = 9;
+export const PHONE_MAX_LENGTH = 12;
+
+// PIN/Password Validation
+export const PIN_MIN_LENGTH = 4;
+export const PIN_MAX_LENGTH = 6;
+
+// Name Validation
+export const NAME_MIN_LENGTH = 2;
+export const NAME_MAX_LENGTH = 50;
+
+// OTP Validation
+export const OTP_LENGTH = 6;
+export const OTP_EXPIRY_MINUTES = 5;
+
+// Vehicle Registration Validation
+export const VEHICLE_REGISTRATION_REGEX = /^[A-Z]{2}\s?\d{4}\s?[A-Z]{0,2}$/i;
+
+// ====================
+// FEATURE FLAGS
+// ====================
+
+export const FEATURE_FLAGS = {
+  // Core Features
+  REAL_TIME_TRACKING: true,
+  SOCKET_CONNECTION: true,
+  OFFLINE_MODE: true,
+  BACKGROUND_LOCATION: true,
+  
+  // User Features
+  PUSH_NOTIFICATIONS: true,
+  IN_APP_CHAT: true,
+  SOS_EMERGENCY: true,
+  MULTIPLE_PAYMENT_METHODS: true,
+  
+  // Driver Features
+  DRIVER_AVAILABILITY_TOGGLE: true,
+  EARNINGS_DASHBOARD: true,
+  RIDE_HISTORY: true,
+  AUTO_ACCEPT_RIDES: true,
+  
+  // System Features
+  ANALYTICS: true,
+  CRASH_REPORTING: true,
+  PERFORMANCE_MONITORING: true,
+  DEBUG_MODE: __DEV__,
+};
+
+// ====================
+// EXPORT ALL CONSTANTS
+// ====================
+
+export default {
+  // App Info
+  APP_NAME,
+  APP_DISPLAY_NAME,
+  APP_VERSION,
+  APP_BUILD_NUMBER,
+  
+  // Storage
+  STORAGE_KEYS,
+  PERSIST_CONFIG,
+  
+  // Action Types
+  AUTH_ACTIONS,
+  APP_ACTIONS,
+  DRIVER_ACTIONS,
+  RIDE_ACTIONS,
+  LOCATION_ACTIONS,
+  NOTIFICATION_ACTIONS,
+  CHAT_ACTIONS,
+  PAYMENT_ACTIONS,
+  SOCKET_ACTIONS,
+  
+  // State Constants
+  USER_ROLES,
+  DRIVER_STATUS,
+  RIDE_STATUS,
+  VEHICLE_TYPES,
+  PAYMENT_METHODS,
+  PAYMENT_STATUS,
+  NOTIFICATION_TYPES,
+  NETWORK_STATUS,
+  SOCKET_STATUS,
+  APP_STATE,
+  LOCATION_ACCURACY,
+  VERIFICATION_STATUS,
+  
+  // Real-time
+  SOCKET_EVENTS,
+  REAL_TIME_INTERVALS,
+  SOCKET_CONFIG,
+  
+  // Errors
+  ERROR_TYPES,
+  ERROR_CODES,
+  ERROR_MESSAGES,
+  
+  // Pricing
+  BASE_FARES,
+  PER_KM_RATES,
+  PER_MINUTE_RATES,
+  MINIMUM_FARES,
+  CANCELLATION_FEES,
+  WAITING_FEE_PER_MINUTE,
+  FREE_WAITING_MINUTES,
+  SURGE_MULTIPLIERS,
+  
+  // Time
+  TIME,
+  RIDE_TIMEOUTS,
+  CACHE_DURATIONS,
+  
+  // Geographical
+  DEFAULT_LOCATION,
+  DISTANCE,
+  
+  // UI
+  STATUS_COLORS,
+  MAP_COLORS,
+  ANIMATION_DURATIONS,
+  
+  // Validation
+  PHONE_REGEX,
+  PHONE_MIN_LENGTH,
+  PHONE_MAX_LENGTH,
+  PIN_MIN_LENGTH,
+  PIN_MAX_LENGTH,
+  NAME_MIN_LENGTH,
+  NAME_MAX_LENGTH,
+  OTP_LENGTH,
+  OTP_EXPIRY_MINUTES,
+  VEHICLE_REGISTRATION_REGEX,
+  
+  // Feature Flags
+  FEATURE_FLAGS,
+};
