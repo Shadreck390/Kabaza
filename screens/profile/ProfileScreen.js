@@ -7,12 +7,12 @@ import {
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { CommonActions } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateUserProfile, switchUserRole, updateUserSettings } from '../../src/store/slices/authSlice';
-import { updateDriverStatus } from '../../src/store/slices/driverSlice';
-import socketService from '../../services/SocketService';
-import realTimeService from '../../services/RealTimeService';
-import LocationService from '../../services/LocationService';
-import PushNotificationService from '../../services/PushNotificationService';
+import { updateUserProfile, switchUserRole, updateUserSettings } from 'src/store/slices/authSlice';
+import { updateDriverStatus } from 'src/store/slices/driverSlice';
+import socketService from 'services/socket/SocketService';
+import realTimeService from 'services/RealTimeService/RealTimeService';
+import LocationService from 'services/socket/locationService';
+import PushNotificationService from 'services/notification/PushNotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'react-native-image-picker';
 

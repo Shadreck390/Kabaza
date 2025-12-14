@@ -3,14 +3,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList,
   ActivityIndicator, Animated, Easing, RefreshControl, Alert,
-  Platform, Share, AppState, Modal, TextInput
+  Platform, AppState, Modal, TextInput
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import socketService from '../../services/socket'; // Your existing socket service
+import socketService from 'services/socket'; // Your existing socket service
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSelector } from 'react-redux';
-import * as FileSystem from 'react-native-fs';
-import XLSX from 'xlsx';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 
 export default function TripHistoryScreen({ navigation }) {
@@ -696,7 +696,7 @@ export default function TripHistoryScreen({ navigation }) {
     );
   };
 
-  const handleExportData = async (format = 'excel') => {
+  const handleExportData = async () => {
     try {
       setExporting(true);
       
@@ -708,72 +708,13 @@ export default function TripHistoryScreen({ navigation }) {
         return;
       }
       
-      if (format === 'excel') {
-        await exportToExcel(filteredTrips);
-      } else if (format === 'csv') {
-        await exportToCSV(filteredTrips);
-      } else if (format === 'pdf') {
-        await exportToPDF();
-      }
+      await exportToCSV(filteredTrips);
       
     } catch (error) {
       console.error('Export error:', error);
-      Alert.alert('Export Failed', 'Could not export trip history');
+      Alert.alert('Export Failed', 'Could not export trip history: ' + error.message);
     } finally {
       setExporting(false);
-    }
-  };
-
-  const exportToExcel = async (trips) => {
-    try {
-      // Prepare data for Excel
-      const excelData = trips.map(trip => ({
-        'Trip ID': trip.id,
-        'Date': trip.date,
-        'Passenger': trip.passengerName,
-        'Pickup': trip.pickup,
-        'Destination': trip.destination,
-        'Fare': trip.originalFare,
-        'Tip': trip.tip || 0,
-        'Total': (trip.originalFare || 0) + (trip.tip || 0),
-        'Distance': trip.distance,
-        'Duration': trip.duration,
-        'Rating': trip.rating,
-        'Payment Method': trip.paymentMethod,
-        'Status': trip.status
-      }));
-      
-      // Create workbook
-      const ws = XLSX.utils.json_to_sheet(excelData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Trip History');
-      
-      // Generate file
-      const wbout = XLSX.write(wb, { type: 'binary', bookType: 'xlsx' });
-      
-      // Save to file system
-      const fileName = `TripHistory_${new Date().toISOString().split('T')[0]}.xlsx`;
-      const path = `${FileSystem.DocumentDirectoryPath}/${fileName}`;
-      
-      // Convert to base64
-      const base64 = btoa(wbout);
-      await FileSystem.writeFile(path, base64, 'base64');
-      
-      Alert.alert(
-        'Export Successful',
-        `Trip history exported to ${fileName}`,
-        [
-          { text: 'OK' },
-          { 
-            text: 'Share', 
-            onPress: () => shareFile(path, fileName)
-          }
-        ]
-      );
-      
-    } catch (error) {
-      console.error('Excel export error:', error);
-      throw error;
     }
   };
 
@@ -786,22 +727,29 @@ export default function TripHistoryScreen({ navigation }) {
       );
       
       const csvContent = [...headers, ...rows].join('\n');
-      const fileName = `TripHistory_${new Date().toISOString().split('T')[0]}.csv`;
-      const path = `${FileSystem.DocumentDirectoryPath}/${fileName}`;
+      const fileName = `Kabaza_TripHistory_${new Date().toISOString().split('T')[0]}.csv`;
       
-      await FileSystem.writeFile(path, csvContent, 'utf8');
+      // Use expo-file-system correctly
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
       
-      Alert.alert(
-        'Export Successful',
-        `Trip history exported to ${fileName}`,
-        [
-          { text: 'OK' },
-          { 
-            text: 'Share', 
-            onPress: () => shareFile(path, fileName)
-          }
-        ]
-      );
+      await FileSystem.writeAsStringAsync(fileUri, csvContent, {
+        encoding: FileSystem.EncodingType.UTF8
+      });
+      
+      console.log('CSV file saved to:', fileUri);
+      
+      // Use expo-sharing to share the file
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/csv',
+          dialogTitle: 'Share Trip History',
+          UTI: 'public.comma-separated-values-text'
+        });
+      } else {
+        Alert.alert('CSV Exported', `File saved to app storage: ${fileName}`, [
+          { text: 'OK' }
+        ]);
+      }
       
     } catch (error) {
       console.error('CSV export error:', error);
@@ -827,18 +775,6 @@ export default function TripHistoryScreen({ navigation }) {
     } catch (error) {
       console.error('PDF export error:', error);
       throw error;
-    }
-  };
-
-  const shareFile = async (filePath, fileName) => {
-    try {
-      await Share.share({
-        url: `file://${filePath}`,
-        title: fileName,
-        message: `Kabaza Trip History - ${fileName}`
-      });
-    } catch (error) {
-      console.error('Share error:', error);
     }
   };
 
@@ -1194,11 +1130,11 @@ export default function TripHistoryScreen({ navigation }) {
             ) : (
               <TouchableOpacity 
                 style={styles.exportButton}
-                onPress={() => handleExportData('excel')}
+                onPress={handleExportData}
                 disabled={filteredTrips.length === 0}
               >
                 <Icon name="download" size={16} color="#00B894" />
-                <Text style={styles.exportText}>Export</Text>
+                <Text style={styles.exportText}>Export CSV</Text>
               </TouchableOpacity>
             )}
           </View>

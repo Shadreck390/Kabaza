@@ -5,10 +5,10 @@ import {
   Animated, Easing, ActivityIndicator, Alert, AppState
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import Header from '../../components/Header';
-import Loading from '../../components/Loading';
+import Header from 'components/Header';
+import Loading from 'components/Loading';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import socketService from '../../services/socket'; // Your existing socket service
+import socketService from 'services/socket'; // Your existing socket service
 import { useSelector } from 'react-redux';
 
 export default function EarningsScreen({ route, navigation }) {

@@ -6,8 +6,8 @@ import {
   Platform, Linking
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { getUserData, saveUserData } from '../../src/utils/userStorage';
-import socketService from '../../services/socket'; // Your existing socket service
+import { getUserData, saveUserData } from 'src/utils/userStorage';
+import socketService from 'services/socket'; // Your existing socket service
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function VerificationPendingScreen({ navigation, route }) {

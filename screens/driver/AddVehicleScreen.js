@@ -9,10 +9,10 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import RNPickerSelect from 'react-native-picker-select';
 import { useDispatch, useSelector } from 'react-redux';
-import { addVehicle, updateVehicle } from '../../src/store/slices/driverSlice';
-import realTimeService from '../../services/RealTimeService';
-import socketService from '../../services/SocketService';
-import DocumentService from '../../services/DocumentService';
+import { addVehicle, updateVehicle } from 'src/store/slices/driverSlice';
+import realTimeService from 'services/RealTimeService';
+import socketService from 'services/SocketService';
+import DocumentService from 'services/DocumentService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AddVehicleScreen({ navigation, route }) {
@@ -674,7 +674,7 @@ export default function AddVehicleScreen({ navigation, route }) {
             ]}>
               Status: {getStatusText(verificationStatus)}
             </Text>
-          </div>
+          </View> {/* Changed from </div> to </View> */}
           {verificationProgress > 0 && (
             <View style={styles.progressContainer}>
               <View style={styles.progressBar}>

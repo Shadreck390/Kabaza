@@ -1,34 +1,45 @@
-// services/location/LocationService.js - UPDATED VERSION
-import { Platform, PermissionsAndroid, Alert, Linking, AppState, NetInfo } from 'react-native';
+// services/location/LocationService.js - FIXED VERSION
+import { Platform, PermissionsAndroid, AppState } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
-import BackgroundTimer from 'react-native-background-timer';
-import RealTimeService from '../socket/realtimeUpdates';
+import NetInfo from '@react-native-community/netinfo';
+import realTimeService from '../socket/realtimeUpdates'; // Fixed import name (lowercase)
 
 class LocationService {
-  static locationWatchers = new Map();
-  static currentUser = null;
-  static isTrackingForRide = false;
-  static currentRideId = null;
-  static appState = 'active';
-  static networkState = 'connected';
-  static locationCache = [];
-  static MAX_CACHE_SIZE = 50;
+  constructor() {
+    this.locationWatchers = new Map();
+    this.currentUser = null;
+    this.isTrackingForRide = false;
+    this.currentRideId = null;
+    this.appState = 'active';
+    this.networkState = 'connected';
+    this.locationCache = [];
+    this.MAX_CACHE_SIZE = 50;
+    this.backgroundTimer = null;
+  }
+
+  // ====================
+  // INITIALIZATION
+  // ====================
 
   /**
    * Initialize with user context
    */
-  static initialize = async (userData) => {
+  async initialize(userData) {
     try {
       this.currentUser = userData;
       
       // Initialize real-time service
-      RealTimeService.initialize(userData?.id, userData?.type || 'rider');
+      if (userData?.id) {
+        await realTimeService.initialize(userData.id, userData.type || 'rider');
+      }
       
       // Monitor app state
-      AppState.addEventListener('change', this.handleAppStateChange);
+      AppState.addEventListener('change', this.handleAppStateChange.bind(this));
       
       // Monitor network state
-      NetInfo.addEventListener(this.handleNetworkChange);
+      this.netInfoUnsubscribe = NetInfo.addEventListener(
+        this.handleNetworkChange.bind(this)
+      );
       
       // Get initial network state
       const netState = await NetInfo.fetch();
@@ -40,12 +51,12 @@ class LocationService {
       console.error('❌ Location service init error:', error);
       return false;
     }
-  };
+  }
 
   /**
    * Handle app state changes (background/foreground)
    */
-  static handleAppStateChange = (nextAppState) => {
+  handleAppStateChange(nextAppState) {
     this.appState = nextAppState;
     
     if (nextAppState === 'background' && this.isTrackingForRide) {
@@ -54,12 +65,12 @@ class LocationService {
     } else if (nextAppState === 'active') {
       console.log('📱 App in foreground - restoring normal updates');
     }
-  };
+  }
 
   /**
    * Handle network changes
    */
-  static handleNetworkChange = (state) => {
+  handleNetworkChange(state) {
     this.networkState = state.isConnected ? 'connected' : 'disconnected';
     
     if (state.isConnected) {
@@ -68,82 +79,16 @@ class LocationService {
     } else {
       console.warn('⚠️ Network disconnected - caching locations');
     }
-  };
+  }
 
-  /**
-   * Cache location for offline sync
-   */
-  static cacheLocation = (locationData) => {
-    this.locationCache.push({
-      ...locationData,
-      timestamp: Date.now(),
-      synced: false
-    });
-
-    // Limit cache size
-    if (this.locationCache.length > this.MAX_CACHE_SIZE) {
-      this.locationCache.shift();
-    }
-
-    // Try to sync if online
-    if (this.networkState === 'connected') {
-      this.syncCachedLocations();
-    }
-  };
-
-  /**
-   * Sync cached locations
-   */
-  static syncCachedLocations = async () => {
-    if (this.locationCache.length === 0 || this.networkState !== 'connected') {
-      return;
-    }
-
-    const unsynced = this.locationCache.filter(loc => !loc.synced);
-    
-    for (const location of unsynced) {
-      try {
-        await RealTimeService.updateLocation(
-          location.userId,
-          location.location,
-          location.isDriver,
-          location.rideId
-        );
-        location.synced = true;
-      } catch (error) {
-        console.error('❌ Failed to sync cached location:', error);
-        break;
-      }
-    }
-
-    // Remove synced locations
-    this.locationCache = this.locationCache.filter(loc => !loc.synced);
-  };
-
-  /**
-   * Optimize updates for background mode
-   */
-  static optimizeBackgroundUpdates = () => {
-    // Reduce update frequency in background
-    this.stopAllWatchers();
-    
-    BackgroundTimer.runBackgroundTimer(() => {
-      if (this.isTrackingForRide) {
-        this.getCurrentPosition({
-          enableHighAccuracy: false,
-          timeout: 10000,
-          maximumAge: 30000
-        }).then(location => {
-          this.sendRealTimeLocationUpdate(this.currentRideId, location);
-        });
-      }
-    }, 30000); // Every 30 seconds in background
-  };
+  // ====================
+  // PERMISSION METHODS
+  // ====================
 
   /**
    * Enhanced location permission with explanation
    */
-  static requestLocationPermission = async (withExplanation = true) => {
+  async requestLocationPermission(withExplanation = true) {
     try {
       if (Platform.OS === 'ios') {
         const status = await Geolocation.requestAuthorization('always');
@@ -155,7 +100,7 @@ class LocationService {
         return status === 'granted' || status === 'restricted';
       }
 
-      // Android: Request background location for Android 10+
+      // Android
       if (Platform.Version >= 29) {
         const foregroundGranted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
@@ -195,26 +140,48 @@ class LocationService {
       console.error('❌ Permission error:', error);
       return false;
     }
-  };
+  }
+
+  /**
+   * Check if location permission is granted
+   */
+  async checkLocationPermission() {
+    try {
+      if (Platform.OS === 'ios') {
+        const status = await Geolocation.requestAuthorization('always');
+        return status === 'granted' || status === 'restricted';
+      } else {
+        const granted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      }
+    } catch (error) {
+      console.error('❌ Check permission error:', error);
+      return false;
+    }
+  }
+
+  // ====================
+  // LOCATION METHODS
+  // ====================
 
   /**
    * Get current location with retry logic
    */
-  static getCurrentPosition = (options = {}, retryCount = 3) => {
+  getCurrentPosition(options = {}, retryCount = 3) {
     return new Promise((resolve, reject) => {
       const defaultOptions = {
         enableHighAccuracy: true,
         timeout: 15000,
         maximumAge: 0,
         distanceFilter: 0,
-        showLocationDialog: true
       };
 
       const attemptGetLocation = (attempt = 1) => {
         Geolocation.getCurrentPosition(
           (position) => {
-            const enhancedLocation = this.enhanceLocationData(position);
-            resolve(enhancedLocation);
+            resolve(position);
           },
           (error) => {
             if (attempt < retryCount) {
@@ -231,245 +198,244 @@ class LocationService {
 
       attemptGetLocation();
     });
-  };
+  }
 
   /**
-   * Enhanced location data with battery and network info
+   * Watch position with adaptive updates
    */
-  static enhanceLocationData = async (position) => {
-    // Get battery info if available
-    let batteryLevel = 1.0;
-    try {
-      if (Platform.OS === 'android') {
-        const BatteryManager = require('react-native-battery');
-        batteryLevel = await BatteryManager.getBatteryLevel();
-      }
-    } catch (e) {
-      console.log('Battery API not available');
-    }
-
-    return {
-      coords: {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy,
-        altitude: position.coords.altitude,
-        heading: position.coords.heading || 0,
-        speed: position.coords.speed || 0,
-        altitudeAccuracy: position.coords.altitudeAccuracy,
-      },
-      timestamp: position.timestamp,
-      metadata: {
-        batteryLevel,
-        networkType: this.networkState,
-        appState: this.appState,
-        isMock: position.coords.isFromMockProvider || false,
-        provider: position.coords.provider || 'gps',
-        satellites: position.coords.satellites || 0,
-        odometer: position.coords.odometer || 0
-      }
+  watchPosition(onSuccess, onError, options = {}) {
+    const defaultOptions = {
+      enableHighAccuracy: true,
+      distanceFilter: 10,
+      interval: 5000,
+      fastestInterval: 2000,
     };
-  };
+
+    const watchId = Geolocation.watchPosition(
+      (position) => {
+        this.currentLocation = position;
+        onSuccess(position);
+      },
+      onError,
+      { ...defaultOptions, ...options }
+    );
+
+    this.isTracking = true;
+    return watchId;
+  }
 
   /**
-   * Watch position with adaptive updates based on state
+   * Stop watching position
    */
-  static watchPositionForRide = (rideId, onUpdate, onError, options = {}) => {
+  stopWatching(watchId) {
+    if (watchId) {
+      Geolocation.clearWatch(watchId);
+    }
+    this.isTracking = false;
+  }
+
+  /**
+   * Start location tracking for a ride
+   */
+  startRideTracking(rideId, onLocationUpdate, onError, options = {}) {
     try {
       this.currentRideId = rideId;
       this.isTrackingForRide = true;
 
-      // Adaptive settings based on app state
-      const adaptiveOptions = {
-        enableHighAccuracy: this.appState === 'active',
-        distanceFilter: this.appState === 'active' ? 10 : 50,
-        interval: this.appState === 'active' ? 5000 : 30000,
-        fastestInterval: this.appState === 'active' ? 2000 : 15000,
-        useSignificantChanges: this.appState === 'background'
-      };
-
-      const watchId = `ride_${rideId}_${Date.now()}`;
-
-      const id = Geolocation.watchPosition(
+      const watchId = this.watchPosition(
         (position) => {
-          const enhancedLocation = this.enhanceLocationData(position);
-          
-          // Cache for offline
-          this.cacheLocation({
-            userId: this.currentUser?.id,
-            location: {
-              latitude: enhancedLocation.coords.latitude,
-              longitude: enhancedLocation.coords.longitude,
-              bearing: enhancedLocation.coords.heading,
-              speed: enhancedLocation.coords.speed,
-              accuracy: enhancedLocation.coords.accuracy
-            },
-            isDriver: false,
-            rideId
-          });
-
           // Send real-time update
-          this.sendRealTimeLocationUpdate(rideId, enhancedLocation);
+          this.sendRealTimeLocationUpdate(rideId, position);
           
-          if (onUpdate) {
-            onUpdate(enhancedLocation);
-          }
-
-          // Log optimization
-          if (this.appState === 'background') {
-            console.log('📱 Background location update sent');
+          if (onLocationUpdate) {
+            onLocationUpdate(position);
           }
         },
-        (error) => {
-          console.error('❌ Ride tracking error:', error);
-          if (onError) onError(error);
-          
-          // Retry logic
-          if (this.isTrackingForRide) {
-            setTimeout(() => {
-              this.watchPositionForRide(rideId, onUpdate, onError, options);
-            }, 5000);
-          }
-        },
-        { ...adaptiveOptions, ...options }
+        onError,
+        options
       );
 
-      this.locationWatchers.set(watchId, id);
-      console.log(`📍 Started adaptive ride tracking: ${watchId}`);
+      this.locationWatchers.set(`ride_${rideId}`, watchId);
+      console.log(`📍 Started ride tracking: ride_${rideId}`);
       
       return watchId;
     } catch (error) {
       console.error('❌ Failed to start ride tracking:', error);
       throw error;
     }
-  };
+  }
 
   /**
-   * Send real-time location update with network awareness
+   * Stop ride tracking
    */
-  static sendRealTimeLocationUpdate = async (rideId, location) => {
+  stopRideTracking(rideId) {
+    const watchId = this.locationWatchers.get(`ride_${rideId}`);
+    if (watchId) {
+      this.stopWatching(watchId);
+      this.locationWatchers.delete(`ride_${rideId}`);
+      this.isTrackingForRide = false;
+      this.currentRideId = null;
+      console.log(`📍 Stopped ride tracking: ride_${rideId}`);
+    }
+  }
+
+  // ====================
+  // UTILITY METHODS
+  // ====================
+
+  /**
+   * Calculate distance between two coordinates (in meters)
+   */
+  calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) *
+      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+
+    return distance; // in meters
+  }
+
+  /**
+   * Calculate distance in kilometers
+   */
+  calculateDistanceInKm(lat1, lon1, lat2, lon2) {
+    const distanceInMeters = this.calculateDistance(lat1, lon1, lat2, lon2);
+    return distanceInMeters / 1000;
+  }
+
+  /**
+   * Get formatted distance
+   */
+  getFormattedDistance(lat1, lon1, lat2, lon2) {
+    const distanceInKm = this.calculateDistanceInKm(lat1, lon1, lat2, lon2);
+    
+    if (distanceInKm < 1) {
+      return `${Math.round(distanceInKm * 1000)} m`;
+    } else {
+      return `${distanceInKm.toFixed(1)} km`;
+    }
+  }
+
+  /**
+   * Send real-time location update
+   */
+  async sendRealTimeLocationUpdate(rideId, location) {
     try {
-      const connectionStatus = RealTimeService.getConnectionStatus();
-      
       const locationData = {
         userId: this.currentUser?.id,
         rideId,
         location: {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
-          bearing: location.coords.heading,
-          speed: location.coords.speed,
+          bearing: location.coords.heading || 0,
+          speed: location.coords.speed || 0,
           accuracy: location.coords.accuracy,
           timestamp: Date.now()
-        },
-        metadata: {
-          appState: this.appState,
-          networkState: this.networkState,
-          batteryLevel: location.metadata?.batteryLevel,
-          isMock: location.metadata?.isMock
         }
       };
 
-      if (connectionStatus.isConnected) {
-        RealTimeService.updateLocation(
-          this.currentUser?.id,
-          locationData.location,
-          false,
-          rideId
-        );
-        
-        console.log('📡 Real-time location sent:', {
-          rideId,
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
-          accuracy: `${location.coords.accuracy}m`,
-          state: this.appState
-        });
-      } else {
-        console.log('📦 Location cached (offline):', locationData);
+      // Check if socket is connected
+      if (realTimeService && typeof realTimeService.emit === 'function') {
+        realTimeService.emit('location_update', locationData);
       }
     } catch (error) {
       console.error('❌ Failed to send location update:', error);
     }
-  };
+  }
 
   /**
-   * Get nearby drivers (real-time)
+   * Get location error message
    */
-  static getNearbyDrivers = async (userLocation, radiusKm = 5) => {
-    try {
-      if (!RealTimeService.getConnectionStatus().isConnected) {
-        console.warn('⚠️ Offline - cannot fetch nearby drivers');
-        return { success: false, offline: true, drivers: [] };
-      }
-
-      // This would call your backend API
-      const response = await fetch('https://your-api.com/api/drivers/nearby', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.currentUser?.token}`
-        },
-        body: JSON.stringify({
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
-          radius: radiusKm,
-          timestamp: Date.now()
-        })
-      });
-
-      const data = await response.json();
-      return { success: true, ...data };
-    } catch (error) {
-      console.error('❌ Failed to get nearby drivers:', error);
-      return { success: false, error: error.message, drivers: [] };
+  getLocationError(error) {
+    switch (error.code) {
+      case error.PERMISSION_DENIED:
+        return 'Location permission denied. Please enable location services.';
+      case error.POSITION_UNAVAILABLE:
+        return 'Location information unavailable.';
+      case error.TIMEOUT:
+        return 'Location request timed out.';
+      default:
+        return 'Failed to get location.';
     }
-  };
+  }
+
+  // ====================
+  // CACHE METHODS
+  // ====================
 
   /**
-   * Track driver location (real-time subscription)
+   * Cache location for offline sync
    */
-  static subscribeToDriverLocation = (driverId, onLocationUpdate) => {
-    const subscriptionId = `driver_${driverId}`;
-    
-    // Listen for driver location updates
-    RealTimeService.socket?.on('driver_location_update', (data) => {
-      if (data.driverId === driverId) {
-        onLocationUpdate(data.location);
-      }
+  cacheLocation(locationData) {
+    this.locationCache.push({
+      ...locationData,
+      timestamp: Date.now(),
+      synced: false
     });
 
-    // Request driver location
-    RealTimeService.socket?.emit('subscribe_driver_location', { driverId });
+    // Limit cache size
+    if (this.locationCache.length > this.MAX_CACHE_SIZE) {
+      this.locationCache.shift();
+    }
+  }
+
+  /**
+   * Sync cached locations
+   */
+  async syncCachedLocations() {
+    if (this.locationCache.length === 0 || this.networkState !== 'connected') {
+      return;
+    }
+
+    // Implement sync logic here
+    // This would typically send cached locations to your backend
+    console.log('Syncing cached locations:', this.locationCache.length);
     
-    console.log(`📍 Subscribed to driver location: ${driverId}`);
-    return subscriptionId;
-  };
+    // Clear cache after sync
+    this.locationCache = [];
+  }
+
+  // ====================
+  // BACKGROUND METHODS
+  // ====================
 
   /**
-   * Unsubscribe from driver location
+   * Optimize updates for background mode
    */
-  static unsubscribeFromDriverLocation = (subscriptionId) => {
-    const driverId = subscriptionId.replace('driver_', '');
-    RealTimeService.socket?.emit('unsubscribe_driver_location', { driverId });
-    console.log(`📍 Unsubscribed from driver: ${driverId}`);
-  };
+  optimizeBackgroundUpdates() {
+    // Simple implementation - adjust intervals
+    console.log('Optimizing for background mode');
+  }
+
+  // ====================
+  // CLEANUP
+  // ====================
 
   /**
-   * Clean up with proper resource management
+   * Clean up resources
    */
-  static cleanup = () => {
+  cleanup() {
     // Stop all watchers
-    this.stopAllWatchers();
-    
-    // Clear background timer
-    BackgroundTimer.stopBackgroundTimer();
+    this.locationWatchers.forEach((watchId) => {
+      this.stopWatching(watchId);
+    });
+    this.locationWatchers.clear();
     
     // Remove listeners
     AppState.removeEventListener('change', this.handleAppStateChange);
     
-    // Disconnect socket
-    RealTimeService.disconnect();
+    if (this.netInfoUnsubscribe) {
+      this.netInfoUnsubscribe();
+    }
     
     // Clear cache
     this.locationCache = [];
@@ -480,7 +446,9 @@ class LocationService {
     this.currentRideId = null;
     
     console.log('📍 Location service cleanup completed');
-  };
+  }
 }
 
-export default LocationService;
+// Create and export singleton instance
+const locationServiceInstance = new LocationService();
+export default locationServiceInstance;

@@ -1,6 +1,7 @@
 package com.kabaza.app
 
 import android.app.Application
+import android.content.Context
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -11,6 +12,7 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.soloader.SoLoader
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
+import com.dieam.reactnativepushnotification.ReactNativePushNotificationPackage // Add this import
 
 class MainApplication : Application(), ReactApplication {
 
@@ -18,10 +20,16 @@ class MainApplication : Application(), ReactApplication {
         object : DefaultReactNativeHost(this) {
             override fun getPackages(): List<ReactPackage> {
                 // Packages that cannot be autolinked yet can be added manually here
-                return PackageList(this).packages.apply {
-                    // Add custom packages here if needed
-                    // e.g., add(MyCustomPackage())
-                }
+                val packages = PackageList(this).packages.toMutableList()
+                
+                // ✅ Manually add react-native-push-notification package
+                // (If not auto-linked in newer React Native versions)
+                packages.add(ReactNativePushNotificationPackage())
+                
+                // Add other custom packages here if needed
+                // e.g., packages.add(MyCustomPackage())
+                
+                return packages
             }
 
             override fun getJSMainModuleName(): String = "index"

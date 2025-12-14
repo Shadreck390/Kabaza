@@ -27,12 +27,12 @@ import {
   updateDriverLocation,
   startRideTracking,
   stopRideTracking
-} from '../../store/slices/driverSlice';
-import { useAuth, useDriver } from '../../hooks/useRedux';
-import userStorage from '../../utils/userStorage';
-import LocationService from '../../services/location/LocationService';
-import socketService, { SocketEvents } from '../../services/socket';
-import { calculateFare, formatPrice } from '../../utils/rideUtils';
+} from 'src/store/slices/driverSlice';
+import { useAuth, useDriver } from 'src/hooks/useRedux';
+import userStorage from 'src/utils/userStorage';
+import LocationService from 'services/location/locationService';
+import socketService, { SocketEvents } from 'services/socket';
+import { calculateFare, formatPrice } from 'src/utils/rideUtils';
 
 const { width, height } = Dimensions.get('window');
 

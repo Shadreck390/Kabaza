@@ -1,4 +1,4 @@
-// store/index.js
+// src/store/index.js
 import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,11 +11,11 @@ import { all } from 'redux-saga/effects';
 import authReducer from './slices/authSlice';
 import appReducer from './slices/appSlice';
 import driverReducer from './slices/driverSlice';
-import rideReducer from './slices/rideSlice'; // You'll create this
-import locationReducer from './slices/locationSlice'; // You'll create this
-import notificationReducer from './slices/notificationSlice'; // You'll create this
-import chatReducer from './slices/chatSlice'; // You'll create this
-import paymentReducer from './slices/paymentSlice'; // You'll create this
+import rideReducer from './slices/rideSlice';
+import locationReducer from './slices/locationSlice';
+import notificationReducer from './slices/notificationSlice';
+import chatReducer from './slices/chatSlice';
+import paymentReducer from './slices/paymentSlice';
 
 // Import sagas
 import authSaga from './sagas/authSaga';
@@ -23,10 +23,31 @@ import driverSaga from './sagas/driverSaga';
 import rideSaga from './sagas/rideSaga';
 import locationSaga from './sagas/locationSaga';
 import socketSaga from './sagas/socketSaga';
+// Comment out for now if not created yet
+// import notificationSaga from './sagas/notificationSaga';
+// import chatSaga from './sagas/chatSaga';
+// import paymentSaga from './sagas/paymentSaga';
 
 // ====================
 // PERSIST CONFIGURATION
 // ====================
+
+// Define initial auth state for migration
+const initialAuthState = {
+  user: null,
+  token: null,
+  refreshToken: null,
+  role: null,
+  isAuthenticated: false,
+  isVerified: false,
+  isProfileComplete: false,
+  driverInfo: null,
+  riderInfo: null,
+  wallet: null,
+  meta: {},
+  loading: false,
+  error: null,
+};
 
 // Individual persist configurations for better control
 const authPersistConfig = {
@@ -53,7 +74,7 @@ const authPersistConfig = {
       return Promise.resolve(state);
     }
     return Promise.resolve({
-      ...initialAuthState, // You'll need to define this
+      ...initialAuthState,
       _persist: { version: 1, rehydrated: false }
     });
   },
@@ -113,6 +134,41 @@ const driverPersistConfig = {
   timeout: 3000,
 };
 
+const paymentPersistConfig = {
+  key: 'payment',
+  storage: AsyncStorage,
+  whitelist: [
+    'wallet',
+    'paymentMethods',
+    'defaultPaymentMethod',
+    'settings',
+    'cards',
+    'bankAccounts',
+    'promotions',
+    'limits',
+    'security',
+    'stats',
+    'tax',
+  ],
+  blacklist: [
+    'currentPayment',
+    'paymentStatus',
+    'paymentResult',
+    'pendingPayments',
+    'transactions',
+    'transactionHistory',
+    'loading',
+    'errors',
+    'receipts',
+    'subscriptions',
+    'invoices',
+    'disputes',
+    'refunds',
+  ],
+  stateReconciler: autoMergeLevel2,
+  timeout: 3000,
+};
+
 // ====================
 // ROOT REDUCER
 // ====================
@@ -126,7 +182,7 @@ const rootReducer = combineReducers({
   location: locationReducer, // Non-persisted - real-time data
   notification: notificationReducer, // Non-persisted - real-time data
   chat: chatReducer, // Non-persisted - real-time data
-  payment: paymentReducer, // Partially persisted
+  payment: persistReducer(paymentPersistConfig, paymentReducer),
 });
 
 // ====================
@@ -149,6 +205,10 @@ function* rootSaga() {
     rideSaga(),
     locationSaga(),
     socketSaga(),
+    // Uncomment when you create these sagas:
+    notificationSaga(),
+    chatSaga(),
+    paymentSaga(),
   ]);
 }
 
@@ -175,6 +235,7 @@ export const store = configureStore({
           'location.tracking',
           'chat.connection',
           'payment.currentTransaction',
+          'register', // For redux-persist
         ],
       },
       immutableCheck: {
@@ -188,18 +249,19 @@ export const store = configureStore({
     
     // Add custom middleware for real-time logging (development only)
     if (__DEV__) {
-      const createDebugger = require('redux-flipper').default;
-      middlewares.push(createDebugger());
+      // Check if redux-flipper is available
+      try {
+        const createDebugger = require('redux-flipper').default;
+        middlewares.push(createDebugger());
+      } catch (e) {
+        console.log('redux-flipper not installed, skipping');
+      }
       
-      // Custom logging middleware
+      // Custom logging middleware (simpler version)
       const logger = store => next => action => {
         if (action.type && !action.type.startsWith('persist/')) {
-          console.group(`%c Redux Action: ${action.type}`, 'color: #4CAF50; font-weight: bold');
-          console.log('Payload:', action.payload);
-          console.log('State Before:', store.getState());
           const result = next(action);
-          console.log('State After:', store.getState());
-          console.groupEnd();
+          return result;
         } else {
           return next(action);
         }
@@ -209,19 +271,7 @@ export const store = configureStore({
     
     return middlewares;
   },
-  devTools: __DEV__ ? {
-    name: 'Kabaza Driver App',
-    trace: true,
-    traceLimit: 25,
-    features: {
-      persist: true,
-      jump: true,
-      skip: true,
-      reorder: true,
-      dispatch: true,
-      test: true,
-    },
-  } : false,
+  devTools: __DEV__,
   enhancers: (defaultEnhancers) => {
     // Add any custom enhancers here
     return [...defaultEnhancers];
@@ -232,19 +282,10 @@ export const store = configureStore({
 // PERSISTOR CONFIGURATION
 // ====================
 
-export const persistor = persistStore(store, {
-  manualPersist: false,
-  // Callbacks for persistence events
-  // onPersist: () => {
-  //   console.log('Redux persistence started');
-  // },
-  // onRehydrate: () => {
-  //   console.log('Redux rehydration started');
-  // },
-}, (error, state) => {
+export const persistor = persistStore(store, null, (error, state) => {
   if (error) {
     console.error('Error during rehydration:', error);
-    // Handle rehydration error (e.g., clear storage, show error message)
+    // Handle rehydration error
   } else {
     console.log('Rehydration completed successfully');
     
@@ -253,12 +294,16 @@ export const persistor = persistStore(store, {
     
     // Initialize real-time services after rehydration
     const { auth } = state;
-    if (auth.isAuthenticated && auth.user) {
+    if (auth && auth.isAuthenticated && auth.user) {
       // Initialize socket connection
-      store.dispatch({ type: 'SOCKET_INITIALIZE', payload: auth.user });
-      
-      // Initialize location services
-      store.dispatch({ type: 'LOCATION_INITIALIZE' });
+      store.dispatch({ 
+        type: 'SOCKET_CONNECT_REQUEST',
+        payload: {
+          url: 'http://your-socket-server-url', // Replace with your socket URL
+          userId: auth.user.id,
+          userType: auth.user.role || 'user'
+        }
+      });
     }
   }
 });
@@ -271,19 +316,24 @@ export const persistor = persistStore(store, {
 export const resetStoreSection = (section) => {
   switch (section) {
     case 'auth':
-      store.dispatch({ type: 'AUTH_RESET' });
+      store.dispatch({ type: 'auth/resetAuthState' });
       break;
     case 'driver':
-      store.dispatch({ type: 'DRIVER_RESET' });
+      store.dispatch({ type: 'driver/resetDriverState' });
       break;
     case 'ride':
-      store.dispatch({ type: 'RIDE_RESET' });
+      store.dispatch({ type: 'ride/resetRideState' });
+      break;
+    case 'payment':
+      store.dispatch({ type: 'payment/resetPaymentState' });
       break;
     case 'all':
       // Purge all persisted data
       persistor.purge();
       store.dispatch({ type: 'STORE_RESET' });
       break;
+    default:
+      console.warn(`Unknown store section: ${section}`);
   }
 };
 
@@ -296,20 +346,27 @@ export const getStoreSnapshot = () => {
 export const subscribeToStore = (selector, callback) => {
   let currentState;
   
-  return store.subscribe(() => {
+  const handleChange = () => {
     const nextState = selector(store.getState());
     
     if (nextState !== currentState) {
       currentState = nextState;
       callback(currentState);
     }
-  });
+  };
+  
+  const unsubscribe = store.subscribe(handleChange);
+  handleChange(); // Initial call
+  
+  return unsubscribe;
 };
 
 // ====================
-// TYPE EXPORTS
+// TYPE DEFINITIONS (for TypeScript users)
 // ====================
 
+// If using TypeScript, uncomment and adjust:
+/*
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 
@@ -317,6 +374,7 @@ export type AppDispatch = typeof store.dispatch;
 export interface TypedUseSelectorHook<TState> {
   <TSelected>(selector: (state: TState) => TSelected): TSelected;
 }
+*/
 
 // ====================
 // START SAGA MIDDLEWARE
@@ -336,11 +394,12 @@ export const storeReady = new Promise((resolve) => {
 });
 
 // Listen for rehydration completion
-persistor.subscribe(() => {
+const unsubscribe = persistor.subscribe(() => {
   const { bootstrapped } = persistor.getState();
   if (bootstrapped && storeReadyResolve) {
     storeReadyResolve();
     storeReadyResolve = null;
+    unsubscribe(); // Clean up subscription
   }
 });
 

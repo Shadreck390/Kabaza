@@ -7,11 +7,11 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-import { getUserData, saveUserData } from '../../src/utils/userStorage';
+import { getUserData, saveUserData } from '/src/utils/userStorage';
 import axios from 'axios';
 
 // Import your existing socket service
-import socketService from '../../services/socket'; // Adjust path as needed
+import socketService from 'services/socket'; // Adjust path as needed
 
 export default function DriverVerificationScreen({ navigation, route }) {
   const { userProfile } = route.params || {};
