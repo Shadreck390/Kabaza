@@ -8,7 +8,7 @@ import { logout } from 'src/store/slices/authSlice';
 import { updateDriverStatus, updateDriverProfile } from 'src/store/slices/driverSlice';
 import realTimeService from 'services/RealTimeService/RealTimeService';
 import LocationService from 'services/location/locationService';
-import socketService from 'services/Socket';
+import socketService from 'services/socket';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function DriverProfileScreen({ navigation }) {
