@@ -23,7 +23,7 @@ import Geolocation from 'react-native-geolocation-service';
 import { getUserData } from 'src/utils/userStorage';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons'; // ✅ ADDED
-import LocationService from 'services/location/locationService'; // ✅ ADDED for better location handling
+import LocationService from 'services/location'; // ✅ ADDED for better location handling
 
 export default function DriverHomeScreen({ route, navigation }) {
   const [region, setRegion] = useState(null);

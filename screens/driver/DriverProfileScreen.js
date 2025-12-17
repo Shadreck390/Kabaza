@@ -6,8 +6,8 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from 'src/store/slices/authSlice';
 import { updateDriverStatus, updateDriverProfile } from 'src/store/slices/driverSlice';
-import realTimeService from 'services/RealTimeService/RealTimeService';
-import LocationService from 'services/location/locationService';
+import realTimeService from 'services/RealTimeService';
+import LocationService from 'services/location';
 import socketService from 'services/socket';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 

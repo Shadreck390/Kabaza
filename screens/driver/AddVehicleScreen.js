@@ -10,8 +10,8 @@ import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import RNPickerSelect from 'react-native-picker-select';
 import { useDispatch, useSelector } from 'react-redux';
 import { addVehicle, updateVehicle } from 'src/store/slices/driverSlice';
-import realTimeService from 'services/RealTimeService/RealTimeService';
-import socketService from 'services/SocketService';
+import realTimeService from 'services/RealTimeService';
+import socketService from 'services/socket';
 import DocumentService from 'services/DocumentService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 

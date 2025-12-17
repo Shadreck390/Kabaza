@@ -30,7 +30,7 @@ import {
 } from 'src/store/slices/driverSlice';
 import { useAuth, useDriver } from 'src/hooks/useRedux';
 import userStorage from 'src/utils/userStorage';
-import LocationService from 'services/location/locationService';
+import LocationService from 'services/location';
 import socketService, { SocketEvents } from 'services/socket';
 import { calculateFare, formatPrice } from 'src/utils/rideUtils';
 

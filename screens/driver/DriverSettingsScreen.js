@@ -9,7 +9,7 @@ import Slider from '@react-native-community/slider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from 'src/store/slices/authSlice';
-import socketService from 'services/socket/socketService';
+import socketService from 'services/socket';
 import axios from 'axios';
 import PushNotification from 'react-native-push-notification';
 

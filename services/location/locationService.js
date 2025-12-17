@@ -1,4 +1,4 @@
-// services/location/LocationService.js - FIXED VERSION
+// services/location/LocationService.js - COMPLETE VERSION
 import { Platform, PermissionsAndroid, AppState } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import NetInfo from '@react-native-community/netinfo';
