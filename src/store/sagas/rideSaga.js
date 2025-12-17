@@ -1,6 +1,8 @@
 // src/store/sagas/rideSaga.js
 import { call, put, takeLatest, takeEvery, all, fork, select } from 'redux-saga/effects';
 import { Alert } from 'react-native';
+
+// FIXED IMPORT - using alias:
 import {
   bookRide,
   cancelRide,
@@ -9,7 +11,7 @@ import {
   fetchRideDetails,
   updateRideLocation,
   getFareEstimate,
-} from '../slices/rideSlice';
+} from '@store/slices/rideSlice';
 
 // Mock services - replace with actual API calls
 const RideService = {

@@ -1,25 +1,40 @@
 // screens/driver/MapScreen/MapScreen.js
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, Alert, Platform, 
-  PermissionsAndroid, Modal, Animated, PanResponder, Dimensions,
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Platform,
+  PermissionsAndroid,
+  Modal,
+  Animated,
+  PanResponder,
+  Dimensions,
   StatusBar
 } from 'react-native';
 import MapView, { Marker, Polyline, Circle } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import Header from '../../../components/Header';
-import Loading from '../../../components/Loading';
-import Button from '../../../components/Button';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateDriverLocation, updateDriverStatus, addRide, updateRide } from '../../../src/store/slices/driverSlice';
-import realTimeService from '../../../services/RealTimeService';
-import LocationService from '../../../services/LocationService';
-import socketService from '../../../services/SocketService';
-import RideRequestCard from '../../../components/RideRequestCard';
-import ActiveRideCard from '../../../components/ActiveRideCard';
-import EarningsWidget from '../../../components/EarningsWidget';
-import NotificationBadge from '../../../components/NotificationBadge';
+
+// COMPONENT IMPORTS (check if these files exist):
+import Header from '@components/Header';
+import Loading from '@components/Loading';
+import Button from '@components/Button';
+import RideRequestCard from '@components/RideRequestCard'; // ✓ Exists
+
+// Check if these exist in your components folder:
+// import ActiveRideCard from '@components/ActiveRideCard'; // ❓ NOT in your listed structure
+// import EarningsWidget from '@components/EarningsWidget'; // ❓ NOT in your listed structure
+// import NotificationBadge from '@components/NotificationBadge'; // ❓ NOT in your listed structure
+
+// FIXED SERVICE IMPORTS:
+import { updateDriverLocation, updateDriverStatus, addRide, updateRide } from '@store/slices/driverSlice';
+import RealTimeService from '@services/realtime/RealTimeService';
+import LocationService from '@services/location/LocationService';
+import socketService from '@services/socket/socketService';
 
 const { width, height } = Dimensions.get('window');
 

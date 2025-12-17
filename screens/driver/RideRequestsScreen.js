@@ -1,16 +1,28 @@
 // screens/driver/RideRequestsScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert,
-  AppState, Vibration, Platform, Animated, Easing, ActivityIndicator,
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  AppState,
+  Vibration,
+  Platform,
+  Animated,
+  Easing,
+  ActivityIndicator,
   PermissionsAndroid
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
-import socketService from 'services/socket'; // Your existing socket service
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSelector } from 'react-redux';
+
+// FIXED IMPORT:
+import socketService from '@services/socket/socketService';
 
 export default function RideRequestsScreen({ navigation }) {
   const [requests, setRequests] = useState([]);

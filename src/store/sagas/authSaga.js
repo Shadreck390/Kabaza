@@ -2,6 +2,8 @@
 import { call, put, takeLatest, takeEvery, all, fork } from 'redux-saga/effects';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+
+// FIXED IMPORT - using alias:
 import {
   loginSuccess,
   loginFailure,
@@ -15,7 +17,7 @@ import {
   verifyPhoneFailure,
   resetPasswordSuccess,
   resetPasswordFailure,
-} from '../slices/authSlice';
+} from '@store/slices/authSlice';
 
 // Mock API service - replace with your actual API calls
 const AuthService = {

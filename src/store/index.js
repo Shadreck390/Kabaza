@@ -7,26 +7,27 @@ import autoMergeLevel2 from 'redux-persist/lib/stateReconciler/autoMergeLevel2';
 import createSagaMiddleware from 'redux-saga';
 import { all } from 'redux-saga/effects';
 
-// Import your slices
-import authReducer from './slices/authSlice';
-import appReducer from './slices/appSlice';
-import driverReducer from './slices/driverSlice';
-import rideReducer from './slices/rideSlice';
-import locationReducer from './slices/locationSlice';
-import notificationReducer from './slices/notificationSlice';
-import chatReducer from './slices/chatSlice';
-import paymentReducer from './slices/paymentSlice';
+// Import your slices - FIXED with aliases:
+import authReducer from '@store/slices/authSlice';
+import appReducer from '@store/slices/appSlice';
+import driverReducer from '@store/slices/driverSlice';
+import rideReducer from '@store/slices/rideSlice';
+import locationReducer from '@store/slices/locationSlice';
+import notificationReducer from '@store/slices/notificationSlice';
+import chatReducer from '@store/slices/chatSlice';
+import paymentReducer from '@store/slices/paymentSlice';
 
-// Import sagas
-import authSaga from './sagas/authSaga';
-import driverSaga from './sagas/driverSaga';
-import rideSaga from './sagas/rideSaga';
-import locationSaga from './sagas/locationSaga';
-import socketSaga from './sagas/socketSaga';
+// Import sagas - FIXED with aliases:
+import authSaga from '@store/sagas/authSaga';
+import driverSaga from '@store/sagas/driverSaga';
+import rideSaga from '@store/sagas/rideSaga';
+import locationSaga from '@store/sagas/locationSaga';
+import socketSaga from '@store/sagas/socketSaga';
+
 // Comment out for now if not created yet
-// import notificationSaga from './sagas/notificationSaga';
-// import chatSaga from './sagas/chatSaga';
-// import paymentSaga from './sagas/paymentSaga';
+// import notificationSaga from '@store/sagas/notificationSaga';
+// import chatSaga from '@store/sagas/chatSaga';
+// import paymentSaga from '@store/sagas/paymentSaga';
 
 // ====================
 // PERSIST CONFIGURATION

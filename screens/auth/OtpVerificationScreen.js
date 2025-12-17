@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import Loading from '../../src/components/Loading';
+import Loading from '@components/Loading';
 
 export default function OtpVerificationScreen({ navigation, route }) {
   // FIXED: Better handling of route params with fallbacks

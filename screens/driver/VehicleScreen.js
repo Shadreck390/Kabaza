@@ -1,12 +1,22 @@
 // screens/driver/VehicleScreen.js
 import React, { useState, useEffect, useContext } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-  Image, Alert, RefreshControl, ActivityIndicator, Modal 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Alert,
+  RefreshControl,
+  ActivityIndicator,
+  Modal
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthContext } from '../../context/AuthContext';
+
+// FIXED IMPORT:
+import { AuthContext } from '@src/context/AuthContext';
 
 // API Service functions (create these in a separate file and import)
 const API_BASE_URL = 'https://your-api-domain.com/api';

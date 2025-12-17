@@ -1,17 +1,28 @@
 // screens/driver/DriverSettingsScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-  Switch, Alert, Linking, Platform, AppState, Vibration
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Switch,
+  Alert,
+  Linking,
+  Platform,
+  AppState,
+  Vibration
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import Slider from '@react-native-community/slider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout } from 'src/store/slices/authSlice';
-import socketService from 'services/socket';
 import axios from 'axios';
 import PushNotification from 'react-native-push-notification';
+
+// FIXED IMPORT:
+import { logout } from '@store/slices/authSlice';
+import socketService from '@services/socket/socketService';
 
 // Configure push notifications
 PushNotification.configure({

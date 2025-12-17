@@ -18,21 +18,23 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSelector, useDispatch } from 'react-redux';
 import Slider from '@react-native-community/slider';
 
-// Import hooks and actions
-import { 
-  selectCurrentRideDetails, 
+// Import hooks and actions - FIXED WITH ALIASES
+import {
+  selectCurrentRideDetails,
   selectCurrentLocation,
   completeRideTrip,
   cancelRideRequest,
   updateDriverLocation,
   startRideTracking,
   stopRideTracking
-} from 'src/store/slices/driverSlice';
-import { useAuth, useDriver } from 'src/hooks/useRedux';
-import userStorage from 'src/utils/userStorage';
-import LocationService from 'services/location';
-import socketService, { SocketEvents } from 'services/socket';
-import { calculateFare, formatPrice } from 'src/utils/rideUtils';
+} from '@store/slices/driverSlice';
+import { useAuth, useDriver } from '@hooks/useRedux';
+
+// FIX THESE IMPORTS:
+import { getUserData, saveUserData } from '@utils/userStorage'; // Check if named export
+import LocationService from '@services/location/LocationService'; // Fixed path
+import socketService, { SocketEvents } from '@services/socket/socketService'; // Fixed path
+import { calculateFare, formatPrice } from '@utils/rideUtils';
 
 const { width, height } = Dimensions.get('window');
 

@@ -2,7 +2,9 @@
 import { Platform, PermissionsAndroid, AppState } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import NetInfo from '@react-native-community/netinfo';
-import realTimeService from '../socket/realtimeUpdates'; // Fixed import name (lowercase)
+
+// FIXED IMPORT - using alias:
+import realTimeService from '@services/socket/realtimeUpdates';
 
 class LocationService {
   constructor() {

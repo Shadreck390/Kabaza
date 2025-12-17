@@ -1,17 +1,31 @@
 // screens/driver/TripHistoryScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList,
-  ActivityIndicator, Animated, Easing, RefreshControl, Alert,
-  Platform, AppState, Modal, TextInput
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+  Animated,
+  Easing,
+  RefreshControl,
+  Alert,
+  Platform,
+  AppState,
+  Modal,
+  TextInput
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import socketService from 'services/socket'; // Your existing socket service
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSelector } from 'react-redux';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
+
+// FIXED IMPORT:
+import socketService from '@services/socket/socketService';
 
 export default function TripHistoryScreen({ navigation }) {
   const [selectedFilter, setSelectedFilter] = useState('week');

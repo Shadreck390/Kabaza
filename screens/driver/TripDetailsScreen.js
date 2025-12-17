@@ -1,16 +1,30 @@
 // screens/driver/TripDetailsScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking,
-  Alert, ActivityIndicator, Animated, Easing, Share, AppState,
-  Platform, Clipboard, RefreshControl
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Linking,
+  Alert,
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Share,
+  AppState,
+  Platform,
+  Clipboard,
+  RefreshControl
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
-import socketService from 'services/socket'; // Your existing socket service
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSelector } from 'react-redux';
+
+// FIXED IMPORT:
+import socketService from '@services/socket/socketService';
 
 export default function TripDetailsScreen({ navigation, route }) {
   const [trip, setTrip] = useState(route.params?.trip || {

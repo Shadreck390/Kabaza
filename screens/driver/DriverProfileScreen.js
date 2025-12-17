@@ -1,15 +1,27 @@
 // screens/driver/DriverProfileScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Switch, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Alert,
+  Switch,
+  RefreshControl
+} from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout } from 'src/store/slices/authSlice';
-import { updateDriverStatus, updateDriverProfile } from 'src/store/slices/driverSlice';
-import realTimeService from 'services/RealTimeService';
-import LocationService from 'services/location';
-import socketService from 'services/socket';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// FIXED IMPORTS:
+import { logout } from '@store/slices/authSlice';
+import { updateDriverStatus, updateDriverProfile } from '@store/slices/driverSlice';
+import RealTimeService from '@services/realtime/RealTimeService';
+import LocationService from '@services/location/LocationService';
+import socketService from '@services/socket/socketService';
 
 export default function DriverProfileScreen({ navigation }) {
   const dispatch = useDispatch();

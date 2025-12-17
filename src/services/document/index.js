@@ -1,2 +1,2 @@
-// services//index.js
+// src/services/document/index.js
 export { default } from './DocumentService';

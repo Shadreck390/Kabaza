@@ -1,13 +1,15 @@
 // src/store/sagas/locationSaga.js
 import { call, put, takeLatest, takeEvery, all, fork } from 'redux-saga/effects';
 import { Alert } from 'react-native';
+
+// FIXED IMPORT - using alias:
 import {
   getCurrentLocation,
   startLocationTracking,
   geocodeAddress,
   getRoute,
   searchPlaces,
-} from '../slices/locationSlice';
+} from '@store/slices/locationSlice';
 
 // Mock services - replace with actual API calls
 const LocationService = {

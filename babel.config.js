@@ -1,35 +1,60 @@
 module.exports = {
   presets: ['module:@react-native/babel-preset'],
-
+  
   plugins: [
     ['@babel/plugin-transform-private-methods', { loose: true }],
-
-    // ✅ FIX: Reanimated must always be LAST
+    
     [
       'module-resolver',
       {
         root: ['./'],
-        extensions: ['.js', '.jsx', '.ts', '.tsx'],
+        extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
         alias: {
-          screens: './screens',
-          navigation: './navigation',
-          components: './src/components',
-          services: './services',
-          src: './src',
-          assets: './assets',
+          // Professional aliases (recommended) - ensure these paths exist
+          '@src': './src',
+          '@components': './src/components',
+          '@services': './src/services',
+          '@store': './src/store',
+          '@utils': './src/utils',
+          '@hooks': './src/hooks',
+          '@constants': './src/constants',
+          '@config': './src/config',
+          
+          // Folder aliases (optional) - consider using '@' prefix consistently
+          'screens': './screens',
+          'navigation': './navigation',
+          'assets': './assets',
+          'src': './src',
         },
       },
     ],
-
-    // ⚠️ MUST ALWAYS BE LAST PLUGIN
+    
     'react-native-reanimated/plugin',
   ],
-
-  // Jest config
+  
   env: {
     test: {
-      presets: ['module:@react-native/babel-preset'],
-      plugins: [['@babel/plugin-transform-private-methods', { loose: true }]],
+      plugins: [
+        ['@babel/plugin-transform-private-methods', { loose: true }],
+        // Add module-resolver for test environment too
+        [
+          'module-resolver',
+          {
+            root: ['./'],
+            extensions: ['.js', '.jsx', '.ts', '.tsx'],
+            alias: {
+              '@src': './src',
+              '@components': './src/components',
+              '@services': './src/services',
+              '@store': './src/store',
+              '@utils': './src/utils',
+              '@hooks': './src/hooks',
+              '@constants': './src/constants',
+              '@config': './src/config',
+            },
+          },
+        ],
+      ],
     },
   },
 };

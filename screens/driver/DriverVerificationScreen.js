@@ -1,17 +1,28 @@
 // screens/driver/DriverVerificationScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, Text, TextInput, TouchableOpacity, StyleSheet, 
-  ScrollView, Alert, Image, Platform, PermissionsAndroid,
-  ActivityIndicator, Modal, Animated, Easing
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Image,
+  Platform,
+  PermissionsAndroid,
+  ActivityIndicator,
+  Modal,
+  Animated,
+  Easing
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-import { getUserData, saveUserData } from '/src/utils/userStorage';
 import axios from 'axios';
 
-// Import your existing socket service
-import socketService from 'services/socket'; // Adjust path as needed
+// FIXED IMPORTS:
+import { getUserData, saveUserData } from '@utils/userStorage';
+import socketService from '@services/socket/socketService';
 
 export default function DriverVerificationScreen({ navigation, route }) {
   const { userProfile } = route.params || {};

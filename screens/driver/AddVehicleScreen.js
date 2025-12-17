@@ -1,7 +1,7 @@
 // screens/driver/AddVehicleScreen.js
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, Image, Platform, ActivityIndicator,
   Modal
 } from 'react-native';
@@ -9,11 +9,13 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import RNPickerSelect from 'react-native-picker-select';
 import { useDispatch, useSelector } from 'react-redux';
-import { addVehicle, updateVehicle } from 'src/store/slices/driverSlice';
-import realTimeService from 'services/RealTimeService';
-import socketService from 'services/socket';
-import DocumentService from 'services/DocumentService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// FIXED IMPORTS:
+import { addVehicle, updateVehicle } from '@store/slices/driverSlice';
+import RealTimeService from '@services/realtime/RealTimeService';
+import socketService from '@services/socket/socketService';
+import DocumentService from '@services/document/DocumentService';
 
 export default function AddVehicleScreen({ navigation, route }) {
   const existingVehicle = route.params?.vehicle || null;

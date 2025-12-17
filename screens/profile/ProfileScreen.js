@@ -1,20 +1,34 @@
 // screens/profile/ProfileScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert, Image,
-  Animated, ActivityIndicator, StatusBar, RefreshControl
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Switch,
+  Alert,
+  Image,
+  Animated,
+  ActivityIndicator,
+  StatusBar,
+  RefreshControl
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { CommonActions } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateUserProfile, switchUserRole, updateUserSettings } from 'src/store/slices/authSlice';
-import { updateDriverStatus } from 'src/store/slices/driverSlice';
-import socketService from 'services/socket/SocketService';
-import realTimeService from 'services/RealTimeService/RealTimeService';
-import LocationService from 'services/socket/locationService';
-import PushNotificationService from 'services/notification/PushNotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'react-native-image-picker';
+
+// FIXED STORE IMPORTS:
+import { updateUserProfile, switchUserRole, updateUserSettings } from '@store/slices/authSlice';
+import { updateDriverStatus } from '@store/slices/driverSlice';
+
+// FIXED SERVICE IMPORTS:
+import socketService from '@services/socket/socketService';
+import RealTimeService from '@services/realtime/RealTimeService';
+import LocationService from '@services/location/LocationService';
+import PushNotificationService from '@services/notification/PushNotificationService';
 
 export default function ProfileScreen({ navigation, route }) {
   const dispatch = useDispatch();

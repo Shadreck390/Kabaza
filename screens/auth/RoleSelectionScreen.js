@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, PermissionsAndroid, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  PermissionsAndroid,
+  Platform
+} from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import Geolocation from 'react-native-geolocation-service';
-import { saveUserData, saveUserRole, getUserData } from '../../src/utils/userStorage';
 import { useDispatch } from 'react-redux';
-import { loginSuccess } from '../../src/store/slices/authSlice';
+
+// FIXED - using aliases:
+import { saveUserData, saveUserRole, getUserData } from '@utils/userStorage';
+import { loginSuccess } from '@store/slices/authSlice';
 
 export default function RoleSelectionScreen({ navigation, route }) {
   // Get all user data

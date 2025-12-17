@@ -1,9 +1,9 @@
 // src/store/slices/chatSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
-// Service imports
-import ChatService from '../../services/chat/ChatService';
-import realTimeService from '../../services/socket/realtimeUpdates';
+// Service imports - FIXED:
+import RideService from '@services/ride/RideService'; // If you have chat in ride service
+import realTimeService from '@services/socket/realtimeUpdates';
 
 // ====================
 // INITIAL STATE

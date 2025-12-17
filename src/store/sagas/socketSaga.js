@@ -1,37 +1,38 @@
-// src/store/sagas/socketSaga.js
+// src/store/sagas/socketSaga.js - FIXED VERSION
 import { eventChannel, END } from 'redux-saga';
-import { call, put, take, takeLatest, fork, cancel, cancelled } from 'redux-saga/effects';
+import { call, put, take, takeLatest, fork, cancel, cancelled, all } from 'redux-saga/effects';
 import io from 'socket.io-client';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// FIXED IMPORTS - using aliases:
 import {
   setSocketConnected,
   setSocketReconnecting,
   updateConnectionQuality,
   addRealTimeUpdate,
   addNotification,
-} from '../slices/notificationSlice';
+} from '@store/slices/notificationSlice';
 
 import {
   addMessage,
   setChatConnection,
   setTyping,
   updateMessageStatus,
-} from '../slices/chatSlice';
+} from '@store/slices/chatSlice';
 
 import {
   setDriverLocation,
   addRideRequest,
   updateRideStatus,
   addNearbyRide,
-} from '../slices/driverSlice';
+} from '@store/slices/driverSlice';
 
 import {
   setAssignedDriver,
   setRideStatus,
   addRealTimeUpdate as addRideRealTimeUpdate,
-} from '../slices/rideSlice';
+} from '@store/slices/rideSlice';
 
 // Socket service
 let socket = null;
@@ -396,9 +397,12 @@ function* listenToSocketEvents(socketChannel) {
           break;
           
         case 'NEARBY_RIDES_UPDATE':
-          event.payload.forEach(ride => {
-            yield put(addNearbyRide(ride));
-          });
+          // FIXED: Use 'all' effect instead of forEach with yield
+          yield all(
+            event.payload.map(ride => 
+              put(addNearbyRide(ride))
+            )
+          );
           break;
           
         default:

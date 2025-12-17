@@ -1,22 +1,35 @@
 // screens/payments/PaymentScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, 
-  TextInput, Animated, Vibration, StatusBar, ActivityIndicator,
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  TextInput,
+  Animated,
+  Vibration,
+  StatusBar,
+  ActivityIndicator,
   Modal
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import Button from '../../components/Button';
-import Header from '../../components/Header';
-import Loading from '../../components/Loading';
 import { useDispatch, useSelector } from 'react-redux';
-import { updatePaymentStatus, addTransaction } from '../../src/store/slices/paymentSlice';
-import { completeRide } from '../../src/store/slices/rideSlice';
-import socketService from '../../services/SocketService';
-import realTimeService from '../../services/RealTimeService';
-import PaymentService from '../../services/PaymentService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CountDown from 'react-native-countdown-component';
+
+// FIXED COMPONENT IMPORTS:
+import Button from '@components/Button';
+import Header from '@components/Header';
+import Loading from '@components/Loading';
+
+// FIXED STORE AND SERVICE IMPORTS:
+import { updatePaymentStatus, addTransaction } from '@store/slices/paymentSlice';
+import { completeRide } from '@store/slices/rideSlice';
+import socketService from '@services/socket/socketService';
+import RealTimeService from '@services/realtime/RealTimeService';
+import PaymentService from '@services/payment/PaymentService';
 
 export default function PaymentScreen({ route, navigation }) {
   const { rideAmount, rideDetails, rideId } = route.params || {};

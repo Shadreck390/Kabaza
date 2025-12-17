@@ -1,11 +1,11 @@
 // screens/rider/RideWaitingScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ActivityIndicator, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
   Alert,
   StatusBar,
   Platform,
@@ -16,7 +16,7 @@ import {
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import realTimeService from '../../services/socket/realtimeUpdates';
+import realTimeService from '@services/socket/realtimeUpdates';
 
 const { width, height } = Dimensions.get('window');
 

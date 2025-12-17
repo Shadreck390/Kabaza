@@ -1,14 +1,26 @@
 // screens/driver/VerificationPendingScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, 
-  ScrollView, Animated, Easing, Alert, AppState, RefreshControl,
-  Platform, Linking
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
+  Animated,
+  Easing,
+  Alert,
+  AppState,
+  RefreshControl,
+  Platform,
+  Linking
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { getUserData, saveUserData } from 'src/utils/userStorage';
-import socketService from 'services/socket'; // Your existing socket service
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// FIXED IMPORTS:
+import { getUserData, saveUserData } from '@utils/userStorage';
+import socketService from '@services/socket/socketService';
 
 export default function VerificationPendingScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);

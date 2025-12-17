@@ -1,6 +1,8 @@
 // src/store/sagas/driverSaga.js
 import { call, put, takeLatest, takeEvery, all, fork } from 'redux-saga/effects';
 import { Alert } from 'react-native';
+
+// FIXED IMPORT - using alias:
 import {
   loadNearbyRides,
   acceptRideRequest,
@@ -9,7 +11,7 @@ import {
   cancelRideRequest,
   updateDriverStatus,
   updateDriverLocation,
-} from '../slices/driverSlice';
+} from '@store/slices/driverSlice';
 
 // Mock services - replace with actual API calls
 const DriverService = {

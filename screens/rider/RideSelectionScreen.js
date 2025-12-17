@@ -1,19 +1,26 @@
 // screens/rider/RideSelectionScreen.js
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Dimensions, Platform, StatusBar,
-  ActivityIndicator, Alert
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+  Platform,
+  StatusBar,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
 
-// Import your services - ADD THESE IMPORTS
-import api from '../../services/api';
-import realTimeService from '../../services/socket/realtimeUpdates'; // CHANGED FROM 'socket' to 'realTimeService'
-import { getUserData } from '../../src/utils/userStorage'; // ADD THIS IMPORT for user data
+// Import your services - FIXED IMPORTS
+import api from '@services/api/client'; // or specific API file
+import realTimeService from '@services/socket/realtimeUpdates';
+import { getUserData } from '@utils/userStorage';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 

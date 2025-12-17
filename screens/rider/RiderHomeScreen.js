@@ -22,7 +22,7 @@ import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 // Import from YOUR existing structure
-import { getUserData } from '../../src/utils/userStorage';
+import { getUserData } from '@utils/userStorage';
 
 const { width, height } = Dimensions.get('window');
 const SHEET_MAX_HEIGHT = height * 0.72;

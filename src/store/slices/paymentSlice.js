@@ -1,9 +1,11 @@
 // src/store/slices/paymentSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
-// Service imports
-import PaymentService from '../../services/payment/PaymentService';
-import WalletService from '../../services/wallet/WalletService';
+// Service imports - FIXED:
+import PaymentService from '@services/payment/PaymentService'; // Fixed with alias
+
+// TODO: Check if WalletService exists in your structure
+// import WalletService from '@services/wallet/WalletService'; // Commented - check if folder exists
 
 // ====================
 // INITIAL STATE

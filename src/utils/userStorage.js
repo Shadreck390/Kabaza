@@ -1,10 +1,12 @@
 // src/utils/userStorage.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// FIXED IMPORT - using alias:
 import { 
   STORAGE_KEYS, 
   PERSIST_CONFIG, 
   CACHE_DURATIONS 
-} from '../store/utils/constants';
+} from '@store/constants';
 
 // ====================
 // STORAGE KEYS

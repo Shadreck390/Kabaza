@@ -29,10 +29,10 @@ import {
   
   // Status colors
   STATUS_COLORS,
-} from './constants.js';
+} from '@constants/app';  // Using alias
 
 // Import storage utilities
-import { getUser, updateUser, clearStorage } from './userStorage.js';
+import { getUser, updateUser, clearStorage } from '@utils/userStorage';  // Using alias
 
 // ====================
 // RIDE CALCULATION UTILITIES

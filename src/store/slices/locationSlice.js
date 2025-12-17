@@ -1,11 +1,13 @@
 // src/store/slices/locationSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from 'react-native-geolocation-service'; // Fixed package name
 import { PermissionsAndroid, Platform } from 'react-native';
 
-// Service imports
-import LocationService from '../../services/location/LocationService';
-import GeocodingService from '../../services/geocoding/GeocodingService';
+// Service imports - FIXED:
+import LocationService from '@services/location/LocationService'; // Fixed path with alias
+
+// TODO: Check if GeocodingService exists or is part of another service
+// import GeocodingService from '@services/geocoding/GeocodingService'; // Commented - folder doesn't exist
 
 // ====================
 // ASYNC THUNKS

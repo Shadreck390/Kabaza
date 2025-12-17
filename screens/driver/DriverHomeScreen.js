@@ -1,29 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  Platform, 
-  PermissionsAndroid, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Platform,
+  PermissionsAndroid,
   Alert,
   Linking,
   TouchableOpacity,
   StatusBar,
   ActivityIndicator
 } from 'react-native';
-import Header from 'components/Header';
-import Button from 'components/Button';
-import Loading from 'components/Loading';
-import DriverCard from 'components/DriverCard';
-import MapComponent from 'components/MapComponent';
-import { fetchNearbyRides } from 'services/api/rideAPI';
-import realTimeService from 'services/socket/realtimeUpdates'; // ✅ UPDATED TO realTimeService
+
+// FIXED COMPONENT IMPORTS:
+import Header from '@components/Header';
+import Button from '@components/Button';
+import Loading from '@components/Loading';
+import DriverCard from '@components/DriverCard';
+import MapComponent from '@components/MapComponent';
+
+// FIXED SERVICE IMPORTS:
+import { fetchNearbyRides } from '@services/api/rideAPI';
 import Geolocation from 'react-native-geolocation-service';
-import { getUserData } from 'src/utils/userStorage';
+import { getUserData } from '@utils/userStorage';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons'; // ✅ ADDED
-import LocationService from 'services/location'; // ✅ ADDED for better location handling
+import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+
+// FIX THESE TWO IMPORTS:
+import socketService from '@services/socket/socketService'; // or realtimeUpdates
+import LocationService from '@services/location/LocationService';
 
 export default function DriverHomeScreen({ route, navigation }) {
   const [region, setRegion] = useState(null);

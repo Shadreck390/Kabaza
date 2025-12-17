@@ -1,11 +1,11 @@
 // screens/rider/RideConfirmationScreen.js
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  StatusBar, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  StatusBar,
   Alert,
   ActivityIndicator,
   Platform
@@ -14,8 +14,8 @@ import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
 // Import real-time service
-import realTimeService from '../../services/socket/realtimeUpdates';
-import { getUserData } from '../../src/utils/userStorage'; // Get user from storage
+import realTimeService from '@services/socket/realtimeUpdates';
+import { getUserData } from '@utils/userStorage';
 
 // Helper function to format Malawi Kwacha
 const formatMK = (amount) => {
