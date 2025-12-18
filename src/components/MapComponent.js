@@ -1,25 +1,25 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { 
-  View, 
-  StyleSheet, 
+import {
+  View,
+  StyleSheet,
   TouchableOpacity,
   Text,
   Alert,
   ActivityIndicator,
   Platform
 } from 'react-native';
-import MapView, { 
-  Marker, 
-  Polyline, 
+import MapView, {
+  Marker,
+  Polyline,
   Circle,
   PROVIDER_GOOGLE,
-  Callout 
+  Callout
 } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
-// ✅ CORRECTED IMPORT PATH - Use our config module
-import AppConfig from '../config'; // Changed from '../../config'
-import Constants from '../config/constants'; // Added constants import
+// ✅ CORRECTED IMPORT PATHS - Using aliases:
+import AppConfig from '@config'; // Using alias
+import Constants from '@constants/app';  // ✅ CORRECT
 
 // Get Google Maps API Key from config
 const GOOGLE_MAPS_API_KEY = AppConfig.MAPS.API_KEY;

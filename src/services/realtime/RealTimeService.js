@@ -1,9 +1,8 @@
 // Kabaza/services/RealTimeService/RealTimeService.js
 import { Platform, AppState, NetInfo } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import socketService from 'services/socket/realtimeUpdates'; // Using your existing socket service
-import locationService from 'services/location/locationServices'; // Using your location service
-
+import socketService from '@services/socket/realtimeUpdates'; // ✅ ADDED @
+import locationService from '@services/location/LocationService'; // ✅ ADDED @
 class RealTimeService {
   constructor() {
     this.socket = null;

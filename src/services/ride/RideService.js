@@ -1,7 +1,7 @@
 // Kabaza/services/ride/RideService.js
-import locationService from '../location/locationServices';
-import socketService from '../socket/socketService';
-import { SocketEvents } from '../socket';
+import locationService from '@services/location/LocationService'; // Fixed path and case
+import socketService from '@services/socket/socketService'; // Fixed path
+import { SocketEvents } from '@services/socket'; // Fixed path
 
 class RideService {
   constructor() {

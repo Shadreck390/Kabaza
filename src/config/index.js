@@ -649,4 +649,4 @@ export const ConfigHelpers = {
 };
 
 export default AppConfig;
-export { validationResult, ConfigHelpers };
+export { validationResult};

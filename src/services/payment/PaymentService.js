@@ -1,6 +1,6 @@
 // Kabaza/services/payment/PaymentService.js
-import socketService from 'services/socket/socketService';
-import { SocketEvents } from 'services/socket';
+import socketService from '@services/socket/socketService';
+import { SocketEvents } from '@services/socket/EventTypes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class PaymentService {

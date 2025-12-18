@@ -93,6 +93,7 @@ android {
             force "com.google.android.gms:play-services-auth:20.7.0"
             force "com.google.android.gms:play-services-tasks:18.0.2"
             force "com.google.android.gms:play-services-basement:18.3.0"
+            force 'androidx.activity:activity:1.8.2'
         }
     }
 
