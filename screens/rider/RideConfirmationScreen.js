@@ -1,4 +1,3 @@
-// screens/rider/RideConfirmationScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -10,12 +9,30 @@ import {
   ActivityIndicator,
   Platform
 } from 'react-native';
+
+// ✅ CONSISTENT: All icons from same library pattern
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
-// Import real-time service
+// ✅ CONSISTENT: Using @ alias for services and utils
 import realTimeService from '@services/socket/realtimeUpdates';
 import { getUserData } from '@utils/userStorage';
+
+// ===================== ADD MISSING IMPORTS (IF NEEDED) =====================
+
+// Check if you need these common imports:
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { RideService } from '@services/api/rideAPI'; // If you use rideAPI
+
+// If you use maps/location:
+import MapView, { Marker, Polyline } from 'react-native-maps';
+import Geolocation from 'react-native-geolocation-service';
+
+// If you have custom components:
+import Header from '@components/Header';
+import Button from '@components/Button';
+import Loading from '@components/Loading';
+import DriverCard from '@components/DriverCard';
 
 // Helper function to format Malawi Kwacha
 const formatMK = (amount) => {

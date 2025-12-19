@@ -1,4 +1,4 @@
-now i have rename files and move them all according to istructions now i wanna share to see if are collect first file that renamed to index.js // src/store/utils/constants.js
+// src/store/utils/constants.js
 
 /**
  * Application Constants

@@ -16,9 +16,7 @@ import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
-
-// Import your services - FIXED IMPORTS
-import api from '@services/api/client'; // or specific API file
+import api from '@services/api/client';
 import realTimeService from '@services/socket/realtimeUpdates';
 import { getUserData } from '@utils/userStorage';
 

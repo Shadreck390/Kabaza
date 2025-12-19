@@ -9,12 +9,59 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './src/store';
 import AppNavigator from './navigation/AppNavigator';
 
-// Fallback Loading component
+// ======================
+// STYLE SHEETS
+// ======================
+
+// Loading component styles (used early in file)
+const loadingStyles = StyleSheet.create({
+  fallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'white',
+  },
+  text: {
+    fontSize: 16,
+    color: '#666',
+  },
+});
+
+// Splash screen styles (used early in file)
+const splashStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logo: { 
+    width: 150, 
+    height: 150, 
+    marginBottom: 20,
+    resizeMode: 'contain',
+  },
+  title: { 
+    fontSize: 32, 
+    fontWeight: '700', 
+    color: '#212121', 
+  },
+});
+
+// ======================
+// COMPONENTS (DEFINE BEFORE APP)
+// ======================
+
+// Fallback Loading component - MUST BE BEFORE App!
 const Loading = ({ message }) => (
-  <View style={styles.loadingFallback}>
-    <Text style={styles.loadingText}>{message || 'Loading...'}</Text>
+  <View style={loadingStyles.fallback}>
+    <Text style={loadingStyles.text}>{message || 'Loading...'}</Text>
   </View>
 );
+
+// ======================
+// MAIN APP COMPONENT
+// ======================
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -45,12 +92,12 @@ export default function App() {
   // Show splash screen while loading
   if (!ready) {
     return (
-      <GestureHandlerRootView style={styles.splash}>
+      <GestureHandlerRootView style={splashStyles.container}>
         <Image 
           source={require('./assets/kabaza_logo.png')} 
-          style={styles.logo} 
+          style={splashStyles.logo} 
         />
-        <Text style={styles.title}>Kabaza</Text>
+        <Text style={splashStyles.title}>Kabaza</Text>
       </GestureHandlerRootView>
     );
   }
@@ -69,33 +116,3 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
-
-const styles = StyleSheet.create({
-  splash: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingFallback: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'white',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  logo: { 
-    width: 150, 
-    height: 150, 
-    marginBottom: 20,
-    resizeMode: 'contain'
-  },
-  title: { 
-    fontSize: 32, 
-    fontWeight: '700', 
-    color: '#212121' 
-  },
-});

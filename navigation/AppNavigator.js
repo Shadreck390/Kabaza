@@ -4,41 +4,43 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
-import { getUserData, getUserRole } from '../src/utils/userStorage';
+
+// ✅ FIXED: Using @ alias for utils
+import { getUserData, getUserRole } from '@utils/userStorage';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// ===================== IMPORT ALL SCREENS =====================
+// ===================== IMPORT ALL SCREENS WITH @ ALIAS =====================
 
-// Auth Screens
-import PhoneOrGoogleScreen from '../screens/auth/PhoneOrGoogleScreen';
-import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen';
-import ProfileCompletionScreen from '../screens/auth/ProfileCompletionScreen';
-import RoleSelectionScreen from '../screens/auth/RoleSelectionScreen';
+// ✅ FIXED: Auth Screens with @ alias
+import PhoneOrGoogleScreen from '@screens/auth/PhoneOrGoogleScreen';
+import OtpVerificationScreen from '@screens/auth/OtpVerificationScreen';
+import ProfileCompletionScreen from '@screens/auth/ProfileCompletionScreen';
+import RoleSelectionScreen from '@screens/auth/RoleSelectionScreen';
 
-// Rider Screens
-import RiderHomeScreen from '../screens/rider/RiderHomeScreen';
-import RideSelectionScreen from '../screens/rider/RideSelectionScreen';
-import RideConfirmationScreen from '../screens/rider/RideConfirmationScreen';
-import RidesScreen from '../screens/rider/RidesScreen';
+// ✅ FIXED: Rider Screens with @ alias
+import RiderHomeScreen from '@screens/rider/RiderHomeScreen';
+import RideSelectionScreen from '@screens/rider/RideSelectionScreen';
+import RideConfirmationScreen from '@screens/rider/RideConfirmationScreen';
+import RidesScreen from '@screens/rider/RidesScreen';
 
-// Driver Screens
-import DriverHomeScreen from '../screens/driver/DriverHomeScreen';
-import EarningsScreen from '../screens/driver/EarningsScreen';
-import DriverVerificationScreen from '../screens/driver/DriverVerificationScreen';
-import VerificationPendingScreen from '../screens/driver/VerificationPendingScreen';
-import RideRequestsScreen from '../screens/driver/RideRequestsScreen';
-import ActiveRideScreen from '../screens/driver/ActiveRideScreen';
-import TripHistoryScreen from '../screens/driver/TripHistoryScreen';
-import TripDetailsScreen from '../screens/driver/TripDetailsScreen';
-import DriverProfileScreen from '../screens/driver/DriverProfileScreen';
-import DriverSettingsScreen from '../screens/driver/DriverSettingsScreen';
-import AddVehicleScreen from '../screens/driver/AddVehicleScreen';
-import VehicleScreen from '../screens/driver/VehicleScreen';
+// ✅ FIXED: Driver Screens with @ alias
+import DriverHomeScreen from '@screens/driver/DriverHomeScreen';
+import EarningsScreen from '@screens/driver/EarningsScreen';
+import DriverVerificationScreen from '@screens/driver/DriverVerificationScreen';
+import VerificationPendingScreen from '@screens/driver/VerificationPendingScreen';
+import RideRequestsScreen from '@screens/driver/RideRequestsScreen';
+import ActiveRideScreen from '@screens/driver/ActiveRideScreen';
+import TripHistoryScreen from '@screens/driver/TripHistoryScreen';
+import TripDetailsScreen from '@screens/driver/TripDetailsScreen';
+import DriverProfileScreen from '@screens/driver/DriverProfileScreen';
+import DriverSettingsScreen from '@screens/driver/DriverSettingsScreen';
+import AddVehicleScreen from '@screens/driver/AddVehicleScreen';
+import VehicleScreen from '@screens/driver/VehicleScreen';
 
-// Profile Screen
-import ProfileScreen from '../screens/profile/ProfileScreen';
+// ✅ FIXED: Profile Screen with @ alias
+import ProfileScreen from '@screens/profile/ProfileScreen';
 
 // ===================== CREATE BOTTOM TABS FOR RIDER =====================
 
