@@ -31,10 +31,10 @@ import {
 import { useAuth, useDriver } from '@hooks/useRedux';
 
 // FIX THESE IMPORTS:
-import { getUserData, saveUserData } from '@utils/userStorage'; // Check if named export
+import { getUserData, saveUserData } from '@src/utils/userStorage'; // Check if named export
 import LocationService from '@services/location/LocationService'; // Fixed path
 import socketService, { SocketEvents } from '@services/socket/socketService'; // Fixed path
-import { calculateFare, formatPrice } from '@utils/rideUtils';
+import { calculateFare, formatPrice } from '@src/utils/rideUtils';
 
 const { width, height } = Dimensions.get('window');
 

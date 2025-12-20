@@ -2,76 +2,115 @@ module.exports = {
   presets: ['module:@react-native/babel-preset'],
   
   plugins: [
-    // ✅ MUST BE FIRST: TypeScript plugin before class features
-    '@babel/plugin-transform-typescript',
-    
-    // ✅ Then class features (in this order)
-    '@babel/plugin-transform-class-properties',
+    // ✅ Keep class features
+    ['@babel/plugin-transform-class-properties', { loose: true }],
     ['@babel/plugin-transform-private-methods', { loose: true }],
-    '@babel/plugin-proposal-decorators',
+    ['@babel/plugin-transform-private-property-in-object', { loose: true }],
     
-    // ✅ Then module resolver
+    // ✅ Module resolver for alias support
     [
       'module-resolver',
       {
         root: ['./'],
-        extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
+        extensions: [
+          '.ios.js',
+          '.android.js',
+          '.js',
+          '.jsx',
+          '.ts',
+          '.tsx',
+          '.json',
+          '.native.js'
+        ],
+        
         alias: {
-          // ========== ROOT LEVEL FOLDERS ==========
-          '@screens': './screens',
-          '@navigation': './navigation',
-          '@assets': './assets',
-          
-          // ========== SRC FOLDERS ==========
+          // Core folders
           '@src': './src',
           '@components': './src/components',
-          '@config': './src/config',
           '@constants': './src/constants',
-          '@context': './src/context',
-          '@store': './src/store',
           '@hooks': './src/hooks',
           '@services': './src/services',
+          '@store': './src/store',
+          '@utils': './src/utils',
+          '@config': './src/config',
+          '@context': './src/context',
+          
+          // Root level folders (matching your structure)
+          '@navigation': './navigation',
+          '@screens': './screens',
+          '@assets': './assets',
+          
+          // Screen modules (matching your folder structure)
+          '@screens/auth': './screens/auth',
+          '@screens/common': './screens/common',
+          '@screens/driver': './screens/driver',
+          '@screens/rider': './screens/rider',
+          '@screens/payments': './screens/payments',
+          '@screens/MapScreen': './screens/MapScreen',
+          '@screens/profile': './screens/profile',
+          
+          // Feature-specific aliases
+          '@auth': './screens/auth',
+          '@driver': './screens/driver',
+          '@rider': './screens/rider',
+          '@payments': './screens/payments',
+          '@common': './screens/common',
+          
+          // Specific services (optimized for Kabaza features)
           '@api': './src/services/api',
-          '@socket': './src/services/socket',
           '@location': './src/services/location',
-          '@payment': './src/services/payment',
-          '@realtime': './src/services/realtime',
           '@ride': './src/services/ride',
+          '@socket': './src/services/socket',
+          '@realtime': './src/services/realtime',
+          '@payment': './src/services/payment',
           '@notification': './src/services/notification',
           '@document': './src/services/document',
-          '@utils': './src/utils',
+          '@map': './src/services/map',
+          '@chat': './src/services/chat',
+          '@emergency': './src/services/emergency',
+          '@rating': './src/services/rating',
+          
+          // Navigation aliases
+          '@nav': './navigation',
+          '@stacks': './navigation/stacks',
+          '@tabs': './navigation/tabs',
+          '@drawer': './navigation/drawer',
         },
       },
     ],
     
+    // React Native Reanimated (must be last)
     'react-native-reanimated/plugin',
   ],
   
   env: {
+    production: {
+      plugins: [
+        'transform-remove-console',
+        'react-native-paper/babel',
+      ],
+    },
+    development: {
+      plugins: [
+        // Add development-only plugins here
+      ],
+    },
     test: {
       plugins: [
-        // Same order for test environment
-        '@babel/plugin-transform-typescript',
-        '@babel/plugin-transform-class-properties',
+        ['@babel/plugin-transform-class-properties', { loose: true }],
         ['@babel/plugin-transform-private-methods', { loose: true }],
-        '@babel/plugin-proposal-decorators',
         [
           'module-resolver',
           {
             root: ['./'],
             extensions: ['.js', '.jsx', '.ts', '.tsx'],
             alias: {
-              '@screens': './screens',
-              '@navigation': './navigation',
-              '@assets': './assets',
               '@src': './src',
               '@components': './src/components',
-              '@config': './src/config',
               '@constants': './src/constants',
-              '@context': './src/context',
-              '@store': './src/store',
               '@hooks': './src/hooks',
               '@services': './src/services',
+              '@store': './src/store',
               '@utils': './src/utils',
             },
           },

@@ -12,7 +12,7 @@ export { default as authAPI } from './api/authAPI';
 export { default as rideAPI } from './api/rideAPI';
 export { default as tripAPI } from './api/tripAPI';
 export { default as vehicleAPI } from './api/vehicleAPI';
-export { default as apiClient } from './api/client';
+export { default as apiClient } from './api/apiService';
 
 // Socket utilities and constants
 export { SocketEvents } from './socket/EventTypes';

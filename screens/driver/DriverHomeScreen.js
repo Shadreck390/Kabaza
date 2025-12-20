@@ -23,7 +23,7 @@ import MapComponent from '@components/MapComponent';
 // FIXED SERVICE IMPORTS:
 import { fetchNearbyRides } from '@services/api/rideAPI';
 import Geolocation from 'react-native-geolocation-service';
-import { getUserData } from '@utils/userStorage';
+import { getUserData } from '@src/utils/userStorage';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 

@@ -16,9 +16,18 @@ import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
-import api from '@services/api/client';
+
+// ✅ FIXED IMPORTS:
+import apiClient from '@services/api/client';  // Changed from '@src/services/api/apiService'
+// OR use your existing API file:
+// import API from '@services/api/index';
+// OR use ride-specific API:
+// import { rideAPI } from '@services/api/rideAPI';
+
 import realTimeService from '@services/socket/realtimeUpdates';
-import { getUserData } from '@utils/userStorage';
+import { getUserData } from '@utils/userStorage';  // Changed from '@src/utils/userStorage'
+
+// Rest of your component code...
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 

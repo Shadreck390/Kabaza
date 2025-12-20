@@ -14,7 +14,7 @@ import Geolocation from 'react-native-geolocation-service';
 import { useDispatch } from 'react-redux';
 
 // FIXED - using aliases:
-import { saveUserData, saveUserRole, getUserData } from '@utils/userStorage';
+import { saveUserData, saveUserRole, getUserData } from '@src/utils/userStorage';
 import { loginSuccess } from '@store/slices/authSlice';
 
 export default function RoleSelectionScreen({ navigation, route }) {

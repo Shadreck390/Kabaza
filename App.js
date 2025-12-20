@@ -6,8 +6,10 @@ import { View, Image, Text, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
-import { store, persistor } from './src/store';
-import AppNavigator from './navigation/AppNavigator';
+
+// ✅ FIXED: Use path aliases instead of relative imports
+import { store, persistor } from '@store';
+import AppNavigator from '@navigation/AppNavigator';
 
 // ======================
 // STYLE SHEETS

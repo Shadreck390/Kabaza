@@ -21,7 +21,7 @@ import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import axios from 'axios';
 
 // FIXED IMPORTS:
-import { getUserData, saveUserData } from '@utils/userStorage';
+import { getUserData, saveUserData } from '@src/utils/userStorage';
 import socketService from '@services/socket/socketService';
 
 export default function DriverVerificationScreen({ navigation, route }) {

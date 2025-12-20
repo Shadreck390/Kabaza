@@ -12,7 +12,8 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.soloader.SoLoader
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
-import com.dieam.reactnativepushnotification.ReactNativePushNotificationPackage // Add this import
+// ❌ REMOVE THIS LINE - not needed anymore:
+// import com.dieam.reactnativepushnotification.ReactNativePushNotificationPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -22,9 +23,8 @@ class MainApplication : Application(), ReactApplication {
                 // Packages that cannot be autolinked yet can be added manually here
                 val packages = PackageList(this).packages.toMutableList()
                 
-                // ✅ Manually add react-native-push-notification package
-                // (If not auto-linked in newer React Native versions)
-                packages.add(ReactNativePushNotificationPackage())
+                // ❌ REMOVE THIS LINE - it's auto-linked now:
+                // packages.add(ReactNativePushNotificationPackage())
                 
                 // Add other custom packages here if needed
                 // e.g., packages.add(MyCustomPackage())

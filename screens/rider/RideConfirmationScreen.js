@@ -16,7 +16,7 @@ import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
 // ✅ CONSISTENT: Using @ alias for services and utils
 import realTimeService from '@services/socket/realtimeUpdates';
-import { getUserData } from '@utils/userStorage';
+import { getUserData } from '@src/utils/userStorage';
 
 // ===================== ADD MISSING IMPORTS (IF NEEDED) =====================
 

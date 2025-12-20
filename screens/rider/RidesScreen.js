@@ -11,7 +11,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
-import { getRideHistory } from '@utils/userStorage';
+import { getRideHistory } from '@src/utils/userStorage';
 
 const RidesScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState('Past');

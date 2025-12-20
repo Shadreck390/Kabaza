@@ -19,7 +19,7 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // FIXED IMPORTS:
-import { getUserData, saveUserData } from '@utils/userStorage';
+import { getUserData, saveUserData } from '@src/utils/userStorage';
 import socketService from '@services/socket/socketService';
 
 export default function VerificationPendingScreen({ navigation, route }) {

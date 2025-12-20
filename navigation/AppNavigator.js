@@ -6,7 +6,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 
 // ✅ FIXED: Using @ alias for utils
-import { getUserData, getUserRole } from '@utils/userStorage';
+import { getUserData, getUserRole } from '@src/utils/userStorage';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
