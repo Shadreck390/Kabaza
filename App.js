@@ -1,37 +1,43 @@
+// App.js
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
-import RNBootSplash from "react-native-bootsplash";
 import React, { useEffect, useState } from 'react';
-import { View, Image, Text, StyleSheet } from 'react-native';
+import { View, Image, Text, StyleSheet, LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 
-// ✅ FIXED: Use path aliases instead of relative imports
+// Store
 import { store, persistor } from '@store';
 import AppNavigator from '@navigation/AppNavigator';
+
+// Ignore specific warnings (optional)
+LogBox.ignoreLogs([
+  'Require cycle:',
+  'Non-serializable values were found in the navigation state',
+  'Sending `onAnimatedValueUpdate` with no listeners registered',
+]);
 
 // ======================
 // STYLE SHEETS
 // ======================
 
-// Loading component styles (used early in file)
-const loadingStyles = StyleSheet.create({
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   fallback: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: '#FFFFFF',
   },
   text: {
     fontSize: 16,
-    color: '#666',
+    color: '#4F46E5',
+    marginTop: 10,
   },
-});
-
-// Splash screen styles (used early in file)
-const splashStyles = StyleSheet.create({
-  container: {
+  splashContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
@@ -51,13 +57,26 @@ const splashStyles = StyleSheet.create({
 });
 
 // ======================
-// COMPONENTS (DEFINE BEFORE APP)
+// COMPONENTS
 // ======================
 
-// Fallback Loading component - MUST BE BEFORE App!
-const Loading = ({ message }) => (
-  <View style={loadingStyles.fallback}>
-    <Text style={loadingStyles.text}>{message || 'Loading...'}</Text>
+const Loading = () => (
+  <View style={styles.fallback}>
+    <Image 
+      source={require('./assets/kabaza_logo.png')} 
+      style={styles.logo} 
+    />
+    <Text style={styles.text}>Initializing Kabaza...</Text>
+  </View>
+);
+
+const InitialSplash = () => (
+  <View style={styles.splashContainer}>
+    <Image 
+      source={require('./assets/kabaza_logo.png')} 
+      style={styles.logo} 
+    />
+    <Text style={styles.title}>Kabaza</Text>
   </View>
 );
 
@@ -66,52 +85,53 @@ const Loading = ({ message }) => (
 // ======================
 
 export default function App() {
-  const [ready, setReady] = useState(false);
+  const [appIsReady, setAppIsReady] = useState(false);
 
   useEffect(() => {
-    const initApp = async () => {
+    const initializeApp = async () => {
       try {
-        console.log('🚀 Initializing app...');
+        console.log('🚀 App initialization started...');
         
-        // Simulate initialization delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Simulate any necessary initialization (fonts, etc.)
+        await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Hide splash screen using bootsplash
-        RNBootSplash.hide({ fade: true });
+        setAppIsReady(true);
+        console.log('✅ App initialization complete');
         
-        setReady(true);
-        console.log('✅ App ready');
-        
-      } catch (e) {
-        console.error('❌ App initialization failed:', e);
-        setReady(true); // Still proceed
+      } catch (error) {
+        console.error('❌ App initialization failed:', error);
+        setAppIsReady(true); // Still proceed to app even if init fails
       }
     };
 
-    initApp();
+    initializeApp();
   }, []);
 
-  // Show splash screen while loading
-  if (!ready) {
+  // Show initial splash while React Native/JS is loading
+  if (!appIsReady) {
     return (
-      <GestureHandlerRootView style={splashStyles.container}>
-        <Image 
-          source={require('./assets/kabaza_logo.png')} 
-          style={splashStyles.logo} 
-        />
-        <Text style={splashStyles.title}>Kabaza</Text>
+      <GestureHandlerRootView style={styles.container}>
+        <InitialSplash />
       </GestureHandlerRootView>
     );
   }
 
-  // Main app with Redux
+  // Main app with Redux and Navigation
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={styles.container}>
       <Provider store={store}>
         <PersistGate 
-          loading={<Loading message="Loading Kabaza..." />} 
+          loading={<Loading />} 
           persistor={persistor}
         >
+          {/* 
+            IMPORTANT: AppNavigator already contains NavigationContainer
+            and handles ALL navigation logic including:
+            - Splash screen
+            - Auth flow  
+            - Rider/Driver navigation
+            - User state management
+          */}
           <AppNavigator />
         </PersistGate>
       </Provider>

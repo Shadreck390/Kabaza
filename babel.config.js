@@ -2,7 +2,10 @@ module.exports = {
   presets: ['module:@react-native/babel-preset'],
   
   plugins: [
-    // ✅ Keep class features
+    // ✅ CRITICAL: TypeScript plugin MUST be first
+    '@babel/plugin-transform-typescript',
+    
+    // ✅ Class features plugins (order matters!)
     ['@babel/plugin-transform-class-properties', { loose: true }],
     ['@babel/plugin-transform-private-methods', { loose: true }],
     ['@babel/plugin-transform-private-property-in-object', { loose: true }],
@@ -35,12 +38,12 @@ module.exports = {
           '@config': './src/config',
           '@context': './src/context',
           
-          // Root level folders (matching your structure)
+          // Root level folders
           '@navigation': './navigation',
           '@screens': './screens',
           '@assets': './assets',
           
-          // Screen modules (matching your folder structure)
+          // Screen modules
           '@screens/auth': './screens/auth',
           '@screens/common': './screens/common',
           '@screens/driver': './screens/driver',
@@ -56,7 +59,7 @@ module.exports = {
           '@payments': './screens/payments',
           '@common': './screens/common',
           
-          // Specific services (optimized for Kabaza features)
+          // Specific services
           '@api': './src/services/api',
           '@location': './src/services/location',
           '@ride': './src/services/ride',
@@ -87,7 +90,6 @@ module.exports = {
     production: {
       plugins: [
         'transform-remove-console',
-        'react-native-paper/babel',
       ],
     },
     development: {
@@ -97,6 +99,7 @@ module.exports = {
     },
     test: {
       plugins: [
+        '@babel/plugin-transform-typescript',
         ['@babel/plugin-transform-class-properties', { loose: true }],
         ['@babel/plugin-transform-private-methods', { loose: true }],
         [

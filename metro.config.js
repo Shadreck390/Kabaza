@@ -21,4 +21,3 @@ module.exports = {
     blockList: [/.*\/node_modules\/react-native-maps\/lib\/android\/index\.js$/],
   },
 };
-
