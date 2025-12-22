@@ -22,7 +22,7 @@ export { ConnectionManager } from './socket/ConnectionManager';
 export { default as locationUtils } from './location/Location.utils';
 
 // Ride utilities
-export { default as rideUtils } from './ride/ride.utils';
+export { default as rideUtils } from './ride/rideutils';
 
 // Optional: Create a main default export
 const Services = {

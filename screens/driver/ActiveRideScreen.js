@@ -34,7 +34,7 @@ import { useAuth, useDriver } from '@hooks/useRedux';
 import { getUserData, saveUserData } from '@src/utils/userStorage'; // Check if named export
 import LocationService from '@services/location/LocationService'; // Fixed path
 import socketService, { SocketEvents } from '@services/socket/socketService'; // Fixed path
-import { calculateFare, formatPrice } from '@src/utils/rideUtils';
+import { calculateFare, formatPrice } from '@services/ride/rideutils';
 
 const { width, height } = Dimensions.get('window');
 
