@@ -1,4 +1,4 @@
-finish this // screens/payments/WalletScreen.js
+// screens/payments/WalletScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -11,6 +11,8 @@ import {
   RefreshControl,
   Alert,
   Modal,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -254,7 +256,10 @@ export default function WalletScreen() {
       )}
     </View>
   );
-  ctionTitle}>Quick Actions</Text>
+
+  const renderQuickActions = () => (
+    <View style={styles.actionsSection}>
+      <Text style={styles.sectionTitle}>Quick Actions</Text>
       <View style={styles.actionsContainer}>
         <TouchableOpacity 
           style={styles.actionButton}
