@@ -2,14 +2,6 @@ module.exports = {
   presets: ['module:@react-native/babel-preset'],
   
   plugins: [
-    // ✅ CRITICAL: TypeScript plugin MUST be first
-    '@babel/plugin-transform-typescript',
-    
-    // ✅ Class features plugins (order matters!)
-    ['@babel/plugin-transform-class-properties', { loose: true }],
-    ['@babel/plugin-transform-private-methods', { loose: true }],
-    ['@babel/plugin-transform-private-property-in-object', { loose: true }],
-    
     // ✅ Module resolver for alias support
     [
       'module-resolver',
@@ -82,43 +74,13 @@ module.exports = {
       },
     ],
     
-    // React Native Reanimated (must be last)
+    // ✅ React Native Reanimated (MUST be last)
     'react-native-reanimated/plugin',
   ],
   
   env: {
     production: {
-      plugins: [
-        'transform-remove-console',
-      ],
-    },
-    development: {
-      plugins: [
-        // Add development-only plugins here
-      ],
-    },
-    test: {
-      plugins: [
-        '@babel/plugin-transform-typescript',
-        ['@babel/plugin-transform-class-properties', { loose: true }],
-        ['@babel/plugin-transform-private-methods', { loose: true }],
-        [
-          'module-resolver',
-          {
-            root: ['./'],
-            extensions: ['.js', '.jsx', '.ts', '.tsx'],
-            alias: {
-              '@src': './src',
-              '@components': './src/components',
-              '@constants': './src/constants',
-              '@hooks': './src/hooks',
-              '@services': './src/services',
-              '@store': './src/store',
-              '@utils': './src/utils',
-            },
-          },
-        ],
-      ],
+      plugins: ['transform-remove-console'],
     },
   },
-};
+};;

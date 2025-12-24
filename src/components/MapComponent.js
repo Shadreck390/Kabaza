@@ -17,17 +17,76 @@ import MapView, {
 } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
-// ✅ CORRECTED IMPORT PATHS - Using aliases:
-import AppConfig from '@config'; // Using alias
-import Constants from '@constants/app';  // ✅ CORRECT
+// ✅ Safe imports with fallbacks
+let config = {};
+try {
+  const configModule = require('@config');
+  config = configModule.default || configModule || {};
+  console.log('✅ Config loaded:', Object.keys(config));
+} catch (error) {
+  console.warn('⚠️ Config not found at @config, using defaults');
+  config = {};
+}
 
-// Get Google Maps API Key from config
-const GOOGLE_MAPS_API_KEY = AppConfig.MAPS.API_KEY;
+let constants = {};
+try {
+  const constantsModule = require('@src/store/constants');
+  constants = constantsModule.default || constantsModule || {};
+} catch (error) {
+  console.warn('⚠️ Store constants not found, using defaults');
+  constants = {};
+}
 
-// Constants (now referencing our constants file)
+// ✅ Safe constants with fallbacks
+const GOOGLE_MAPS_API_KEY = config.MAPS?.API_KEY || '';
+const ANIMATION_DURATION = config.UI_CONSTANTS?.ANIMATION?.DURATION?.NORMAL || 500;
+
+// ✅ Hardcoded UI constants as fallback
+const UI_CONSTANTS = {
+  SPACING: {
+    XS: 4,
+    SM: 8,
+    MD: 16,
+    LG: 24,
+    XL: 32,
+  },
+  BORDER_RADIUS: {
+    SM: 4,
+    MD: 8,
+    LG: 12,
+    XL: 16,
+  },
+  SHADOW: {
+    SM: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.18,
+      shadowRadius: 1.0,
+      elevation: 1,
+    },
+    MD: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+    },
+    LG: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.30,
+      shadowRadius: 4.65,
+      elevation: 8,
+    },
+  },
+};
+
+// Use config UI constants if available, otherwise use fallback
+const ui = config.UI_CONSTANTS || UI_CONSTANTS;
+
 const DEFAULT_DELTA = {
-  latitudeDelta: Constants.MAP_CONSTANTS.DEFAULT_LOCATION.latitudeDelta,
-  longitudeDelta: Constants.MAP_CONSTANTS.DEFAULT_LOCATION.longitudeDelta,
+  latitudeDelta: 0.0922,
+  longitudeDelta: 0.0421,
 };
 
 const GEOLOCATION_OPTIONS = {
@@ -37,8 +96,6 @@ const GEOLOCATION_OPTIONS = {
   distanceFilter: 50,
 };
 
-const ANIMATION_DURATION = Constants.UI_CONSTANTS.ANIMATION.DURATION.NORMAL;
-
 // Show warning if API key is missing or placeholder
 if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY.includes('Placeholder')) {
   console.warn('⚠️ Google Maps API Key is missing or using placeholder!');
@@ -46,7 +103,7 @@ if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY.includes('Placeholder')) {
   console.log('👉 Get key from: https://console.cloud.google.com/');
   
   // Only show alert in development
-  if (AppConfig.ENV.DEBUG && Platform.OS !== 'web') {
+  if (config.ENV?.DEBUG && Platform.OS !== 'web') {
     Alert.alert(
       'Configuration Required',
       'Google Maps API key is missing. Please add it to .env.local file.',
@@ -115,7 +172,7 @@ const MapComponent = ({
           ...userLocation,
           ...DEFAULT_DELTA,
         };
-        setRegion(newRegion);
+        setRegion?.(newRegion);
         mapRef.current.animateToRegion(newRegion, ANIMATION_DURATION);
         setIsFollowingUser(true);
       }
@@ -139,26 +196,30 @@ const MapComponent = ({
             ...newLocation,
             ...DEFAULT_DELTA,
           };
-          setRegion(newRegion);
+          setRegion?.(newRegion);
           
           // Log location in development
-          if (AppConfig.ENV.DEBUG) {
+          if (config.ENV?.DEBUG) {
             console.log('📍 User location acquired:', newLocation);
           }
         },
         (error) => {
           console.warn('Geolocation error:', error);
           
-          // Use default location from config
-          const defaultLocation = Constants.MAP_CONSTANTS.DEFAULT_LOCATION;
-          setRegion({
+          // Use default location from config or fallback
+          const defaultLocation = {
+            latitude: constants.MAP_CONSTANTS?.DEFAULT_LATITUDE || -1.939,
+            longitude: constants.MAP_CONSTANTS?.DEFAULT_LONGITUDE || 30.044,
+          };
+          
+          setRegion?.({
             latitude: defaultLocation.latitude,
             longitude: defaultLocation.longitude,
             ...DEFAULT_DELTA,
           });
           
           // Show error in development
-          if (AppConfig.ENV.DEBUG) {
+          if (config.ENV?.DEBUG) {
             Alert.alert(
               'Location Error',
               'Unable to get your location. Using default location.',
@@ -171,8 +232,12 @@ const MapComponent = ({
     } else {
       console.warn('Geolocation not supported');
       // Use default location
-      const defaultLocation = Constants.MAP_CONSTANTS.DEFAULT_LOCATION;
-      setRegion({
+      const defaultLocation = {
+        latitude: -1.939,
+        longitude: 30.044,
+      };
+      
+      setRegion?.({
         latitude: defaultLocation.latitude,
         longitude: defaultLocation.longitude,
         ...DEFAULT_DELTA,
@@ -260,12 +325,13 @@ const MapComponent = ({
 
   // ✅ Log config status on mount
   useEffect(() => {
-    if (AppConfig.ENV.DEBUG) {
+    if (config.ENV?.DEBUG) {
       console.log('🗺️ MapComponent mounted with config:', {
         hasApiKey: hasGoogleMapsKey,
         apiKeyLength: GOOGLE_MAPS_API_KEY?.length || 0,
-        environment: AppConfig.ENV.NAME,
-        debugMode: AppConfig.ENV.DEBUG,
+        environment: config.ENV?.NAME || 'development',
+        debugMode: config.ENV?.DEBUG || false,
+        uiConstantsAvailable: !!config.UI_CONSTANTS,
       });
     }
   }, []);
@@ -553,35 +619,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFF3CD',
-    padding: Constants.UI_CONSTANTS.SPACING.LG,
+    padding: ui.SPACING.LG, // ✅ Using ui constant
   },
   warningTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#856404',
-    marginTop: Constants.UI_CONSTANTS.SPACING.MD,
-    marginBottom: Constants.UI_CONSTANTS.SPACING.SM,
+    marginTop: ui.SPACING.MD, // ✅ Using ui constant
+    marginBottom: ui.SPACING.SM, // ✅ Using ui constant
   },
   warningText: {
     fontSize: 14,
     color: '#856404',
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: Constants.UI_CONSTANTS.SPACING.XS,
+    marginBottom: ui.SPACING.XS, // ✅ Using ui constant
   },
   warningSubtext: {
     fontSize: 12,
     color: '#856404',
     textAlign: 'center',
     fontStyle: 'italic',
-    marginBottom: Constants.UI_CONSTANTS.SPACING.MD,
+    marginBottom: ui.SPACING.MD, // ✅ Using ui constant
   },
   helpButton: {
     backgroundColor: '#F59E0B',
-    paddingVertical: Constants.UI_CONSTANTS.SPACING.SM,
-    paddingHorizontal: Constants.UI_CONSTANTS.SPACING.MD,
-    borderRadius: Constants.UI_CONSTANTS.BORDER_RADIUS.MD,
-    marginTop: Constants.UI_CONSTANTS.SPACING.SM,
+    paddingVertical: ui.SPACING.SM, // ✅ Using ui constant
+    paddingHorizontal: ui.SPACING.MD, // ✅ Using ui constant
+    borderRadius: ui.BORDER_RADIUS.MD, // ✅ Using ui constant
+    marginTop: ui.SPACING.SM, // ✅ Using ui constant
   },
   helpButtonText: {
     color: '#fff',
@@ -595,12 +661,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa' 
   },
   loadingText: {
-    marginTop: Constants.UI_CONSTANTS.SPACING.MD,
+    marginTop: ui.SPACING.MD, // ✅ Using ui constant
     fontSize: 14,
     color: '#666',
   },
   placeholderWarning: {
-    marginTop: Constants.UI_CONSTANTS.SPACING.SM,
+    marginTop: ui.SPACING.SM, // ✅ Using ui constant
     fontSize: 11,
     color: '#F59E0B',
     fontStyle: 'italic',
@@ -631,12 +697,12 @@ const styles = StyleSheet.create({
   },
   rideMarker: { 
     backgroundColor: '#EF4444', 
-    paddingHorizontal: Constants.UI_CONSTANTS.SPACING.SM, 
-    paddingVertical: Constants.UI_CONSTANTS.SPACING.XS, 
-    borderRadius: Constants.UI_CONSTANTS.BORDER_RADIUS.MD, 
+    paddingHorizontal: ui.SPACING.SM, // ✅ Using ui constant
+    paddingVertical: ui.SPACING.XS, // ✅ Using ui constant
+    borderRadius: ui.BORDER_RADIUS.MD, // ✅ Using ui constant
     borderWidth: 2, 
     borderColor: '#fff', 
-    ...Constants.UI_CONSTANTS.SHADOW.SM
+    ...ui.SHADOW.SM // ✅ Using ui constant
   },
   rideMarkerText: { 
     color: '#fff', 
@@ -657,38 +723,38 @@ const styles = StyleSheet.create({
   },
   calloutContainer: { 
     backgroundColor: '#fff', 
-    borderRadius: Constants.UI_CONSTANTS.BORDER_RADIUS.MD, 
-    padding: Constants.UI_CONSTANTS.SPACING.MD, 
+    borderRadius: ui.BORDER_RADIUS.MD, // ✅ Using ui constant
+    padding: ui.SPACING.MD, // ✅ Using ui constant
     width: 180, 
-    ...Constants.UI_CONSTANTS.SHADOW.SM
+    ...ui.SHADOW.SM // ✅ Using ui constant
   },
   calloutTitle: { 
     fontSize: 14, 
     fontWeight: '600', 
     color: '#333', 
-    marginBottom: Constants.UI_CONSTANTS.SPACING.XS 
+    marginBottom: ui.SPACING.XS  // ✅ Using ui constant
   },
   calloutSubtitle: { 
     fontSize: 12, 
     color: '#666', 
-    marginBottom: Constants.UI_CONSTANTS.SPACING.XS 
+    marginBottom: ui.SPACING.XS  // ✅ Using ui constant
   },
   calloutAmount: { 
     fontSize: 14, 
     fontWeight: 'bold', 
     color: '#4CAF50', 
-    marginBottom: Constants.UI_CONSTANTS.SPACING.XS 
+    marginBottom: ui.SPACING.XS  // ✅ Using ui constant
   },
   calloutTime: { 
     fontSize: 11, 
     color: '#666', 
-    marginBottom: Constants.UI_CONSTANTS.SPACING.SM 
+    marginBottom: ui.SPACING.SM  // ✅ Using ui constant
   },
   bookButton: { 
     backgroundColor: '#4CAF50', 
-    paddingVertical: Constants.UI_CONSTANTS.SPACING.XS, 
-    paddingHorizontal: Constants.UI_CONSTANTS.SPACING.MD, 
-    borderRadius: Constants.UI_CONSTANTS.BORDER_RADIUS.SM, 
+    paddingVertical: ui.SPACING.XS, // ✅ Using ui constant
+    paddingHorizontal: ui.SPACING.MD, // ✅ Using ui constant
+    borderRadius: ui.BORDER_RADIUS.SM, // ✅ Using ui constant
     alignItems: 'center' 
   },
   bookButtonText: { 
@@ -721,7 +787,7 @@ const styles = StyleSheet.create({
     borderRadius: 22, 
     alignItems: 'center', 
     justifyContent: 'center', 
-    ...Constants.UI_CONSTANTS.SHADOW.SM
+    ...ui.SHADOW.SM // ✅ Using ui constant
   },
   activeControlButton: {
     borderWidth: 2,
@@ -733,15 +799,15 @@ const styles = StyleSheet.create({
     left: 16, 
     right: 16, 
     backgroundColor: '#fff', 
-    borderRadius: Constants.UI_CONSTANTS.BORDER_RADIUS.LG, 
-    padding: Constants.UI_CONSTANTS.SPACING.MD, 
-    ...Constants.UI_CONSTANTS.SHADOW.MD
+    borderRadius: ui.BORDER_RADIUS.LG, // ✅ Using ui constant
+    padding: ui.SPACING.MD, // ✅ Using ui constant
+    ...ui.SHADOW.MD // ✅ Using ui constant
   },
   bookingHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Constants.UI_CONSTANTS.SPACING.SM,
+    marginBottom: ui.SPACING.SM, // ✅ Using ui constant
   },
   bookingTitle: { 
     fontSize: 16, 
@@ -751,12 +817,12 @@ const styles = StyleSheet.create({
   bookingDriver: { 
     fontSize: 14, 
     color: '#666', 
-    marginBottom: Constants.UI_CONSTANTS.SPACING.XS 
+    marginBottom: ui.SPACING.XS  // ✅ Using ui constant
   },
   bookingVehicle: { 
     fontSize: 12, 
     color: '#666', 
-    marginBottom: Constants.UI_CONSTANTS.SPACING.XS 
+    marginBottom: ui.SPACING.XS  // ✅ Using ui constant
   },
   bookingStatus: { 
     fontSize: 12, 

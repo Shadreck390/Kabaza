@@ -1,4 +1,21 @@
 // src/constants/app/index.js
+import { Platform } from 'react-native';
+import Geolocation from 'react-native-geolocation-service';
+
+// ====================
+// ADD THESE CONSTANTS HERE
+// ====================
+const AndroidAccuracy = {
+  HIGH: 'high',
+  BALANCED: 'balanced', 
+  LOW: 'low',
+};
+
+const iOSAccuracy = {
+  BestForNavigation: 'bestForNavigation',
+  Best: 'best',
+  NearestTenMeters: 'nearestTenMeters',
+};
 
 // ====================
 // APP CONFIGURATION

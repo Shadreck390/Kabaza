@@ -31,6 +31,7 @@
     "@reduxjs/toolkit": "^1.9.7",
     "axios": "^1.6.8",
     "expo-file-system": "^19.0.21",
+    "expo-modules-core": "^3.0.29",
     "expo-sharing": "~14.0.8",
     "react": "18.3.1",
     "react-native": "0.76.9",
