@@ -146,6 +146,12 @@ class DocumentService {
         ...options,
       });
 
+      // ========== ADD NULL CHECK HERE ==========
+      if (!image || !image.path) {
+        console.error('Invalid image returned from picker');
+        return null;
+      }
+
       // Validate file size
       const fileSizeMB = image.size / (1024 * 1024);
       if (fileSizeMB > this.MAX_FILE_SIZE.image) {
@@ -153,12 +159,12 @@ class DocumentService {
       }
 
       return {
-        uri: image.path,
-        name: `document_${Date.now()}.${image.mime.split('/')[1]}`,
-        type: image.mime,
-        size: image.size,
-        width: image.width,
-        height: image.height,
+        uri: image?.path || image?.uri || '',
+        name: `document_${Date.now()}.${image?.mime?.split('/')[1] || 'jpg'}`,
+        type: image?.mime || 'image/jpeg',
+        size: image?.size || 0,
+        width: image?.width || 0,
+        height: image?.height || 0,  // Fixed
       };
     } catch (error) {
       console.error('❌ Image picker error:', error);
@@ -190,6 +196,12 @@ class DocumentService {
         ...options,
       });
 
+      // ========== ADD NULL CHECK HERE ==========
+      if (!image || !image.path) {
+        console.error('Invalid image returned from picker');
+        return null;
+      }
+
       // Validate file size
       const fileSizeMB = image.size / (1024 * 1024);
       if (fileSizeMB > this.MAX_FILE_SIZE.image) {
@@ -197,12 +209,12 @@ class DocumentService {
       }
 
       return {
-        uri: image.path,
-        name: `photo_${Date.now()}.${image.mime.split('/')[1]}`,
-        type: image.mime,
-        size: image.size,
-        width: image.width,
-        height: image.height,
+        uri: image?.path || image?.uri || '',
+        name: `photo_${Date.now()}.${image?.mime?.split('/')[1] || 'jpg'}`,
+        type: image?.mime || 'image/jpeg',
+        size: image?.size || 0,
+        width: image?.width || 0,
+        height: image?.height || 0,  // Fixed
       };
     } catch (error) {
       console.error('❌ Camera error:', error);

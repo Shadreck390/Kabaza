@@ -612,14 +612,21 @@ const AppConfig = {
 };
 
 // Auto-validate on import
-const validationResult = AppConfig.validate();
+//const validationResult = AppConfig.validate();
 
 // Log configuration on app start
-if (AppConfig.ENV.DEBUG) {
-  AppConfig.logConfig();
-}
+//if (AppConfig.ENV.DEBUG) {
+  //AppConfig.logConfig();
+//}
 
 // Export configuration helpers
+// Export dummy validationResult (real validation happens in App.js)
+export const validationResult = {
+  isValid: true,
+  errors: [],
+  warnings: []
+};
+
 export const ConfigHelpers = {
   getSocketOptions: (additionalOptions = {}) => ({
     ...AppConfig.API.SOCKET_OPTIONS,
@@ -638,7 +645,7 @@ export const ConfigHelpers = {
     const timeouts = {
       searching: AppConfig.RIDES.MATCHING.MATCH_TIMEOUT,
       accepted: AppConfig.REAL_TIME.RIDE.ACCEPTANCE_TIMEOUT,
-      pickup: 600000, // 10 minutes
+      pickup: 600000,
     };
     return timeouts[status] || 30000;
   },
@@ -649,4 +656,3 @@ export const ConfigHelpers = {
 };
 
 export default AppConfig;
-export { validationResult};

@@ -13,7 +13,8 @@ import {
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
 
-const { width, height } = Dimensions.get('window');
+const windowDimensions = Dimensions.get('window') || { width: 375, height: 667 };
+const { width, height } = windowDimensions;;
 
 const TERMS_SECTIONS = [
   {

@@ -20,8 +20,8 @@ import {
 import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSelector } from 'react-redux';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import RNFS from 'react-native-fs';           // Changed from expo-file-system
+import { Share} from 'react-native';      // This one can stay as is
 import { captureRef } from 'react-native-view-shot';
 
 // FIXED IMPORT:
@@ -733,44 +733,45 @@ export default function TripHistoryScreen({ navigation }) {
   };
 
   const exportToCSV = async (trips) => {
-    try {
-      // Create CSV content
-      const headers = ['Trip ID,Date,Passenger,Pickup,Destination,Fare,Tip,Total,Distance,Duration,Rating,Payment Method,Status'];
-      const rows = trips.map(trip => 
-        `"${trip.id}","${trip.date}","${trip.passengerName}","${trip.pickup}","${trip.destination}",${trip.originalFare},${trip.tip || 0},${(trip.originalFare || 0) + (trip.tip || 0)},"${trip.distance}","${trip.duration}",${trip.rating},"${trip.paymentMethod}","${trip.status}"`
-      );
-      
-      const csvContent = [...headers, ...rows].join('\n');
-      const fileName = `Kabaza_TripHistory_${new Date().toISOString().split('T')[0]}.csv`;
-      
-      // Use expo-file-system correctly
-      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-      
-      await FileSystem.writeAsStringAsync(fileUri, csvContent, {
-        encoding: FileSystem.EncodingType.UTF8
-      });
-      
-      console.log('CSV file saved to:', fileUri);
-      
-      // Use expo-sharing to share the file
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/csv',
-          dialogTitle: 'Share Trip History',
-          UTI: 'public.comma-separated-values-text'
-        });
-      } else {
-        Alert.alert('CSV Exported', `File saved to app storage: ${fileName}`, [
-          { text: 'OK' }
-        ]);
-      }
-      
-    } catch (error) {
-      console.error('CSV export error:', error);
-      throw error;
-    }
-  };
+  try {
+    // Create CSV Content
+    const headers = ['Trip ID,Date,Passenger,Pickup,Destination,Fare,Tip,Total,Distance,Duration,Rating,Payment Method,Status'];
+    const rows = trips.map(trip =>
+      `"${trip.id}","${trip.date}","${trip.passengerName}","${trip.pickup}","${trip.destination}",${trip.originalFare},${trip.tip || 0},${(trip.originalFare || 0) + (trip.tip || 0)},"${trip.distance}","${trip.duration}",${trip.rating},"${trip.paymentMethod}","${trip.status}"`
+    );
 
+    const csvContent = [...headers, ...rows].join('\n');
+    const fileName = `Kabaza_TripHistory_${new Date().toISOString().split('T')[0]}.csv`;
+
+    // Use react-native-fs instead of expo-file-system
+    const fileUri = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+
+    // Write file with react-native-fs
+    await RNFS.writeFile(fileUri, csvContent, 'utf8');
+    console.log('CSV file saved to:', fileUri);
+
+    // Check if file exists
+    const fileExists = await RNFS.exists(fileUri);
+    if (fileExists) {
+      try {
+        // Use React Native's Share API instead of expo-sharing
+        await Share.share({
+          url: Platform.OS === 'ios' ? fileUri : `file://${fileUri}`,
+          title: 'Share Trip History',
+          message: Platform.OS === 'android' ? 'Here is my trip history export' : undefined,
+        });
+      } catch (shareError) {
+        console.error('Share failed:', shareError);
+        Alert.alert('Share Failed', 'Could not share the file', [{ text: 'OK' }]);
+      }
+    } else {
+      Alert.alert('Export Failed', 'Could not save CSV file', [{ text: 'OK' }]);
+    }
+  } catch (error) {
+    console.error('CSV export error:', error);
+    Alert.alert('Export Failed', error.message, [{ text: 'OK' }]);
+  }
+};
   const exportToPDF = async () => {
     try {
       // Capture view as image

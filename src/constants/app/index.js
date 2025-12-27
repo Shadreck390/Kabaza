@@ -454,7 +454,20 @@ export const COLORS = {
 
 import { Dimensions } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
+const getWindowDimensions = () => {
+  try {
+    const window = Dimensions.get('window');
+    if (!window || typeof window.width !== 'number') {
+      return { width: 375, height: 667 };
+    }
+    return window;
+  } catch (error) {
+    return { width: 375, height: 667 };
+  }
+};
+
+// REPLACE WITH THIS
+const { width, height } = getWindowDimensions();
 
 export const DIMENSIONS = {
   WINDOW_WIDTH: width,

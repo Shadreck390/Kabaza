@@ -105,6 +105,18 @@ export default function App() {
       try {
         console.log('🚀 App initialization started...');
         
+        // ✅ VALIDATE CONFIG AFTER REACT NATIVE IS READY
+        try {
+          const AppConfig = require('./src/config').default;
+          const validationResult = AppConfig.validate();
+          if (AppConfig.ENV?.DEBUG) {
+            AppConfig.logConfig();
+          }
+          console.log('✅ Config validated and loaded');
+        } catch (configError) {
+          console.warn('⚠️ Config validation error:', configError);
+        }
+        
         // IMPORTANT: Initialize Expo modules if they exist
         // This prevents the "Cannot find native module 'FileSystem'" error
         try {

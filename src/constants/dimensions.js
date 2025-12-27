@@ -1,13 +1,46 @@
-// src/constants/dimensions.js
+// src/constants/dimensions.js - FIXED VERSION
 import { Dimensions, Platform } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
+// Safely get dimensions with fallback
+const getWindowDimensions = () => {
+  try {
+    const window = Dimensions.get('window');
+    if (!window || typeof window.width !== 'number' || typeof window.height !== 'number') {
+      return { width: 375, height: 667 }; // iPhone default fallback
+    }
+    return { width: window.width, height: window.height };
+  } catch (error) {
+    console.warn('Failed to get window dimensions:', error);
+    return { width: 375, height: 667 };
+  }
+};
+
+const getScreenDimensions = () => {
+  try {
+    const screen = Dimensions.get('screen');
+    if (!screen || typeof screen.width !== 'number' || typeof screen.height !== 'number') {
+      const window = getWindowDimensions();
+      return { width: window.width, height: window.height };
+    }
+    return { width: screen.width, height: screen.height };
+  } catch (error) {
+    console.warn('Failed to get screen dimensions:', error);
+    const window = getWindowDimensions();
+    return { width: window.width, height: window.height };
+  }
+};
+
+// Get window dimensions (usually available immediately)
+const { width, height } = getWindowDimensions();
+
+// Get screen dimensions with safety check
+const { width: screenWidth, height: screenHeight } = getScreenDimensions();
 
 export const DIMENSIONS = {
   WINDOW_WIDTH: width,
   WINDOW_HEIGHT: height,
-  SCREEN_WIDTH: Dimensions.get('screen').width,
-  SCREEN_HEIGHT: Dimensions.get('screen').height,
+  SCREEN_WIDTH: screenWidth,
+  SCREEN_HEIGHT: screenHeight,
   
   // Platform
   IS_IOS: Platform.OS === 'ios',

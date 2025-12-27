@@ -19,7 +19,8 @@ import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
-const { width, height } = Dimensions.get('window');
+const windowDimensions = Dimensions.get('window') || { width: 375, height: 667 };
+const { width, height } = windowDimensions;;
 
 // Mock ride details data
 const RIDE_DETAILS = {

@@ -36,7 +36,8 @@ import RealTimeService from '@services/realtime/RealTimeService';
 import LocationService from '@services/location/LocationService';
 import socketService from '@services/socket/socketService';
 
-const { width, height } = Dimensions.get('window');
+const windowDimensions = Dimensions.get('window') || { width: 375, height: 667 };
+const { width, height } = windowDimensions;;
 
 export default function MapScreen({ route, navigation }) {
   const dispatch = useDispatch();

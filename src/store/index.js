@@ -5,7 +5,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { combineReducers } from 'redux';
 import autoMergeLevel2 from 'redux-persist/lib/stateReconciler/autoMergeLevel2';
 import createSagaMiddleware from 'redux-saga';
-import { all } from 'redux-saga/effects';
 
 // Import your slices - FIXED with aliases:
 import authReducer from '@store/slices/authSlice';
@@ -17,17 +16,8 @@ import notificationReducer from '@store/slices/notificationSlice';
 import chatReducer from '@store/slices/chatSlice';
 import paymentReducer from '@store/slices/paymentSlice';
 
-// Import sagas - FIXED with aliases:
-import authSaga from '@store/sagas/authSaga';
-import driverSaga from '@store/sagas/driverSaga';
-import rideSaga from '@store/sagas/rideSaga';
-import locationSaga from '@store/sagas/locationSaga';
-import socketSaga from '@store/sagas/socketSaga';
-
-// Comment out for now if not created yet
-// import notificationSaga from '@store/sagas/notificationSaga';
-// import chatSaga from '@store/sagas/chatSaga';
-// import paymentSaga from '@store/sagas/paymentSaga';
+// Import root saga from the index.js file
+import rootSaga from '@store/sagas/index';
 
 // ====================
 // PERSIST CONFIGURATION
@@ -198,21 +188,6 @@ const sagaMiddleware = createSagaMiddleware({
   },
 });
 
-// Root saga
-function* rootSaga() {
-  yield all([
-    authSaga(),
-    driverSaga(),
-    rideSaga(),
-    locationSaga(),
-    socketSaga(),
-    // Uncomment when you create these sagas:
-    notificationSaga(),
-    chatSaga(),
-    paymentSaga(),
-  ]);
-}
-
 // ====================
 // STORE CONFIGURATION
 // ====================
@@ -361,21 +336,6 @@ export const subscribeToStore = (selector, callback) => {
   
   return unsubscribe;
 };
-
-// ====================
-// TYPE DEFINITIONS (for TypeScript users)
-// ====================
-
-// If using TypeScript, uncomment and adjust:
-/*
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;
-
-// Helper types for typed hooks
-export interface TypedUseSelectorHook<TState> {
-  <TSelected>(selector: (state: TState) => TSelected): TSelected;
-}
-*/
 
 // ====================
 // START SAGA MIDDLEWARE

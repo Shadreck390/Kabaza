@@ -22,7 +22,8 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import { getUserData } from '@utils/userStorage';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
-const { width, height } = Dimensions.get('window');
+const windowDimensions = Dimensions.get('window') || { width: 375, height: 667 };
+const { width, height } = windowDimensions;;
 
 export default function RideActiveScreen() {
   const navigation = useNavigation();

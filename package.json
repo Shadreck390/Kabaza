@@ -13,6 +13,7 @@
     "android-build": "react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res && cd android && gradlew.bat assembleDebug"
   },
   "dependencies": {
+    "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "^2.1.0",
     "@react-native-community/hooks": "^100.1.0",
     "@react-native-community/netinfo": "^9.3.10",
@@ -30,7 +31,6 @@
     "@react-navigation/stack": "6.4.1",
     "@reduxjs/toolkit": "^1.9.7",
     "axios": "^1.6.8",
-    "expo-file-system": "^19.0.21",
     "expo-modules-core": "^3.0.29",
     "expo-sharing": "~14.0.8",
     "react": "18.3.1",

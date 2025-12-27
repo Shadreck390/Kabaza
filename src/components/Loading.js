@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
-const { width, height } = Dimensions.get('window');
+const windowDimensions = Dimensions.get('window') || { width: 375, height: 667 };
+const { width, height } = windowDimensions;
 
 const Loading = ({ 
   message = 'Loading...', 

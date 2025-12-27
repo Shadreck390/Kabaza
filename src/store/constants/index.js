@@ -1,4 +1,4 @@
-// src/store/utils/constants.js
+// src/store/constants.js
 
 /**
  * Application Constants
