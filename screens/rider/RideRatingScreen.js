@@ -16,7 +16,7 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const RATING_TAGS = [
   { id: 'safe_driver', label: 'Safe Driver', icon: 'shield-check' },

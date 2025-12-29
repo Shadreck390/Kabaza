@@ -6,19 +6,23 @@ buildscript {
         targetSdkVersion = 35
         kotlinVersion = "1.9.22"
         ndkVersion = "26.1.10909125"
+
+        // ✅ Force Kotlin compiler compatibility
+        kotlinCompilerVersion = "2.1.0"
+        firebaseBomVersion = "34.6.0"
+        googlePlayServicesIidVersion = "17.0.0"
         
-        // ✅ ADD THESE VERSIONS - This is the fix!
+        // ✅ Force these specific versions
         googlePlayServicesVersion = "18.3.0"
         playServicesLocationVersion = "21.0.1"
         playServicesMapsVersion = "18.2.0"
-        playServicesAuthVersion = "20.7.0"
+        googlePlayServicesAuthVersion = "21.4.0"
         androidMapsUtilsVersion = "2.3.0"
     }
 
     repositories {
-        google()
+        google()  // Must be first
         mavenCentral()
-
         maven { url "https://plugins.gradle.org/m2/" }
     }
 
@@ -26,18 +30,15 @@ buildscript {
         classpath("com.android.tools.build:gradle:8.2.1")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
         classpath("com.google.android.gms:oss-licenses-plugin:0.10.6")
-        //classpath 'com.google.gms:google-services:4.3.15'
-
+        classpath 'com.google.gms:google-services:4.3.15'
     }
 }
 
 allprojects {
     repositories {
-        google()
+        google()  // ✅ MUST BE FIRST
         mavenCentral()
         maven { url 'https://www.jitpack.io' }
-
-        maven { url "https://pligins.gradle.rgb/m2/"}
+        maven { url "https://plugins.gradle.org/m2/" }  // ✅ CORRECTED TYPO
     }
 }
-

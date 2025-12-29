@@ -6,17 +6,21 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     
-    <!-- ✅ Android 15: POST_NOTIFICATIONS is REQUIRED -->
+    <!-- Facebook Permissions (if needed for login/sharing) -->
+    <uses-permission android:name="android.permission.READ_PROFILE" />
+    <uses-permission android:name="android.permission.READ_FRIENDS" />
+    
+    <!-- Android 13+: POST_NOTIFICATIONS is REQUIRED -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
     <!-- Location permissions -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     
-    <!-- ✅ Android 15: Background location requires user approval -->
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- Background location (only if needed) -->
+    <!-- <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" /> -->
     
-    <!-- ✅ Android 15: Foreground service with LOCATION type -->
+    <!-- Foreground services -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     
@@ -24,20 +28,19 @@
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
-    <!-- Contacts permissions (for SOSScreen.js) -->
+    <!-- Contacts permissions -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
     
-    <!-- ✅ Android 15: New media permissions (replaces READ_EXTERNAL_STORAGE) -->
+    <!-- Media permissions -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     
-    <!-- Legacy storage permissions (for older Android versions) -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
+    <!-- Legacy storage permissions -->
+    <uses-permission 
+        android:name="android.permission.READ_EXTERNAL_STORAGE" 
         android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="29"/>
     
     <!-- Development -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
@@ -45,12 +48,16 @@
     <!-- Vibration for notifications -->
     <uses-permission android:name="android.permission.VIBRATE" />
     
-    <!-- ✅ OPTIONAL: Wake lock for background tasks -->
+    <!-- Wake lock for background tasks -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     
-    <!-- ✅ OPTIONAL: Declare hardware features as not required -->
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <!-- Hardware features as not required -->
+    <uses-feature 
+        android:name="android.hardware.camera" 
+        android:required="false" />
+    <uses-feature 
+        android:name="android.hardware.location.gps" 
+        android:required="false" />
 
     <application
         android:name=".MainApplication"
@@ -65,27 +72,39 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         tools:targetApi="31">
 
-        <!-- Google Maps API Key -->
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAft39RTF1LB_GTSYqy-I2tswzakC4fT3Q"/>
-        <!-- TODO: Set GOOGLE_MAPS_API_KEY in gradle.properties or replace with actual key -->
-
-        <!-- Facebook SDK Configuration -->
+        <!-- ========== FACEBOOK SDK CONFIGURATION ========== -->
+        <!-- REQUIRED: Facebook App ID -->
         <meta-data
             android:name="com.facebook.sdk.ApplicationId"
             android:value="@string/facebook_app_id" />
+        
+        <!-- OPTIONAL BUT RECOMMENDED: Facebook Client Token -->
         <meta-data
             android:name="com.facebook.sdk.ClientToken"
             android:value="@string/facebook_client_token" />
+
+        <!-- OPTIONAL: Auto log app events -->
         <meta-data
             android:name="com.facebook.sdk.AutoLogAppEventsEnabled"
-            android:value="false" />
+            android:value="true" />
+        
+        <!-- OPTIONAL: Advertiser ID collection -->
         <meta-data
             android:name="com.facebook.sdk.AdvertiserIDCollectionEnabled"
-            android:value="false" />
+            android:value="true" />
+        
+        <!-- OPTIONAL: Enable crash reporting -->
+        <meta-data
+            android:name="com.facebook.sdk.CrashReportingEnabled"
+            android:value="true" />
+        <!-- ================================================ -->
 
-        <!-- ✅ Main Activity with Android 15 support -->
+        <!-- Google Maps API Key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${GOOGLE_MAPS_API_KEY}"/>
+
+        <!-- Main Activity -->
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name"
@@ -94,28 +113,28 @@
             android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/AppTheme">
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             
-            <!-- ✅ Deep linking support (if needed) -->
-            <intent-filter android:autoVerify="true">
+            <!-- OPTIONAL: Add this if using Facebook Login -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="kabaza" android:host="app" />
+                <data android:scheme="fb${facebook_app_id}" />
             </intent-filter>
         </activity>
 
-        <!-- Facebook Activities -->
+        <!-- Facebook Activity (if using Facebook features) -->
         <activity
             android:name="com.facebook.FacebookActivity"
             android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
             android:label="@string/app_name"
-            android:exported="true" />
-            
+            android:exported="true"
+            tools:replace="android:theme" />
+        
         <activity
             android:name="com.facebook.CustomTabActivity"
             android:exported="true">
@@ -132,24 +151,27 @@
             android:name="com.facebook.react.devsupport.DevSettingsActivity"
             android:exported="false" />
 
-        <!-- ✅ Foreground Service for Location Tracking -->
-        <service
-            android:name=".LocationTrackingService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="location"
-            android:permission="android.permission.BIND_JOB_SERVICE" />
-        
-        <!-- ✅ OPTIONAL: File provider for sharing files -->
+        <!-- File provider for sharing files -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
             android:exported="false"
-            android:grantUriPermissions="true">
+            android:grantUriPermissions="true"
+            tools:replace="android:authorities">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Firebase Cloud Messaging Service -->
+        <service
+            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
 
     </application>
 </manifest>

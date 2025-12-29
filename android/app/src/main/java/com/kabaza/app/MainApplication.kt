@@ -15,6 +15,10 @@ import com.facebook.react.soloader.OpenSourceMergedSoMapping
 // ❌ REMOVE THIS LINE - not needed anymore:
 // import com.dieam.reactnativepushnotification.ReactNativePushNotificationPackage
 
+// ✅ ADD THESE FACEBOOK IMPORTS
+import com.facebook.FacebookSdk
+import com.facebook.appevents.AppEventsLogger
+
 class MainApplication : Application(), ReactApplication {
 
     override val reactNativeHost: ReactNativeHost =
@@ -49,10 +53,16 @@ class MainApplication : Application(), ReactApplication {
     override fun onCreate() {
         super.onCreate()
         
-        // ✅ Initialize SoLoader for loading native libraries
+        // ✅ ✅ ADD FACEBOOK SDK INITIALIZATION HERE (BEFORE SoLoader!)
+        // Initialize Facebook SDK FIRST
+        FacebookSdk.setAutoInitEnabled(true)
+        FacebookSdk.fullyInitialize()
+        AppEventsLogger.activateApp(this)
+        
+        // Now initialize SoLoader for loading native libraries
         SoLoader.init(this, OpenSourceMergedSoMapping)
         
-        // ✅ Load New Architecture if enabled
+        // Load New Architecture if enabled
         if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
             load()
         }

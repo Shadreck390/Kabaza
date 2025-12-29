@@ -20,7 +20,7 @@ import * as DocumentPicker from 'react-native-document-picker';
 import * as ImagePicker from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const DOCUMENT_TYPES = {
   LICENSE: {

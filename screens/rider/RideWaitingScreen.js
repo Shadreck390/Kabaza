@@ -18,8 +18,8 @@ import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import realTimeService from '@services/socket/realtimeUpdates';
 
-const windowDimensions = Dimensions.get('window') || { width: 375, height: 667 };
-const { width, height } = windowDimensions;;
+const { width, height } = Dimensions.get('window');
+
 
 export default function RideWaitingScreen({ route, navigation }) {
   const { 

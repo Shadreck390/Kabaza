@@ -18,8 +18,8 @@ import { useNavigation } from '@react-navigation/native';
 import Geolocation from 'react-native-geolocation-service';
 import io from 'socket.io-client';
 
-const windowDimensions = Dimensions.get('window') || { width: 375, height: 667 };
-const { width, height } = windowDimensions;;
+const { width, height } = Dimensions.get('window');
+
 
 // Mock ride requests (in production, these would come from WebSocket)
 const MOCK_RIDE_REQUESTS = [

@@ -18,7 +18,7 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import { getUserData } from '@utils/userStorage';
 import { useNavigation } from '@react-navigation/native';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 // Mock ride history data
 const MOCK_RIDES = [

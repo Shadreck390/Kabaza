@@ -17,8 +17,8 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const windowDimensions = Dimensions.get('window') || { width: 375, height: 667 };
-const { width, height } = windowDimensions;;
+const { width, height } = Dimensions.get('window');
+
 
 const FAVORITE_TYPES = {
   HOME: 'home',

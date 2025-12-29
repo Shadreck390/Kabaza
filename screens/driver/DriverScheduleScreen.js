@@ -18,7 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Calendar } from 'react-native-calendars';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const WEEK_DAYS = [
   { id: 'mon', label: 'Monday', short: 'Mon' },

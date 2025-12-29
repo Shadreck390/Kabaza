@@ -13,12 +13,21 @@ project.ext.vectoricons = [
 ]
 
 apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
-//apply plugin: 'com.google.gms.google-services'
 
 android {
     namespace "com.kabaza.app"
     compileSdk 35
     ndkVersion "26.1.10909125"
+
+    kotlinOptions {
+        jvmTarget = "17"
+        freeCompilerArgs += [
+            "-Xjvm-default=all",
+            "-opt-in=kotlin.RequiresOptIn",
+            "-Xskip-metadata-version-check",
+            "-Xallow-unstable-dependencies"
+        ]
+    }
 
     defaultConfig {
         applicationId "com.kabaza.app"
@@ -34,12 +43,10 @@ android {
         buildConfigField("boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false")
         buildConfigField("boolean", "IS_HERMES_ENABLED", "true")
 
-        // ✅ FIXED: Use VARIABLE NAMES, not values!
         buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${project.env.get("GOOGLE_MAPS_API_KEY")}\"")
         buildConfigField("String", "API_BASE_URL", "\"${project.env.get("API_BASE_URL")}\"")
         buildConfigField("String", "ENVIRONMENT", "\"${project.env.get("ENVIRONMENT")}\"")
         
-        // ✅ FIXED: Use VARIABLE NAME!
         manifestPlaceholders = [
             GOOGLE_MAPS_API_KEY: project.env.get("GOOGLE_MAPS_API_KEY")
         ]
@@ -53,6 +60,7 @@ android {
         abortOnError = false
         checkReleaseBuilds = false
     }
+    
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -82,9 +90,13 @@ android {
         }
     }
 
-    // ✅ CORRECT PLACEMENT: Force consistent Google Play Services versions
+    // ✅ CRITICAL FIX: Add force for firebase-iid
     configurations.all {
         resolutionStrategy {
+            // ✅ ADDED: Force firebase-iid version
+            force 'com.google.firebase:firebase-iid:21.1.0'
+            force 'com.google.firebase:firebase-messaging:24.0.0'
+            
             force 'androidx.core:core:1.12.0'
             force 'androidx.core:core-ktx:1.12.0'
             force "com.google.android.gms:play-services-base:18.3.0"
@@ -142,6 +154,9 @@ android {
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
 
+    // Firebase BOM
+    implementation platform('com.google.firebase:firebase-bom:34.6.0')
+
     // React Native core
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:hermes-android")
@@ -153,19 +168,28 @@ dependencies {
 
     implementation "com.google.android.material:material:1.12.0"
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
+    implementation project(':react-native-config')
 
-    // ✅ MUST MATCH the versions in android/build.gradle AND configurations.all
+    // Google Play Services
     implementation "com.google.android.gms:play-services-base:18.3.0"
     implementation "com.google.android.gms:play-services-location:21.0.1"
     implementation "com.google.android.gms:play-services-maps:18.2.0"
     implementation "com.google.android.gms:play-services-auth:20.7.0"
-    
-    // ✅ ADD these important dependencies that might be missing
     implementation "com.google.android.gms:play-services-tasks:18.0.2"
     implementation "com.google.android.gms:play-services-basement:18.3.0"
 
-    //implementation 'com.google.firebase:firebase-messaging:23.0.0'
-    //implementation project(':react-native-push-notification')
+    // Firebase services
+    implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.firebase:firebase-firestore'
+    implementation 'com.google.firebase:firebase-storage'
+    implementation 'com.google.firebase:firebase-messaging'
+    // ✅ ADDED: Explicit firebase-iid dependency
+    implementation 'com.google.firebase:firebase-iid:21.1.0'
+    implementation 'com.google.firebase:firebase-database'
+
+    // Third-party libraries
+    implementation project(':react-native-push-notification')
 
     // Tests
     testImplementation "junit:junit:4.13.2"
@@ -179,5 +203,4 @@ dependencies {
 
     // React Native Vector Icons
     apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
-    //apply plugin: 'com.google.gms.google-services'
 }

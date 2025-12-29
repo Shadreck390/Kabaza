@@ -36,8 +36,8 @@ import LocationService from '@services/location/LocationService'; // Fixed path
 import socketService, { SocketEvents } from '@services/socket/socketService'; // Fixed path
 import { calculateFare, formatPrice } from '@services/ride/rideutils';
 
-const windowDimensions = Dimensions.get('window') || { width: 375, height: 667 };
-const { width, height } = windowDimensions;;
+const { width, height } = Dimensions.get('window');
+
 
 export default function ActiveRideScreen({ navigation, route }) {
   const dispatch = useDispatch();

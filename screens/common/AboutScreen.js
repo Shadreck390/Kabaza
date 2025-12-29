@@ -16,7 +16,7 @@ import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const TEAM_MEMBERS = [
   { id: '1', name: 'John Banda', role: 'CEO & Founder', image: null },

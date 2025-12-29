@@ -18,7 +18,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Geolocation from 'react-native-geolocation-service';
 import Contacts from 'react-native-contacts';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const EMERGENCY_CONTACTS = [
   {

@@ -16,7 +16,7 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import { useNavigation } from '@react-navigation/native';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const STATS_PERIODS = [
   { id: 'day', label: 'Today' },

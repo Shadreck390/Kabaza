@@ -20,8 +20,8 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Geolocation from 'react-native-geolocation-service';
 
-const windowDimensions = Dimensions.get('window') || { width: 375, height: 667 };
-const { width, height } = windowDimensions;;
+const { width, height } = Dimensions.get('window');
+
 
 // Mock location data for Lilongwe
 const LILONGWE_LOCATIONS = [
