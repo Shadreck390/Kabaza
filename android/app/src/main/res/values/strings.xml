@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Kabaza</string>
-    
-    <!-- Facebook SDK - Replace with your actual values -->
-    <string name="facebook_app_id">YOUR_FACEBOOK_APP_ID</string>
-    <string name="facebook_client_token">YOUR_FACEBOOK_CLIENT_TOKEN</string>
-    <string name="fb_login_protocol_scheme">fbYOUR_FACEBOOK_APP_ID</string>
+    <!-- These will be replaced by gradle from .env -->
+    <string name="facebook_app_id">@string/facebook_app_id</string>
+    <string name="facebook_client_token">@string/facebook_client_token</string>
+    <string name="fb_login_protocol_scheme">fb@string/facebook_app_id</string>
 </resources>

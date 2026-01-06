@@ -1,4 +1,4 @@
-// App.js - SECURE VERSION
+// App.js - SECURE VERSION (Firebase Disabled)
 import 'react-native-gesture-handler';
 import React, { useEffect, useState } from 'react';
 import { 
@@ -8,18 +8,21 @@ import {
   StyleSheet, 
   LogBox, 
   StatusBar,
-  ActivityIndicator,
-  TouchableOpacity 
+  ActivityIndicator
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
+import { NavigationContainer } from '@react-navigation/native';
+// ConfigTest commented since it might have Firebase dependencies
+// import ConfigTest from './src/test-config';
 
 // ======================
-// SAFE FIREBASE INITIALIZATION (No Hardcoded Keys)
+// SAFE FIREBASE INITIALIZATION (COMMENTED OUT)
 // ======================
 
+/*
 const initializeFirebase = async () => {
   try {
     const firebaseApp = require('@react-native-firebase/app').default;
@@ -56,9 +59,10 @@ const initializeFirebase = async () => {
     return { success: false, error: error.message };
   }
 };
+*/
 
 // ======================
-// SAFE CONFIG LOADING
+// SAFE CONFIG LOADING (Without Firebase)
 // ======================
 
 const loadConfig = async () => {
@@ -72,7 +76,8 @@ const loadConfig = async () => {
       ENVIRONMENT: Config.ENVIRONMENT || 'development',
       DEBUG: Config.DEBUG === 'true',
       
-      // Firebase config from .env
+      // Firebase config from .env (COMMENTED OUT)
+      /*
       FIREBASE_API_KEY: Config.FIREBASE_API_KEY || '',
       FIREBASE_AUTH_DOMAIN: Config.FIREBASE_AUTH_DOMAIN || '',
       FIREBASE_PROJECT_ID: Config.FIREBASE_PROJECT_ID || '',
@@ -80,6 +85,7 @@ const loadConfig = async () => {
       FIREBASE_MESSAGING_SENDER_ID: Config.FIREBASE_MESSAGING_SENDER_ID || '',
       FIREBASE_APP_ID: Config.FIREBASE_APP_ID || '',
       FIREBASE_MEASUREMENT_ID: Config.FIREBASE_MEASUREMENT_ID || '',
+      */
       
       success: true
     };
@@ -158,16 +164,7 @@ export default function App() {
         // Load config from .env (safe)
         const config = await loadConfig();
         console.log('✅ Environment:', config.ENVIRONMENT);
-        
-        // Initialize Firebase if configured
-        if (config.FIREBASE_API_KEY) {
-          await initializeFirebase();
-        } else {
-          console.log('ℹ️ Running without Firebase');
-        }
-        
-        // Load store (delayed import)
-        const storeModule = require('@store');
+        console.log('ℹ️ Firebase disabled for now');
         
       } catch (error) {
         console.error('❌ App initialization error:', error);
@@ -198,7 +195,10 @@ export default function App() {
       <GestureHandlerRootView style={styles.container}>
         <Provider store={store}>
           <PersistGate loading={<LoadingScreen />} persistor={persistor}>
-            <AppNavigator />
+            {/* 🔥 CRITICAL FIX: Add NavigationContainer here */}
+            <NavigationContainer>
+              <AppNavigator />
+            </NavigationContainer>
           </PersistGate>
         </Provider>
       </GestureHandlerRootView>

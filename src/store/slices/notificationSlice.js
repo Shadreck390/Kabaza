@@ -192,22 +192,25 @@ const notificationSlice = createSlice({
     },
     
     markAllAsRead: (state) => {
-      state.notifications.forEach(notification => {
-        if (!notification.read) {
-          notification.read = true;
-          state.stats.totalRead += 1;
-        }
-      });
+      if (state.notifications && Array.isArray(state.notifications)) {
+        state.notifications.forEach(notification => {
+          if (!notification.read) {
+            notification.read = true;
+            state.stats.totalRead += 1;
+          }
+        });
+    }
       state.unreadCount = 0;
-      
-      // Also update history
-      state.history.forEach(item => {
-        if (!item.read) {
-          item.read = true;
-        }
-      });
+
+      if (state.history && Array.isArray(state.history)) {
+        state.history.forEach(item => {
+          if (!item.read) {
+            item.read = true;
+          }
+        });
+      }
     },
-    
+
     markNotificationAsClicked: (state, action) => {
       const notificationId = action.payload;
       const notification = state.notifications.find(n => n.id === notificationId);

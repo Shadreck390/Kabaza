@@ -135,3 +135,9 @@ docs/_out/
 .DS_Store
 Thumbs.db
 *.db
+
+# Firebase config (Android)
+android/app/google-services.json
+
+# react-native-config
+android/react-native-config.js

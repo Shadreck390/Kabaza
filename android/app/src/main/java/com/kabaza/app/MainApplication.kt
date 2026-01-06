@@ -12,12 +12,10 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.soloader.SoLoader
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
-// ❌ REMOVE THIS LINE - not needed anymore:
-// import com.dieam.reactnativepushnotification.ReactNativePushNotificationPackage
 
-// ✅ ADD THESE FACEBOOK IMPORTS
-import com.facebook.FacebookSdk
-import com.facebook.appevents.AppEventsLogger
+// Facebook SDK imports - Already commented, good!
+//import com.facebook.FacebookSdk
+//import com.facebook.appevents.AppEventsLogger
 
 class MainApplication : Application(), ReactApplication {
 
@@ -26,13 +24,6 @@ class MainApplication : Application(), ReactApplication {
             override fun getPackages(): List<ReactPackage> {
                 // Packages that cannot be autolinked yet can be added manually here
                 val packages = PackageList(this).packages.toMutableList()
-                
-                // ❌ REMOVE THIS LINE - it's auto-linked now:
-                // packages.add(ReactNativePushNotificationPackage())
-                
-                // Add other custom packages here if needed
-                // e.g., packages.add(MyCustomPackage())
-                
                 return packages
             }
 
@@ -53,16 +44,30 @@ class MainApplication : Application(), ReactApplication {
     override fun onCreate() {
         super.onCreate()
         
-        // ✅ ✅ ADD FACEBOOK SDK INITIALIZATION HERE (BEFORE SoLoader!)
-        // Initialize Facebook SDK FIRST
-        FacebookSdk.setAutoInitEnabled(true)
-        FacebookSdk.fullyInitialize()
-        AppEventsLogger.activateApp(this)
+        // PERMANENT FIX: Facebook SDK initialization - COMMENT THIS SECTION
+        // Step 1: Get Facebook App ID (from BuildConfig or hardcoded)
+        /*
+        val facebookAppId = if (!BuildConfig.FACEBOOK_APP_ID.isNullOrEmpty()) {
+            BuildConfig.FACEBOOK_APP_ID
+        } else {
+            // REPLACE THIS WITH YOUR ACTUAL FACEBOOK APP ID (15-digit number)
+            "123456789012345"
+        }
         
-        // Now initialize SoLoader for loading native libraries
+        // Step 2: Set App ID BEFORE initializing SDK (CRITICAL)
+        FacebookSdk.setApplicationId(facebookAppId)
+        
+        // Step 3: Initialize SDK with callback
+        FacebookSdk.setAutoInitEnabled(true)
+        FacebookSdk.sdkInitialize(applicationContext) {
+            // This runs AFTER SDK is fully initialized
+            AppEventsLogger.activateApp(this)
+        }
+        */
+        
+        // Initialize React Native
         SoLoader.init(this, OpenSourceMergedSoMapping)
         
-        // Load New Architecture if enabled
         if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
             load()
         }

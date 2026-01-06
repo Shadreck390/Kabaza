@@ -140,7 +140,7 @@ export default function RoleSelectionScreen({ navigation, route }) {
       } else if (role === 'driver') {
         console.log('🚗 Navigating to DriverVerification');
         // Always go to verification for new drivers
-        navigation.replace('DriverVerification', { userData });
+        navigation.replace('DriverVerificationFlow', { userData });
       }
 
     } catch (err) {

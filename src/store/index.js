@@ -1,4 +1,4 @@
-// src/store/index.js
+// src/store/index.js (Firebase Disabled)
 import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -181,10 +181,23 @@ const rootReducer = combineReducers({
 // ====================
 
 // Create saga middleware
+// Replace lines 183-188 with this:
 const sagaMiddleware = createSagaMiddleware({
   onError: (error, errorInfo) => {
-    console.error('Saga Error:', error, errorInfo);
-    // You can add error reporting here (e.g., Sentry, Firebase Crashlytics)
+    // Only log the message, not the full error object
+    console.error('Saga Error:', error.message);
+    
+    // Check if it's a notification saga error
+    if (errorInfo?.sagaStack?.includes('notificationSaga')) {
+      console.warn('⚠️ Notification saga error - continuing without notifications');
+      // Don't throw - let other sagas continue
+      return;
+    }
+    
+    // For debugging, log the stack separately
+    if (errorInfo?.sagaStack) {
+      console.log('Saga Stack:', errorInfo.sagaStack);
+    }
   },
 });
 
@@ -268,7 +281,8 @@ export const persistor = persistStore(store, null, (error, state) => {
     // Dispatch action to indicate rehydration is complete
     store.dispatch({ type: 'APP_REHYDRATION_COMPLETE' });
     
-    // Initialize real-time services after rehydration
+    /*
+    // COMMENTED OUT: Initialize real-time services after rehydration
     const { auth } = state;
     if (auth && auth.isAuthenticated && auth.user) {
       // Initialize socket connection
@@ -281,6 +295,7 @@ export const persistor = persistStore(store, null, (error, state) => {
         }
       });
     }
+    */
   }
 });
 
@@ -341,8 +356,19 @@ export const subscribeToStore = (selector, callback) => {
 // START SAGA MIDDLEWARE
 // ====================
 
-// Run saga middleware
-sagaMiddleware.run(rootSaga);
+// Run saga middleware - BUT FIRST, let's check if we need to modify sagas
+try {
+  sagaMiddleware.run(rootSaga);
+  console.log('✅ Sagas started successfully');
+} catch (error) {
+  console.error('❌ Failed to start sagas:', error);
+  // Create a dummy saga if the real one fails
+  const dummySaga = function* () {
+    console.log('⚠️ Running with dummy saga (Firebase disabled)');
+    yield;
+  };
+  sagaMiddleware.run(dummySaga);
+}
 
 // ====================
 // STORE READY CHECK

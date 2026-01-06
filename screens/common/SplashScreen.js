@@ -15,28 +15,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
-
 export default function SplashScreen() {
   const navigation = useNavigation();
   
-  // Animations
+  // Animations - KEEP ALL THESE
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(100)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    // Start animations
-    startAnimations();
-    
-    // Check authentication and navigate
-    const timer = setTimeout(() => {
-      checkAuthentication();
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
+  // KEEP THIS FUNCTION EXACTLY AS IS
   const startAnimations = () => {
     // Parallel animations
     Animated.parallel([
@@ -75,6 +63,7 @@ export default function SplashScreen() {
     ]).start();
   };
 
+  // KEEP THIS FUNCTION EXACTLY AS IS
   const checkAuthentication = async () => {
     try {
       // Check if user is logged in
@@ -103,11 +92,47 @@ export default function SplashScreen() {
     }
   };
 
+  // UPDATE ONLY THIS useEffect
+  useEffect(() => {
+    // Start animations (KEEP THIS LINE)
+    startAnimations();
+    
+    // Navigation-safe authentication check
+    const attemptNavigation = async () => {
+      try {
+        // Check if navigation is available
+        if (navigation && typeof navigation.replace === 'function') {
+          await checkAuthentication();
+        } else {
+          console.warn('⚠️ Navigation not ready, retrying in 500ms...');
+          // Retry after delay
+          setTimeout(attemptNavigation, 500);
+        }
+      } catch (error) {
+        console.error('❌ Navigation error:', error);
+        // Fallback to login after 4 seconds total
+        setTimeout(() => {
+          if (navigation?.replace) {
+            navigation.replace('LoginScreen');
+          }
+        }, 4000);
+      }
+    };
+    
+    // Start navigation attempt after animations (same 3-second delay)
+    const timer = setTimeout(() => {
+      attemptNavigation();
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [navigation]); // 🔥 ADD navigation to dependencies here
+
   const rotate = rotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
 
+  // KEEP ALL YOUR RENDER CODE EXACTLY AS IS
   return (
     <View style={styles.container}>
       <StatusBar 
@@ -223,6 +248,7 @@ export default function SplashScreen() {
   );
 }
 
+// KEEP ALL YOUR STYLES EXACTLY AS IS
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -1,9 +1,10 @@
 // src/store/sagas/notificationSaga.js
+console.log('🔔 notificationSaga.js file is loading...');
 import { call, put, takeLatest, takeEvery, all, fork, select, delay, race, take } from 'redux-saga/effects';
 import { Alert, AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import PushNotification from 'react-native-push-notification';
-import notifee from '@notifee/react-native';
+//import PushNotification from 'react-native-push-notification';
+//import notifee from '@notifee/react-native';
 
 // Import your notification slice actions
 import {
@@ -35,6 +36,32 @@ import {
 
 // Import socket service for real-time notifications
 import socketService from '@services/socket/socketService';
+import permissions from '@src/utils/permissions';
+import { channel } from 'redux-saga';
+
+// Safe library imports
+let safePushNotification;
+let safeNotifee;
+
+try {
+  safePushNotification = require('react-native-push-notification');
+  console.log('✅ PushNotification library loaded');
+} catch (error) {
+  console.warn('⚠️ PushNotification library not available:', error.message);
+  safePushNotification = null;
+}
+
+try {
+  safeNotifee = require('@notifee/react-native');
+  console.log('✅ Notifee library loaded');
+} catch (error) {
+  console.warn('⚠️ Notifee library not available:', error.message);
+  safeNotifee = null;
+}
+
+// Update references in your code
+const PushNotification = safePushNotification;
+const notifee = safeNotifee;
 
 // Mock services - replace with actual implementations
 const NotificationService = {
@@ -70,6 +97,11 @@ const NotificationService = {
 
   getToken: async () => {
     try {
+      if (!notifee) {
+        console.warn('⚠️ Notifee not available, returning mock token');
+        return 'mock-token-' + Date.now();
+      }
+
       // For Firebase Cloud Messaging (FCM)
       if (Platform.OS === 'android') {
         // Get FCM token
@@ -169,9 +201,23 @@ const NotificationService = {
   },
 };
 
-// Worker Sagas
+// Worker Sagas - Update requestNotificationPermissionWorker
 function* requestNotificationPermissionWorker() {
   try {
+    console.log('🔔 Starting notification permission request...');
+    
+    // ✅ CHECK: Skip if Firebase is not initialized
+    const firebaseReady = yield call(checkFirebaseReady);
+    if (!firebaseReady) {
+      console.log('⚠️ Skipping notification permission - Firebase not ready');
+      yield put(requestNotificationPermission.fulfilled({
+        granted: false,
+        status: 0,
+        reason: 'Firebase not initialized'
+      }));
+      return;
+    }
+    
     yield put(requestNotificationPermission.pending());
     
     const permissionResult = yield call(NotificationService.requestPermission);
@@ -194,8 +240,20 @@ function* requestNotificationPermissionWorker() {
       );
     }
   } catch (error) {
+    console.error('❌ Permission request saga error:', error.message);
     yield put(requestNotificationPermission.rejected(error.message));
-    console.error('Permission request saga error:', error);
+  }
+}
+
+// Add this helper function
+function* checkFirebaseReady() {
+  try {
+    // Check if Firebase is available
+    const firebase = require('@react-native-firebase/app');
+    return !!firebase.apps?.length;
+  } catch (error) {
+    console.log('Firebase check failed:', error.message);
+    return false;
   }
 }
 
@@ -657,6 +715,14 @@ function* getNotificationSettings() {
 // Local notification helpers
 function* configureLocalNotifications() {
   try {
+    console.log('🔧 Configuring local notifications...');
+    
+    // ✅ ADD NULL CHECK for PushNotification
+    if (!PushNotification || typeof PushNotification.configure !== 'function') {
+      console.warn('⚠️ PushNotification library not available, skipping configuration');
+      return;
+    }
+    
     // Configure react-native-push-notification
     PushNotification.configure({
       onRegister: function(token) {
@@ -680,7 +746,7 @@ function* configureLocalNotifications() {
     });
     
     // Create notification channels for Android
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'android' && PushNotification.createChannel) {
       PushNotification.createChannel(
         {
           channelId: 'kabaza-general',
@@ -706,9 +772,15 @@ function* configureLocalNotifications() {
         },
         (created) => console.log(`Channel created: ${created}`)
       );
+    } else if (Platform.OS === 'android') {
+      console.warn('⚠️ PushNotification.createChannel not available');
     }
+    
+    console.log('✅ Local notifications configured');
+    
   } catch (error) {
-    console.error('Configure local notifications error:', error);
+    console.error('❌ Configure local notifications error:', error.message);
+    // Don't throw - just log and continue without notifications
   }
 }
 
@@ -825,41 +897,126 @@ function* watchDisableRealTimeNotifications() {
   yield takeLatest(disableRealTimeNotifications.pending, disableRealTimeNotificationsWorker);
 }
 
-// Root notification saga
-export default function* notificationSaga() {
-  yield all([
-    fork(watchRequestNotificationPermission),
-    fork(watchGetNotificationToken),
-    fork(watchSaveNotificationToken),
-    fork(watchInitializeNotifications),
-    fork(watchGetUnreadNotifications),
-    fork(watchMarkAsRead),
-    fork(watchMarkAllAsRead),
-    fork(watchDeleteNotification),
-    fork(watchClearAllNotifications),
-    fork(watchSetNotificationSettings),
-    fork(watchEnableRealTimeNotifications),
-    fork(watchDisableRealTimeNotifications),
-    
-    // Start listening for app state changes
-    fork(watchAppStateChanges),
-  ]);
-}
+// ======================
+// APP STATE WATCHER - ADD THIS FUNCTION
+// ======================
 
-// App state watcher
 function* watchAppStateChanges() {
-  while (true) {
-    yield take('APP_STATE_CHANGED');
+  console.log('👀 Setting up app state watcher...');
+  
+  try {
+    // Create a channel to listen for app state changes
+    const appStateChannel = yield call(channel);
     
-    const appState = yield select(state => state.app?.appState);
-    const realTimeEnabled = yield select(state => state.notification?.realTimeEnabled);
+    // Listen to app state changes
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      // Put the app state change into the channel
+      appStateChannel.put({ type: 'APP_STATE_CHANGED', payload: nextAppState });
+    });
     
-    if (appState === 'active' && realTimeEnabled) {
-      // App came to foreground, sync notifications
-      const user = yield select(state => state.auth?.user);
-      if (user?.id) {
-        yield put(getUnreadNotifications(user.id));
+    console.log('✅ App state watcher initialized');
+    
+    // Listen for app state changes
+    while (true) {
+      try {
+        const { payload: nextAppState } = yield take(appStateChannel);
+        
+        // Get current state from Redux
+        const currentState = yield select(state => state.app?.appState);
+        console.log(`📱 App State: ${currentState} → ${nextAppState}`);
+        
+        // Handle state changes
+        if (nextAppState === 'active') {
+          // App came to foreground
+          console.log('🔄 App is active, checking for notifications...');
+          
+          // Refresh notifications when app becomes active
+          const user = yield select(state => state.auth?.user);
+          if (user?.id) {
+            yield put(getUnreadNotifications(user.id));
+          }
+        } else if (nextAppState === 'background') {
+          // App went to background
+          console.log('💤 App is in background');
+          
+          // You can pause real-time updates or adjust frequency here
+        }
+        
+      } catch (error) {
+        console.error('❌ Error in app state watcher:', error);
       }
     }
+  } catch (error) {
+    console.error('❌ Failed to setup app state watcher:', error);
+  }
+}
+
+// ======================
+// ALTERNATIVE: Simple version if you don't need complex logic
+// ======================
+
+/*
+function* watchAppStateChanges() {
+  console.log('✅ App state watching enabled (simple mode)');
+  
+  // Just log state changes without complex logic
+  AppState.addEventListener('change', (nextAppState) => {
+    console.log(`📱 App state changed to: ${nextAppState}`);
+  });
+  
+  // Keep the saga alive
+  while (true) {
+    yield delay(60000); // Check every minute
+  }
+}
+*/
+
+// ======================
+// ALTERNATIVE 2: If you want to disable it temporarily
+// ======================
+
+/*
+// In the root saga, comment out the fork:
+yield all([
+  // ... other forks
+  
+  // Temporarily disable:
+  // fork(watchAppStateChanges),
+]);
+*/
+
+// Root notification saga - WITH SAFE WRAPPER
+export default function* notificationSaga() {
+  try {
+    console.log('🔔 Starting notification saga...');
+    
+    // Check if required libraries are available
+    if (!PushNotification || !notifee) {
+      console.warn('⚠️ Notification libraries not available, skipping notification saga');
+      return;
+    }
+    
+    yield all([
+      fork(watchRequestNotificationPermission),
+      fork(watchGetNotificationToken),
+      fork(watchSaveNotificationToken),
+      fork(watchInitializeNotifications),
+      fork(watchGetUnreadNotifications),
+      fork(watchMarkAsRead),
+      fork(watchMarkAllAsRead),
+      fork(watchDeleteNotification),
+      fork(watchClearAllNotifications),
+      fork(watchSetNotificationSettings),
+      fork(watchEnableRealTimeNotifications),
+      fork(watchDisableRealTimeNotifications),
+      
+      // Start listening for app state changes
+      fork(watchAppStateChanges),
+    ]);
+    
+    console.log('✅ Notification saga started successfully');
+  } catch (error) {
+    console.error('❌ Notification saga initialization failed:', error.message);
+    // Don't throw - let other sagas continue
   }
 }
