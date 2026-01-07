@@ -182,22 +182,29 @@ const rootReducer = combineReducers({
 
 // Create saga middleware
 // Replace lines 183-188 with this:
+// In store/index.js - Update the saga middleware config:
 const sagaMiddleware = createSagaMiddleware({
   onError: (error, errorInfo) => {
-    // Only log the message, not the full error object
-    console.error('Saga Error:', error.message);
+    // ✅ SAFER error logging
+    const errorMessage = error?.message || 'Unknown saga error';
+    const errorStack = error?.stack || 'No stack trace';
+    
+    console.error('🔥 SAGA ERROR:', errorMessage);
     
     // Check if it's a notification saga error
-    if (errorInfo?.sagaStack?.includes('notificationSaga')) {
+    if (errorInfo?.sagaStack?.includes('notificationSaga') || 
+        errorStack.includes('notificationSaga')) {
       console.warn('⚠️ Notification saga error - continuing without notifications');
-      // Don't throw - let other sagas continue
-      return;
+      return; // Don't crash the app
     }
     
-    // For debugging, log the stack separately
-    if (errorInfo?.sagaStack) {
-      console.log('Saga Stack:', errorInfo.sagaStack);
-    }
+    // Log additional info for debugging
+    console.log('Error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      sagaStack: errorInfo?.sagaStack,
+      sagaLocation: errorInfo?.sagaLocation
+    });
   },
 });
 

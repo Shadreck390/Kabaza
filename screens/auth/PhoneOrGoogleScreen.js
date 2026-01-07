@@ -10,8 +10,11 @@ export default function PhoneOrGoogleScreen({ navigation }) {
   const [socialAuthMethod, setSocialAuthMethod] = useState(null);
   const [socialUserInfo, setSocialUserInfo] = useState(null);
 
+  // ✅ FIXED: Clean phone number input
   const handlePhoneNumberChange = (input) => {
-    setPhoneNumber(input);
+    // Remove any non-digit characters (spaces, dashes, etc.)
+    const cleanedInput = input.replace(/\D/g, '');
+    setPhoneNumber(cleanedInput);
   };
 
   const handleSelectedCountryChange = (country) => {
@@ -20,19 +23,27 @@ export default function PhoneOrGoogleScreen({ navigation }) {
 
   const handleContinue = () => {
     if (phoneNumber && phoneNumber.length >= 10) {
-      // FIXED: Ensure phone number is properly formatted
-      const fullPhoneNumber = selectedCountry ? 
-        `+${selectedCountry.callingCode}${phoneNumber}` : 
-        `+265${phoneNumber}`; // Default to Malawi if no country selected
-      
-      console.log('Sending phone number:', fullPhoneNumber); // Debug log
-      
+      // ✅ FIXED: Check if callingCode exists and is valid
+      let fullPhoneNumber;
+
+      if (selectedCountry?.callingCode) {
+        // Remove any non-digit characters from phone number
+        const cleanedPhoneNumber = phoneNumber.replace(/\D/g, '');
+        fullPhoneNumber = `+${selectedCountry.callingCode}${cleanedPhoneNumber}`;
+      } else {
+        // Default to Malawi country code if none selected
+        const cleanedPhoneNumber = phoneNumber.replace(/\D/g, '');
+        fullPhoneNumber = `+265${cleanedPhoneNumber}`;
+      }
+
+      console.log('✅ Sending phone number:', fullPhoneNumber); // Debug log
+
       navigation.navigate('OtpVerification', { 
         phoneNumber: fullPhoneNumber,
-        authMethod: 'phone'
+        authMethod: 'phone',
       });
     } else {
-      Alert.alert('Invalid Number', 'Please enter a valid phone number (at least 10 digits).');
+      Alert.alert('Invalid Phone Number', 'Please enter a valid phone number to continue.');
     }
   };
 
@@ -86,14 +97,23 @@ export default function PhoneOrGoogleScreen({ navigation }) {
     }, 1500);
   };
 
+  // ✅ FIXED: Updated with same cleaning logic
   const handleSocialContinue = () => {
-    if (phoneNumber.length >= 10) {
-      // FIXED: Ensure phone number is properly formatted
-      const fullPhoneNumber = selectedCountry ? 
-        `+${selectedCountry.callingCode}${phoneNumber}` : 
-        `+265${phoneNumber}`; // Default to Malawi if no country selected
+    if (phoneNumber && phoneNumber.length >= 10) {
+      // ✅ FIXED: Check if callingCode exists and is valid
+      let fullPhoneNumber;
+
+      if (selectedCountry?.callingCode) {
+        // Remove any non-digit characters from phone number
+        const cleanedPhoneNumber = phoneNumber.replace(/\D/g, '');
+        fullPhoneNumber = `+${selectedCountry.callingCode}${cleanedPhoneNumber}`;
+      } else {
+        // Default to Malawi country code if none selected
+        const cleanedPhoneNumber = phoneNumber.replace(/\D/g, '');
+        fullPhoneNumber = `+265${cleanedPhoneNumber}`;
+      }
       
-      console.log('Sending phone number (social):', fullPhoneNumber); // Debug log
+      console.log('✅ Sending phone number (social):', fullPhoneNumber); // Debug log
       
       navigation.navigate('OtpVerification', { 
         phoneNumber: fullPhoneNumber,

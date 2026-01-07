@@ -16,9 +16,10 @@ import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
+import apiClient from '@services/api/client';
 
 // ✅ FIXED IMPORTS:
-import apiClient from '@services/api/client';  // Changed from '@src/services/api/apiService'
+  // Changed from '@src/services/api/apiService'
 // OR use your existing API file:
 // import API from '@services/api/index';
 // OR use ride-specific API:
@@ -297,7 +298,7 @@ export default function RideSelectionScreen({ route, navigation }) {
 
   const fetchDynamicPricing = async () => {
     try {
-      const response = await api.get('/pricing/current', {
+      const response = await apiClient.get('/pricing/current', {
         params: {
           distance: distance,
           timeOfDay: new Date().getHours()

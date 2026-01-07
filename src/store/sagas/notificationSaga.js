@@ -902,52 +902,26 @@ function* watchDisableRealTimeNotifications() {
 // ======================
 
 function* watchAppStateChanges() {
-  console.log('👀 Setting up app state watcher...');
+  console.log('👀 Setting up simple app state watcher...');
   
   try {
-    // Create a channel to listen for app state changes
-    const appStateChannel = yield call(channel);
+    let currentAppState = AppState.currentState;
     
-    // Listen to app state changes
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      // Put the app state change into the channel
-      appStateChannel.put({ type: 'APP_STATE_CHANGED', payload: nextAppState });
-    });
+    const handleAppStateChange = (nextAppState) => {
+      console.log(`📱 App State: ${currentAppState} → ${nextAppState}`);
+      currentAppState = nextAppState;
+    };
     
+    AppState.addEventListener('change', handleAppStateChange);
     console.log('✅ App state watcher initialized');
     
-    // Listen for app state changes
+    // Keep saga alive
     while (true) {
-      try {
-        const { payload: nextAppState } = yield take(appStateChannel);
-        
-        // Get current state from Redux
-        const currentState = yield select(state => state.app?.appState);
-        console.log(`📱 App State: ${currentState} → ${nextAppState}`);
-        
-        // Handle state changes
-        if (nextAppState === 'active') {
-          // App came to foreground
-          console.log('🔄 App is active, checking for notifications...');
-          
-          // Refresh notifications when app becomes active
-          const user = yield select(state => state.auth?.user);
-          if (user?.id) {
-            yield put(getUnreadNotifications(user.id));
-          }
-        } else if (nextAppState === 'background') {
-          // App went to background
-          console.log('💤 App is in background');
-          
-          // You can pause real-time updates or adjust frequency here
-        }
-        
-      } catch (error) {
-        console.error('❌ Error in app state watcher:', error);
-      }
+      yield delay(30000);
     }
+    
   } catch (error) {
-    console.error('❌ Failed to setup app state watcher:', error);
+    console.error('❌ App state watcher setup failed:', error);
   }
 }
 

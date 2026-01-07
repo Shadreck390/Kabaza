@@ -2,8 +2,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import socketIO from 'socket.io-client'; // Install: npm install socket.io-client
-import { store } from '@store'; // For Redux integration
+import socketIO from 'socket.io-client';
 
 // Base URL - Update with your actual API URL
 const API_BASE_URL = Platform.select({
@@ -30,6 +29,19 @@ class APIClient {
     // Socket.IO instance
     this.socket = null;
     this.isSocketConnected = false;
+
+    // Socket configuration
+    this.socketOptions = {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      forceNew: true,
+      autoConnect: true,
+      path: '/socket.io',
+    };
     this.socketListeners = new Map();
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;

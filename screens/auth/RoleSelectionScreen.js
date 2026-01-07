@@ -134,9 +134,9 @@ export default function RoleSelectionScreen({ navigation, route }) {
 
       // ✅ ✅ ✅ CRITICAL FIX: Add Navigation Here! ✅ ✅ ✅
       if (role === 'rider') {
-        console.log('🚗 Navigating to RiderMain (RiderStack)');
+        console.log('🚗 Navigating to RiderStack');
         // Use replace so user can't go back to role selection
-        navigation.replace('RiderMain', { userData });
+        navigation.replace('RiderStack', { userData });
       } else if (role === 'driver') {
         console.log('🚗 Navigating to DriverVerification');
         // Always go to verification for new drivers

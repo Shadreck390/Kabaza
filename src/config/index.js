@@ -7,6 +7,7 @@
 
 import Config from 'react-native-config';
 import { Platform } from 'react-native';
+import config from './config';
 
 /**
  * Main application configuration
@@ -86,6 +87,17 @@ const AppConfig = {
     // Timeouts
     TIMEOUT: parseInt(Config.API_TIMEOUT || '30000', 10),
     SOCKET_TIMEOUT: parseInt(Config.SOCKET_TIMEOUT || '20000', 10),
+
+    SOCKET_OPTIONS: {
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 20000,
+      transports: ['websocket', 'polling'],
+      autoConnect: true,
+      forceNew: true,
+      path: config.API_SOCKET_PATH || '/socket.io',
+    },
     
     // Headers
     HEADERS: {
