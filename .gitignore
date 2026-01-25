@@ -141,3 +141,31 @@ android/app/google-services.json
 
 # react-native-config
 android/react-native-config.js
+
+# ======================
+# REACT NATIVE GENERATED FILES (MISSING)
+# ======================
+android/app/src/main/assets/
+android/app/src/main/res/drawable-*/
+
+# ======================
+# JAVA / ANDROID MEMORY DUMPS
+# ======================
+android/java_pid*.hprof
+*.hprof
+
+# ======================
+# ANDROID NDK / CMAKE
+# ======================
+**/.cxx/
+**/obj/
+**/build/intermediates/
+
+# ======================
+# FASTLANE (PLAY STORE)
+# ======================
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
