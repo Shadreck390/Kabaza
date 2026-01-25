@@ -10,6 +10,7 @@ import {
   Animated,
   Alert,
   Platform,
+  ScrollView,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';

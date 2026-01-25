@@ -72,7 +72,7 @@ const loadConfig = async () => {
     return {
       // These will come from .env file (not in git)
       GOOGLE_MAPS_API_KEY: Config.GOOGLE_MAPS_API_KEY || '',
-      API_BASE_URL: Config.API_BASE_URL || 'http://localhost:3000',
+      API_BASE_URL: Config.API_BASE_URL || 'http://192.168.8.2:3000/api',
       ENVIRONMENT: Config.ENVIRONMENT || 'development',
       DEBUG: Config.DEBUG === 'true',
       
@@ -93,7 +93,7 @@ const loadConfig = async () => {
     console.warn('⚠️ Config not loaded:', error.message);
     return {
       GOOGLE_MAPS_API_KEY: '',
-      API_BASE_URL: 'http://localhost:3000',
+      API_BASE_URL: 'http://192.168.8.2:3000/api',
       ENVIRONMENT: 'development',
       DEBUG: true,
       success: false

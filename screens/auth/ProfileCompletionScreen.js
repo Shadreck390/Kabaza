@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { launchImageLibrary } from 'react-native-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // ADD THIS IMPORT
 
 export default function ProfileCompletionScreen({ navigation, route }) {
   const [firstName, setFirstName] = useState(route.params?.firstName || '');
@@ -54,7 +55,7 @@ export default function ProfileCompletionScreen({ navigation, route }) {
     setDateOfBirth(formatted);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {  // CHANGE TO async
     // Validate required fields
     if (!firstName.trim() || !surname.trim() || !gender) {
       Alert.alert('Missing Information', 'Please fill in all required fields (First Name, Surname, and Gender)');
@@ -87,6 +88,43 @@ export default function ProfileCompletionScreen({ navigation, route }) {
     };
 
     console.log('Navigating to RoleSelection with:', userData);
+
+    // ✅✅✅ CRITICAL FIX: SAVE TO ASYNCSTORAGE FOR PROFILE SCREEN
+    try {
+      // Prepare the data for profile screen
+      const profileDataToSave = {
+        // For DriverProfileScreen - single name field
+        name: `${firstName.trim()} ${surname.trim()}`,
+        
+        // For other uses
+        firstName: firstName.trim(),
+        surname: surname.trim(),
+        
+        // Contact info
+        phone: phoneNumber,
+        gender: gender,
+        dateOfBirth: dateOfBirth || '',
+        
+        // Profile picture if exists
+        profilePictureUri: profilePicture ? profilePicture.uri : null,
+        
+        // Timestamp
+        registeredAt: new Date().toISOString(),
+      };
+      
+      // Save to AsyncStorage - MULTIPLE KEYS for redundancy
+      await AsyncStorage.setItem('user_profile_data', JSON.stringify(profileDataToSave));
+      await AsyncStorage.setItem('driver_profile', JSON.stringify(profileDataToSave));
+      await AsyncStorage.setItem('user_data', JSON.stringify(profileDataToSave));
+      
+      console.log('✅ User data saved to AsyncStorage:', profileDataToSave);
+      console.log('✅ Name saved as:', profileDataToSave.name);
+      
+    } catch (error) {
+      console.error('❌ Error saving to AsyncStorage:', error);
+      Alert.alert('Error', 'Failed to save profile data. Please try again.');
+      return; // Don't continue if save fails
+    }
 
     // ✅ FIXED: Use navigate instead of replace to maintain back stack
     navigation.navigate('RoleSelection', userData);

@@ -329,6 +329,7 @@ const DriverStack = () => (
     <Stack.Screen name="DriverTabs" component={DriverTabs} />
     <Stack.Screen name="RideRequests" component={RideRequestsScreen} />
     <Stack.Screen name="ActiveRide" component={ActiveRideScreen} />
+    <Stack.Screen name="TripHistory" component={TripHistoryScreen} />
     <Stack.Screen name="TripDetails" component={TripDetailsScreen} />
     <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
     <Stack.Screen name="DriverSettings" component={DriverSettingsScreen} />

@@ -34,8 +34,8 @@ export const APP_INFO = {
 // ====================
 export const API_CONFIG = {
   // Base URLs (Auto-switch based on environment)
-  BASE_URL: __DEV__ ? 'http://localhost:3000/api' : 'https://api.kabaza.mw/api',
-  SOCKET_URL: __DEV__ ? 'http://localhost:3001' : 'https://socket.kabaza.mw',
+  BASE_URL: 'https://api.kabaza.mw/api',
+  SOCKET_URL: 'https://socket.kabaza.mw',
   
   // API Timeouts
   TIMEOUT: 30000,

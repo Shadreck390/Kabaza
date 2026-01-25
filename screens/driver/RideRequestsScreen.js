@@ -13,8 +13,10 @@ import {
   Animated,
   Easing,
   ActivityIndicator,
-  PermissionsAndroid
+  PermissionsAndroid,
+  RefreshControl  // ADD THIS LINE
 } from 'react-native';
+import { ErrorBoundary } from 'react-error-boundary';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
@@ -82,7 +84,7 @@ export default function RideRequestsScreen({ navigation }) {
       setLoading(true);
       
       // Initialize socket if not connected
-      if (!socketService.isConnected?.()) {
+      if (!socketService.isConnected) {
         await socketService.initialize();
       }
       
@@ -304,7 +306,7 @@ export default function RideRequestsScreen({ navigation }) {
   };
 
   const sendLocationToServer = (latitude, longitude) => {
-    if (socketService.isConnected?.() && user?.id) {
+    if (socketService.isConnected && user?.id) {
       socketService.emit('driver_location_update', {
         driverId: user.id,
         location: { latitude, longitude },
@@ -387,7 +389,7 @@ export default function RideRequestsScreen({ navigation }) {
   };
 
   const syncRideRequests = () => {
-    if (user?.id && socketService.isConnected?.()) {
+    if (user?.id && socketService.isConnected) {
       socketService.emit('sync_ride_requests', {
         driverId: user.id,
         lastSync: new Date(Date.now() - 300000).toISOString(), // Last 5 minutes
@@ -567,7 +569,7 @@ export default function RideRequestsScreen({ navigation }) {
             text: 'Accept', 
             onPress: async () => {
               // Send accept to server
-              if (socketService.isConnected?.()) {
+              if (socketService.isConnected) {
                 socketService.emit('accept_ride_request', {
                   requestId,
                   driverId: user.id,
@@ -597,7 +599,7 @@ export default function RideRequestsScreen({ navigation }) {
   const handleRejectRide = async (requestId) => {
     try {
       // Send reject to server
-      if (socketService.isConnected?.()) {
+      if (socketService.isConnected) {
         socketService.emit('reject_ride_request', {
           requestId,
           driverId: user.id,
@@ -692,7 +694,8 @@ export default function RideRequestsScreen({ navigation }) {
     stopLocationTracking();
     
     // Remove app state listener
-    AppState.removeEventListener('change', handleAppStateChange);
+    const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+    appStateSubscription?.remove();
   };
 
   const renderConnectionStatus = () => {
@@ -978,9 +981,9 @@ export default function RideRequestsScreen({ navigation }) {
 
       <TouchableOpacity 
         style={styles.floatingButton}
-        onPress={() => navigation.navigate('RideRequestSettings')}
+        onPress={() => navigation.navigate('DriverProfile')}
       >
-        <Icon name="sliders" size={20} color="#fff" />
+        <Icon name="user" size={20} color="#fff" />
       </TouchableOpacity>
     </View>
   );

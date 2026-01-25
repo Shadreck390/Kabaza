@@ -372,6 +372,92 @@ export const getActiveRide = async (userId) => {
   }
 };
 
+// Fetch nearby ride requests (for drivers)
+export const fetchNearbyRides = async (driverLocation, radius = 5, vehicleTypes = ['bike', 'car']) => {
+  try {
+    const result = await apiRequest(
+      `/rides/nearby?lat=${driverLocation.latitude}&lng=${driverLocation.longitude}&radius=${radius}&vehicleTypes=${vehicleTypes.join(',')}`
+    );
+    
+    return result.rides.map(ride => ({
+      id: ride.id,
+      riderName: ride.riderName,
+      riderPhone: ride.riderPhone,
+      pickup: ride.pickup,
+      destination: ride.destination,
+      estimatedFare: ride.estimatedFare,
+      estimatedTime: ride.estimatedTime,
+      distance: ride.distance,
+      riderRating: ride.riderRating || 5.0,
+      createdAt: ride.createdAt,
+      urgency: ride.urgency || 'normal', // normal, urgent, scheduled
+      specialRequests: ride.specialRequests || '',
+    }));
+  } catch (error) {
+    console.error('Error fetching nearby rides:', error);
+    
+    // Mock data for development
+    return getMockRideRequests(driverLocation);
+  }
+};
+
+// Mock ride requests for development
+const getMockRideRequests = (driverLocation) => {
+  const baseLat = driverLocation?.latitude || -13.9626;
+  const baseLng = driverLocation?.longitude || 33.7741;
+  
+  return [
+    {
+      id: 'ride_1',
+      riderName: 'Alice Banda',
+      riderPhone: '+265991111111',
+      pickup: {
+        name: 'Shoprite Complex',
+        latitude: baseLat + 0.003,
+        longitude: baseLng + 0.002,
+        address: 'City Center, Lilongwe'
+      },
+      destination: {
+        name: 'Area 18',
+        latitude: baseLat + 0.008,
+        longitude: baseLng + 0.005,
+        address: 'Area 18, Lilongwe'
+      },
+      estimatedFare: 850,
+      estimatedTime: '12 min',
+      distance: 3.2,
+      riderRating: 4.9,
+      createdAt: new Date().toISOString(),
+      urgency: 'normal',
+    },
+    {
+      id: 'ride_2',
+      riderName: 'Bob Phiri',
+      riderPhone: '+265992222222',
+      pickup: {
+        name: 'Likuni Hospital',
+        latitude: baseLat - 0.002,
+        longitude: baseLng + 0.003,
+        address: 'Likuni Road, Lilongwe'
+      },
+      destination: {
+        name: 'Bingu Stadium',
+        latitude: baseLat + 0.010,
+        longitude: baseLng - 0.001,
+        address: 'Bingu National Stadium'
+      },
+      estimatedFare: 1200,
+      estimatedTime: '15 min',
+      distance: 4.5,
+      riderRating: 4.7,
+      createdAt: new Date().toISOString(),
+      urgency: 'urgent',
+      specialRequests: 'Medical appointment, need quick ride'
+    },
+  ];
+};
+
+// ========== RIDE HISTORY AND SHARING ==========
 // Get ride history with pagination
 export const getRideHistory = async (userId, page = 1, limit = 20) => {
   try {

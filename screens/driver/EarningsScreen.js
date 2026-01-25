@@ -11,7 +11,8 @@ import {
   Easing,
   ActivityIndicator,
   Alert,
-  AppState
+  AppState,
+  Switch 
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -95,7 +96,7 @@ export default function EarningsScreen({ route, navigation }) {
       await loadCachedEarnings();
       
       // Initialize socket connection for real-time earnings
-      if (!socketService.isConnected?.()) {
+      if (!socketService.isConnected) {
         await socketService.initialize();
       }
       
@@ -977,8 +978,6 @@ export default function EarningsScreen({ route, navigation }) {
   );
 }
 
-// Add Switch import
-import { Switch } from 'react-native';
 
 const styles = StyleSheet.create({
   container: { 

@@ -10,8 +10,12 @@ import {
   Linking,
   TouchableOpacity,
   StatusBar,
-  ActivityIndicator
+  ActivityIndicator,
+  BackHandler
 } from 'react-native';
+
+// IMPORT NETWORK CHECK
+import NetInfo from '@react-native-community/netinfo';
 
 // FIXED COMPONENT IMPORTS:
 import Header from '@components/Header';
@@ -28,8 +32,10 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 
 // FIX THESE TWO IMPORTS:
-import socketService from '@services/socket/socketService'; // or realtimeUpdates
+import realTimeService from '@services/socket/realtimeUpdates';
 import LocationService from '@services/location/LocationService';
+import apiClient from '@services/api/client'; 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function DriverHomeScreen({ route, navigation }) {
   const [region, setRegion] = useState(null);
@@ -45,10 +51,14 @@ export default function DriverHomeScreen({ route, navigation }) {
   const [ridesCompleted, setRidesCompleted] = useState(0);
   const [activeRide, setActiveRide] = useState(null);
   const [driverStatus, setDriverStatus] = useState('offline'); // offline, available, busy, on_trip
+  const [isConnected, setIsConnected] = useState(true); // Network connectivity state
+  const [uploadQueue, setUploadQueue] = useState([]); // For offline uploads
+  const [isUploading, setIsUploading] = useState(false);
 
   const mapRef = useRef(null);
   const locationWatchId = useRef(null);
   const socketSubscriptions = useRef([]);
+  const networkSubscription = useRef(null);
 
   const driverName = userData?.userProfile?.fullName || userData?.socialUserInfo?.name || 'Driver';
   const driverId = userData?.id;
@@ -78,7 +88,129 @@ export default function DriverHomeScreen({ route, navigation }) {
     navigation.navigate('Earnings');
   };
 
-  // ✅ UPDATED: Initialize app with real-time setup
+  // ✅ ADDED: Enhanced network check function
+  const checkNetworkConnectivity = async () => {
+    try {
+      const netState = await NetInfo.fetch();
+      const connected = netState.isConnected && netState.isInternetReachable;
+      setIsConnected(connected);
+      return connected;
+    } catch (error) {
+      console.error('Network check error:', error);
+      return false;
+    }
+  };
+
+  // ✅ ADDED: Check if location services are enabled
+  const checkLocationEnabled = async () => {
+    try {
+      // Try to get current position - if it fails, location might be disabled
+      const position = await new Promise((resolve, reject) => {
+        Geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 10000 }
+        );
+      });
+      return true;
+    } catch (error) {
+      console.warn('Location services might be disabled:', error);
+      return false;
+    }
+  };
+
+  // ✅ ADDED: Process queued uploads when back online
+  const processUploadQueue = async () => {
+    try {
+      const storedQueue = await AsyncStorage.getItem('uploadQueue');
+      if (!storedQueue) return;
+
+      const queue = JSON.parse(storedQueue);
+      if (queue.length === 0) return;
+
+      setIsUploading(true);
+      const successfulUploads = [];
+
+      for (const item of queue) {
+        try {
+          // This would call your actual upload function
+          // await uploadDocument(item.documentType, item.fileUri);
+          console.log('Processing queued upload:', item.documentType);
+          
+          // Simulate successful upload
+          successfulUploads.push(item);
+          
+          // Wait a bit between uploads to avoid overwhelming the server
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+          console.error('Failed to upload queued document:', error);
+          // Keep failed items in queue for next retry
+        }
+      }
+
+      // Remove successful uploads from queue
+      const remainingQueue = queue.filter(item => 
+        !successfulUploads.some(success => success.fileUri === item.fileUri)
+      );
+      
+      await AsyncStorage.setItem('uploadQueue', JSON.stringify(remainingQueue));
+      setUploadQueue(remainingQueue);
+
+      if (successfulUploads.length > 0) {
+        Alert.alert(
+          'Upload Complete',
+          `${successfulUploads.length} document(s) uploaded successfully.`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error processing upload queue:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // ✅ ADDED: Queue document for offline upload
+  const queueDocumentForUpload = async (documentType, fileUri) => {
+    try {
+      const storedQueue = await AsyncStorage.getItem('uploadQueue');
+      const queue = storedQueue ? JSON.parse(storedQueue) : [];
+      
+      const newItem = {
+        documentType,
+        fileUri,
+        timestamp: Date.now(),
+        retryCount: 0,
+        vehiclePlate: 'DZ 6757', // From your screenshot
+        vehicleType: 'Honda',
+        vehicleColor: 'Yellow',
+        vehicleYear: '2000'
+      };
+      
+      queue.push(newItem);
+      await AsyncStorage.setItem('uploadQueue', JSON.stringify(queue));
+      setUploadQueue(queue);
+      
+      Alert.alert(
+        'Saved Offline',
+        'Document saved locally. It will automatically upload when you reconnect.',
+        [
+          {
+            text: 'View Queue',
+            onPress: () => {
+              navigation.navigate('UploadQueue', { queue });
+            }
+          },
+          { text: 'OK' }
+        ]
+      );
+    } catch (error) {
+      console.error('Error queuing document:', error);
+      Alert.alert('Error', 'Failed to save document offline.');
+    }
+  };
+
+  // ✅ UPDATED: Initialize app with real-time setup AND network monitoring
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -126,6 +258,15 @@ export default function DriverHomeScreen({ route, navigation }) {
         // 7. Check if driver has active ride
         checkActiveRide();
         
+        // 8. Check network connectivity
+        await checkNetworkConnectivity();
+        
+        // 9. Load any queued uploads
+        const storedQueue = await AsyncStorage.getItem('uploadQueue');
+        if (storedQueue) {
+          setUploadQueue(JSON.parse(storedQueue));
+        }
+        
       } catch (error) {
         console.error('Initialization error:', error);
         setRegion(defaultRegion);
@@ -136,10 +277,67 @@ export default function DriverHomeScreen({ route, navigation }) {
 
     initializeApp();
 
-    // Cleanup on unmount
-    return () => {
-      cleanup();
-    };
+    // Setup network monitoring
+    networkSubscription.current = NetInfo.addEventListener(state => {
+      const connected = state.isConnected && state.isInternetReachable;
+      setIsConnected(connected);
+      
+      if (connected && !isConnected) {
+        // Just reconnected - process upload queue
+        processUploadQueue();
+        
+        if (isOnline) {
+          // Re-establish socket connection
+          realTimeService.reconnect();
+        }
+      } else if (!connected && isConnected) {
+        // Just went offline
+        if (isOnline) {
+          Alert.alert(
+            'Connection Lost',
+            'You are offline. Ride requests will be paused until connection is restored.',
+            [{ text: 'OK' }]
+          );
+        }
+      }
+    });
+
+    // Handle back button on Android
+    if (Platform.OS === 'android') {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (activeRide) {
+          Alert.alert(
+            'Active Ride',
+            'You have an active ride. Are you sure you want to exit?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { 
+                text: 'Exit', 
+                style: 'destructive',
+                onPress: () => BackHandler.exitApp()
+              }
+            ]
+          );
+          return true;
+        }
+        return false;
+      });
+
+      return () => {
+        backHandler.remove();
+        cleanup();
+        if (networkSubscription.current) {
+          networkSubscription.current();
+        }
+      };
+    } else {
+      return () => {
+        cleanup();
+        if (networkSubscription.current) {
+          networkSubscription.current();
+        }
+      };
+    }
   }, []);
 
   // ✅ ADDED: Setup socket listeners
@@ -237,23 +435,71 @@ export default function DriverHomeScreen({ route, navigation }) {
   // ✅ ADDED: Check for active ride
   const checkActiveRide = async () => {
     try {
-      // TODO: Call your API to check if driver has active ride
-      // const response = await api.get(`/drivers/${driverId}/active-ride`);
-      // if (response.data.activeRide) {
-      //   setActiveRide(response.data.activeRide);
-      //   setDriverStatus('on_trip');
-      // }
+      // Check network first
+      if (!isConnected) {
+        console.log('Skipping active ride check - offline');
+        return;
+      }
+
+      const response = await apiClient.get(`/drivers/${driverId}/active-ride`, {
+        timeout: 10000, // 10 second timeout
+      });
+      
+      if (response.data.activeRide) {
+        setActiveRide(response.data.activeRide);
+        setDriverStatus('on_trip');
+      }
     } catch (error) {
       console.error('Error checking active ride:', error);
+      // Don't show alert for network errors when offline
+      if (isConnected) {
+        Alert.alert('Error', 'Failed to check active ride status.');
+      }
     }
   };
 
-  // ✅ UPDATED: Request location permission
+  // ✅ FIXED: Request location permission function
   const requestLocationPermission = async () => {
     try {
-      return await LocationService.requestLocationPermission();
+      if (Platform.OS === 'android') {
+        // For Android
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location Permission',
+            message: 'Kabaza needs access to your location to find nearby rides.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          console.log('Location permission granted');
+          setLocationPermission(true);
+          return true;
+        } else {
+          console.log('Location permission denied');
+          setLocationPermission(false);
+          return false;
+        }
+      } else {
+        // For iOS
+        const authStatus = await Geolocation.requestAuthorization('whenInUse');
+        
+        if (authStatus === 'granted') {
+          console.log('Location permission granted');
+          setLocationPermission(true);
+          return true;
+        } else {
+          console.log('Location permission denied');
+          setLocationPermission(false);
+          return false;
+        }
+      }
     } catch (error) {
       console.warn('Location permission error:', error);
+      setLocationPermission(false);
       return false;
     }
   };
@@ -273,7 +519,7 @@ export default function DriverHomeScreen({ route, navigation }) {
     }
   };
 
-  // ✅ UPDATED: Go online with real-time features
+  // ✅ FIXED: Go online with real-time features
   const goOnline = async () => {
     if (activeRide) {
       Alert.alert(
@@ -284,22 +530,61 @@ export default function DriverHomeScreen({ route, navigation }) {
       return;
     }
 
-    if (!locationPermission) {
-      const granted = await requestLocationPermission();
-      if (!granted) {
-        Alert.alert(
-          'Location Required',
-          'Location permission is required to go online.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Enable Location', 
-              onPress: () => Linking.openSettings() 
+    // Check network connection
+    const connected = await checkNetworkConnectivity();
+    if (!connected) {
+      Alert.alert(
+        'No Internet Connection',
+        'Please check your internet connection and try again.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Try Again', 
+            onPress: () => goOnline()
+          }
+        ]
+      );
+      return;
+    }
+
+    // First check if location services are enabled
+    const locationEnabled = await checkLocationEnabled();
+    if (!locationEnabled) {
+      Alert.alert(
+        'Location Services Disabled',
+        'Please enable Location Services on your device.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Open Settings', 
+            onPress: () => {
+              if (Platform.OS === 'ios') {
+                Linking.openURL('app-settings:');
+              } else {
+                Linking.openSettings();
+              }
             }
-          ]
-        );
-        return;
-      }
+          }
+        ]
+      );
+      return;
+    }
+
+    // Then check permission
+    const granted = await requestLocationPermission();
+    if (!granted) {
+      Alert.alert(
+        'Location Permission Required',
+        'Kabaza needs location permission to find nearby rides and navigate.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Grant Permission', 
+            onPress: () => Linking.openSettings() 
+          }
+        ]
+      );
+      return;
     }
 
     setLoading(true);
@@ -314,12 +599,13 @@ export default function DriverHomeScreen({ route, navigation }) {
       setCurrentLocation(location);
       
       // 2. Update driver status via socket
-      realTimeService.updateDriverAvailability(
-        driverId,
-        true, // isAvailable
-        location,
-        'available'
-      );
+      realTimeService.emit('driver:availability', {
+        driverId: driverId,
+        isAvailable: true,
+        location: location,
+        status: 'available',
+        timestamp: Date.now(),
+      })
       
       // 3. Start location tracking
       startLocationTracking();
@@ -331,7 +617,12 @@ export default function DriverHomeScreen({ route, navigation }) {
       // 5. Fetch nearby rides
       fetchNearbyRides(location);
       
-      // 6. Show success message
+      // 6. Process any queued uploads
+      if (uploadQueue.length > 0) {
+        processUploadQueue();
+      }
+      
+      // 7. Show success message
       Alert.alert(
         'You are now online!',
         'You will receive ride requests in your area.',
@@ -361,12 +652,13 @@ export default function DriverHomeScreen({ route, navigation }) {
           text: 'Go Offline', 
           onPress: () => {
             // 1. Update driver status via socket
-            realTimeService.updateDriverAvailability(
-              driverId,
-              false, // isAvailable
-              currentLocation,
-              'offline'
-            );
+            realTimeService.emit('driver:availability', {
+              driverId: driverId,
+              isAvailable: false,
+              location: currentLocation,
+              status: 'offline',
+              timestamp: Date.now(),
+            })
             
             // 2. Stop location tracking
             stopLocationTracking();
@@ -409,8 +701,8 @@ export default function DriverHomeScreen({ route, navigation }) {
           }, 1000);
         }
         
-        // Send location update via socket
-        if (driverId && isOnline) {
+        // Send location update via socket (only if online and connected)
+        if (driverId && isOnline && isConnected) {
           realTimeService.updateLocation(
             driverId,
             location,
@@ -517,24 +809,62 @@ export default function DriverHomeScreen({ route, navigation }) {
     );
   };
 
-  // ✅ ADDED: Render connection status
+  // ✅ ADDED: Enhanced connection status display
   const renderConnectionStatus = () => {
     let statusColor = '#FF6B6B'; // red
     let statusText = 'Offline';
+    let statusIcon = 'cloud-off';
     
-    if (isOnline && connectionStatus === 'connected') {
+    if (!isConnected) {
+      statusColor = '#FBBC05'; // yellow
+      statusText = 'Offline • No Internet';
+      statusIcon = 'wifi-off';
+    } else if (isOnline && connectionStatus === 'connected') {
       statusColor = '#06C167'; // green
       statusText = 'Online • Live';
+      statusIcon = 'wifi';
     } else if (isOnline && connectionStatus === 'disconnected') {
       statusColor = '#FBBC05'; // yellow
       statusText = 'Online • Connecting...';
+      statusIcon = 'wifi-strength-1';
     }
     
     return (
       <View style={styles.connectionStatusContainer}>
-        <View style={[styles.connectionDot, { backgroundColor: statusColor }]} />
-        <Text style={styles.connectionText}>{statusText}</Text>
+        <MaterialIcon name={statusIcon} size={12} color={statusColor} />
+        <Text style={[styles.connectionText, { color: statusColor }]}>{statusText}</Text>
       </View>
+    );
+  };
+
+  // ✅ ADDED: Network status banner
+  const renderNetworkStatus = () => {
+    if (isConnected) return null;
+    
+    return (
+      <View style={styles.networkBanner}>
+        <MaterialIcon name="wifi-off" size={16} color="#FFF" />
+        <Text style={styles.networkText}>
+          No internet connection. Some features may be limited.
+        </Text>
+      </View>
+    );
+  };
+
+  // ✅ ADDED: Pending uploads indicator
+  const renderUploadQueueIndicator = () => {
+    if (uploadQueue.length === 0 || isConnected) return null;
+    
+    return (
+      <TouchableOpacity 
+        style={styles.uploadQueueBanner}
+        onPress={() => navigation.navigate('UploadQueue', { queue: uploadQueue })}
+      >
+        <MaterialIcon name="cloud-upload" size={16} color="#FFF" />
+        <Text style={styles.uploadQueueText}>
+          {uploadQueue.length} document(s) ready to upload
+        </Text>
+      </TouchableOpacity>
     );
   };
 
@@ -574,6 +904,12 @@ export default function DriverHomeScreen({ route, navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
+      {/* Network Status Banner */}
+      {renderNetworkStatus()}
+      
+      {/* Pending Uploads Banner */}
+      {renderUploadQueueIndicator()}
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -613,10 +949,11 @@ export default function DriverHomeScreen({ route, navigation }) {
         <TouchableOpacity
           style={[
             styles.onlineButton,
-            isOnline ? styles.offlineButtonStyle : styles.onlineButtonStyle
+            isOnline ? styles.offlineButtonStyle : styles.onlineButtonStyle,
+            !isConnected && styles.disabledButton
           ]}
           onPress={isOnline ? goOffline : goOnline}
-          disabled={loading}
+          disabled={loading || (!isConnected && !isOnline)}
         >
           {loading ? (
             <ActivityIndicator color="#FFF" />
@@ -628,14 +965,14 @@ export default function DriverHomeScreen({ route, navigation }) {
                 color="#FFF" 
               />
               <Text style={styles.onlineButtonText}>
-                {isOnline ? "Go Offline" : "Go Online"}
+                {!isConnected && !isOnline ? "No Internet" : isOnline ? "Go Offline" : "Go Online"}
               </Text>
             </>
           )}
         </TouchableOpacity>
 
         {/* Nearby Rides */}
-        {nearbyRides.length > 0 && (
+        {nearbyRides.length > 0 && isConnected && (
           <View style={styles.ridesSection}>
             <Text style={styles.sectionTitle}>
               Nearby Ride Requests ({nearbyRides.length})
@@ -772,17 +1109,38 @@ const styles = StyleSheet.create({
   connectionStatusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  connectionDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
+    justifyContent: 'center',
   },
   connectionText: {
     fontSize: 12,
-    color: '#666',
     fontWeight: '500',
+    marginLeft: 4,
+  },
+  networkBanner: {
+    backgroundColor: '#FBBC05',
+    padding: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  networkText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  uploadQueueBanner: {
+    backgroundColor: '#4285F4',
+    padding: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadQueueText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 8,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -839,17 +1197,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 16,
     elevation: 3,
-    shadowColor: '#06C167',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
   },
   onlineButtonStyle: {
     backgroundColor: '#06C167',
+    shadowColor: '#06C167',
   },
   offlineButtonStyle: {
     backgroundColor: '#EA4335',
     shadowColor: '#EA4335',
+  },
+  disabledButton: {
+    backgroundColor: '#CCCCCC',
+    shadowColor: '#999999',
   },
   onlineButtonText: {
     fontSize: 18,

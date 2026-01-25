@@ -1,4 +1,4 @@
-// screens/rider/RideSelectionScreen.js
+// screens/rider/RideSelectionScreen.js - FIXED VERSION
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -18,17 +18,11 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
 import apiClient from '@services/api/client';
 
-// ✅ FIXED IMPORTS:
-  // Changed from '@src/services/api/apiService'
-// OR use your existing API file:
-// import API from '@services/api/index';
-// OR use ride-specific API:
-// import { rideAPI } from '@services/api/rideAPI';
-
 import realTimeService from '@services/socket/realtimeUpdates';
-import { getUserData } from '@utils/userStorage';  // Changed from '@src/utils/userStorage'
+import { getUserData } from '@utils/userStorage';
 
-// Rest of your component code...
+// ✅ ADD DEVELOPMENT MODE CHECK
+const isDevelopment = __DEV__ || process.env.NODE_ENV === 'development';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -51,6 +45,34 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
+// ✅ ADD MOCK DATA FOR DEVELOPMENT
+const MOCK_DRIVERS = [
+  { 
+    id: '1', 
+    vehicleType: 'bike', 
+    location: { latitude: -13.9650, longitude: 33.7750 },
+    name: 'John M.',
+    rating: 4.8,
+    distance: 0.5
+  },
+  { 
+    id: '2', 
+    vehicleType: 'car', 
+    location: { latitude: -13.9600, longitude: 33.7700 },
+    name: 'Mike T.',
+    rating: 4.9,
+    distance: 1.2
+  },
+  { 
+    id: '3', 
+    vehicleType: 'bike', 
+    location: { latitude: -13.9670, longitude: 33.7800 },
+    name: 'David K.',
+    rating: 4.7,
+    distance: 0.8
+  },
+];
+
 export default function RideSelectionScreen({ route, navigation }) {
   const { destination, destinationAddress, destinationCoordinates, pickupLocation, pickupCoordinates, scheduleLater } = route.params || {};
   
@@ -63,7 +85,9 @@ export default function RideSelectionScreen({ route, navigation }) {
   const [estimatedTime, setEstimatedTime] = useState('5 min');
   const [currentLocation, setCurrentLocation] = useState(null);
   const [ridePrices, setRidePrices] = useState({});
-  const [user, setUser] = useState(null); // ADD USER STATE
+  const [user, setUser] = useState(null);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [isMockMode, setIsMockMode] = useState(isDevelopment); // Auto-enable mock in dev
   
   const mapRef = useRef(null);
   const promoCode = 'PROMO20';
@@ -157,21 +181,30 @@ export default function RideSelectionScreen({ route, navigation }) {
         const userData = await getUserData();
         setUser(userData);
         
-        // Initialize socket with user data
-        if (userData) {
-          realTimeService.initializeSocket({
-            id: userData.id,
-            name: userData.name || 'Rider',
-            role: 'rider',
-          });
-          
-          // Listen for connection status
-          realTimeService.addConnectionListener((connected) => {
-            console.log('Socket connection status:', connected);
-          });
+        // Initialize socket with user data (only if not in mock mode)
+        if (userData && !isMockMode) {
+          try {
+            realTimeService.initializeSocket({
+              id: userData.id,
+              name: userData.name || 'Rider',
+              role: 'rider',
+            });
+            
+            // Listen for connection status
+            realTimeService.addConnectionListener((connected) => {
+              console.log('Socket connection status:', connected);
+              setSocketConnected(connected);
+            });
+          } catch (socketError) {
+            console.warn('Socket initialization failed, using mock mode:', socketError.message);
+            setIsMockMode(true);
+          }
+        } else if (isMockMode) {
+          console.log('🔧 Development mode: Using mock data');
         }
       } catch (error) {
         console.error('Failed to load user data:', error);
+        setIsMockMode(true); // Fallback to mock mode
       }
     };
     
@@ -183,19 +216,25 @@ export default function RideSelectionScreen({ route, navigation }) {
     // Fetch nearby drivers and pricing
     fetchNearbyDrivers();
     
-    // Setup socket listeners for real-time updates
-    setupSocketListeners();
+    // Setup socket listeners for real-time updates (only if not in mock mode)
+    if (!isMockMode) {
+      const cleanup = setupSocketListeners();
+      return () => {
+        cleanup();
+        // Remove connection listener on unmount
+        realTimeService.removeConnectionListener();
+      };
+    }
     
     return () => {
-      cleanupSocketListeners();
-      // Remove connection listener on unmount
-      realTimeService.removeConnectionListener();
+      // Cleanup for mock mode
+      console.log('🧹 Cleaning up mock mode');
     };
   }, []);
 
   // ADD THIS EFFECT FOR NEARBY DRIVERS SUBSCRIPTION
   useEffect(() => {
-    if (currentLocation && user) {
+    if (currentLocation && user && !isMockMode) {
       // Subscribe to nearby drivers when location is available
       const unsubscribe = realTimeService.subscribeToNearbyDrivers(
         currentLocation,
@@ -203,14 +242,16 @@ export default function RideSelectionScreen({ route, navigation }) {
         ['bike', 'car'], // Vehicle types
         (drivers) => {
           console.log('Real-time nearby drivers update:', drivers);
-          setNearbyDrivers(drivers);
-          updateRideAvailability(drivers);
+          if (drivers && Array.isArray(drivers)) {
+            setNearbyDrivers(drivers);
+            updateRideAvailability(drivers);
+          }
         }
       );
       
       return unsubscribe; // Cleanup on unmount or location change
     }
-  }, [currentLocation, user]);
+  }, [currentLocation, user, isMockMode]);
 
   const fetchCurrentLocation = () => {
     Geolocation.getCurrentPosition(
@@ -236,7 +277,13 @@ export default function RideSelectionScreen({ route, navigation }) {
       (error) => {
         console.log('Location error:', error);
         // Use default location if GPS fails
-        setCurrentLocation({ latitude: -13.9626, longitude: 33.7741 });
+        const defaultLocation = { latitude: -13.9626, longitude: 33.7741 };
+        setCurrentLocation(defaultLocation);
+        
+        // Show alert in development
+        if (isDevelopment) {
+          console.warn('Using default location for Lilongwe, Malawi');
+        }
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
     );
@@ -262,35 +309,107 @@ export default function RideSelectionScreen({ route, navigation }) {
     }
   };
 
+  // ✅ FIXED: fetchNearbyDrivers with better error handling
   const fetchNearbyDrivers = async () => {
     try {
       setLoading(true);
       const location = pickupCoordinates || currentLocation || { latitude: -13.9626, longitude: 33.7741 };
       
-      // Mock API call - replace with your actual API
-      const response = await api.get('/drivers/nearby', {
-        params: {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          radius: 5,
-        }
-      });
+      console.log('📍 Fetching nearby drivers...');
       
-      if (response.data?.drivers) {
-        setNearbyDrivers(response.data.drivers);
-        updateRideAvailability(response.data.drivers);
+      // ✅ ADD DEVELOPMENT MODE CHECK
+      if (isMockMode) {
+        console.log('🔧 Mock mode: Using mock driver data');
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        setNearbyDrivers(MOCK_DRIVERS);
+        updateRideAvailability(MOCK_DRIVERS);
+        
+        // Mock pricing
+        const mockPrices = {
+          'economy_bike': 1.0,
+          'economy_car': 1.0,
+          'bolt_bike': 1.1,
+          'bolt_car': 1.1,
+          'wait_save_bike': 0.9,
+          'wait_save_car': 0.9,
+        };
+        setRidePrices(mockPrices);
+        
+        return;
       }
       
-      // Fetch dynamic pricing
-      fetchDynamicPricing();
+      // Real API call with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      try {
+        const response = await apiClient.get('/drivers/nearby', {
+          params: {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            radius: 5,
+          },
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.data?.drivers && Array.isArray(response.data.drivers)) {
+          setNearbyDrivers(response.data.drivers);
+          updateRideAvailability(response.data.drivers);
+        } else {
+          throw new Error('Invalid response format from server');
+        }
+        
+        // Fetch dynamic pricing
+        fetchDynamicPricing();
+        
+      } catch (apiError) {
+        clearTimeout(timeoutId);
+        throw apiError;
+      }
       
     } catch (error) {
-      console.error('Error fetching drivers:', error);
-      // Mock data for development
-      setNearbyDrivers([
-        { id: '1', vehicleType: 'bike', location: { latitude: -13.9650, longitude: 33.7750 } },
-        { id: '2', vehicleType: 'car', location: { latitude: -13.9600, longitude: 33.7700 } },
-      ]);
+      console.error('❌ Error fetching drivers:', error.message);
+      
+      // ✅ USER-FRIENDLY ERROR MESSAGES
+      let errorMessage = 'Network error. Please check your internet connection.';
+      
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        errorMessage = 'Request timeout. Server might be down.';
+      } else if (error.code === 'ERR_NETWORK') {
+        errorMessage = 'Cannot connect to server. Please check if backend is running.';
+      } else if (error.message.includes('Invalid response')) {
+        errorMessage = 'Server returned invalid data.';
+      }
+      
+      // Show alert only in development
+      if (isDevelopment) {
+        Alert.alert(
+          'Development Mode',
+          `${errorMessage}\n\nUsing mock data for demonstration.`,
+          [{ text: 'OK' }]
+        );
+      }
+      
+      // Fallback to mock data
+      setIsMockMode(true);
+      setNearbyDrivers(MOCK_DRIVERS);
+      updateRideAvailability(MOCK_DRIVERS);
+      
+      // Mock pricing
+      const mockPrices = {
+        'economy_bike': 1.0,
+        'economy_car': 1.0,
+        'bolt_bike': 1.1,
+        'bolt_car': 1.1,
+        'wait_save_bike': 0.9,
+        'wait_save_car': 0.9,
+      };
+      setRidePrices(mockPrices);
+      
     } finally {
       setLoading(false);
     }
@@ -298,6 +417,20 @@ export default function RideSelectionScreen({ route, navigation }) {
 
   const fetchDynamicPricing = async () => {
     try {
+      if (isMockMode) {
+        // Mock pricing for development
+        const mockPrices = {
+          'economy_bike': 1.0,
+          'economy_car': 1.0,
+          'bolt_bike': 1.1,
+          'bolt_car': 1.1,
+          'wait_save_bike': 0.9,
+          'wait_save_car': 0.9,
+        };
+        setRidePrices(mockPrices);
+        return;
+      }
+      
       const response = await apiClient.get('/pricing/current', {
         params: {
           distance: distance,
@@ -310,11 +443,26 @@ export default function RideSelectionScreen({ route, navigation }) {
       }
     } catch (error) {
       console.error('Error fetching pricing:', error);
+      // Use default pricing
+      const defaultPrices = {
+        'economy_bike': 1.0,
+        'economy_car': 1.0,
+        'bolt_bike': 1.0,
+        'bolt_car': 1.0,
+        'wait_save_bike': 1.0,
+        'wait_save_car': 1.0,
+      };
+      setRidePrices(defaultPrices);
     }
   };
 
   const setupSocketListeners = () => {
-    // Socket is now handled by realTimeService, but you can add additional listeners here
+    if (isMockMode) {
+      console.log('🔧 Mock mode: Skipping socket listeners');
+      return () => {}; // Empty cleanup function
+    }
+    
+    console.log('🔌 Setting up socket listeners...');
     
     // Listen for surge pricing updates via socket
     const surgeUnsubscribe = realTimeService.subscribeToSurgePricing(
@@ -325,18 +473,23 @@ export default function RideSelectionScreen({ route, navigation }) {
       }
     );
     
-    return surgeUnsubscribe; // Return cleanup function
-  };
-
-  const cleanupSocketListeners = () => {
-    // Cleanup will be handled by the unsubscribe functions returned from setupSocketListeners
+    return () => {
+      if (surgeUnsubscribe) {
+        surgeUnsubscribe();
+      }
+    };
   };
 
   const updateRideAvailability = (drivers) => {
+    if (!drivers || !Array.isArray(drivers)) {
+      console.warn('Invalid drivers data for availability update');
+      return;
+    }
+    
     // Count available drivers per vehicle type
     const driverCounts = {
-      bike: drivers.filter(d => d.vehicleType?.includes('bike')).length,
-      car: drivers.filter(d => d.vehicleType?.includes('car')).length,
+      bike: drivers.filter(d => d && d.vehicleType?.includes('bike')).length,
+      car: drivers.filter(d => d && d.vehicleType?.includes('car')).length,
     };
     
     // Update ride options based on availability
@@ -348,6 +501,8 @@ export default function RideSelectionScreen({ route, navigation }) {
   };
 
   const updateSurgePricing = (surgeData) => {
+    if (!surgeData) return;
+    
     const updatedPrices = { ...ridePrices };
     rideOptions.forEach(ride => {
       if (surgeData[ride.vehicleType]) {
@@ -358,8 +513,10 @@ export default function RideSelectionScreen({ route, navigation }) {
   };
 
   const calculatePrice = (ride) => {
-    const base = ride.basePrice;
-    const multiplier = ride.multiplier;
+    if (!ride) return 0;
+    
+    const base = ride.basePrice || 0;
+    const multiplier = ride.multiplier || 1.0;
     const surgeMultiplier = ridePrices[ride.id] || 1.0;
     const distanceMultiplier = Math.max(1, distance * 0.3); // MK 0.3 per km
     
@@ -368,32 +525,34 @@ export default function RideSelectionScreen({ route, navigation }) {
   };
 
   const handleSelectRide = (ride) => {
+    if (!ride) return;
+    
     if (!ride.isAvailable && ride.availableDrivers === 0) {
       Alert.alert(
         'No Drivers Available',
-        `There are no ${ride.type.toLowerCase()} drivers available in your area. Please select another option.`
+        `There are no ${ride.type?.toLowerCase() || ''} drivers available in your area. Please select another option.`
       );
       return;
     }
     
     setSelectedRide(ride.id);
-    
-    // Emit socket event for driver availability check
-    // This is now handled by the realTimeService
-    // You could add additional logic here if needed
   };
 
-  // UPDATED handleConfirmRide FUNCTION FOR REAL-TIME RIDE REQUEST
+  // ✅ FIXED: handleConfirmRide with mock mode support
   const handleConfirmRide = async () => {
     if (!selectedRide) {
-      alert('Please select a ride option');
+      Alert.alert('Selection Required', 'Please select a ride option');
       return;
     }
     
     const rideData = rideOptions.find(r => r.id === selectedRide);
+    if (!rideData) {
+      Alert.alert('Error', 'Invalid ride selection');
+      return;
+    }
     
     // Check if drivers are still available
-    if (rideData.availableDrivers === 0) {
+    if (rideData.availableDrivers === 0 && !isMockMode) {
       Alert.alert(
         'No Drivers Available',
         'The selected ride type is no longer available. Please select another option.'
@@ -402,54 +561,65 @@ export default function RideSelectionScreen({ route, navigation }) {
     }
     
     // Check if user data is loaded
-    if (!user) {
+    if (!user && !isMockMode) {
       Alert.alert('Error', 'User data not loaded. Please try again.');
       return;
     }
     
-    // Check if socket is connected
+    // In mock mode, proceed directly
+    if (isMockMode) {
+      console.log('🔧 Mock mode: Proceeding with mock ride request');
+      proceedWithRideRequest(rideData, true);
+      return;
+    }
+    
+    // Check if socket is connected (only for real mode)
     const connectionStatus = realTimeService.getConnectionStatus();
     if (!connectionStatus.isConnected) {
       Alert.alert(
         'Connection Issue',
-        'Real-time connection not established. Trying to reconnect...',
+        'Real-time connection not established. Would you like to continue in offline mode?',
         [
           { 
             text: 'Try Again', 
             onPress: () => {
               realTimeService.connectSocket();
               // Retry after a delay
-              setTimeout(handleConfirmRide, 2000);
+              setTimeout(() => handleConfirmRide(), 2000);
             }
           },
           { 
-            text: 'Continue Anyway', 
-            onPress: () => proceedWithRideRequest(rideData) 
-          }
+            text: 'Offline Mode', 
+            onPress: () => {
+              setIsMockMode(true);
+              proceedWithRideRequest(rideData, true);
+            } 
+          },
+          { text: 'Cancel', style: 'cancel' }
         ]
       );
       return;
     }
     
-    proceedWithRideRequest(rideData);
+    proceedWithRideRequest(rideData, false);
   };
 
-  // NEW FUNCTION: Process ride request with real-time service
-  const proceedWithRideRequest = (rideData) => {
+  // ✅ FIXED: Process ride request with mock mode support
+  const proceedWithRideRequest = (rideData, isMock = false) => {
     setLoading(true);
     
     try {
       // Prepare ride request data
       const rideRequest = {
-        riderId: user.id,
-        riderName: user.name || 'Rider',
-        riderPhone: user.phone,
+        riderId: user?.id || 'mock_user',
+        riderName: user?.name || 'Demo Rider',
+        riderPhone: user?.phone || '0999999999',
         pickup: {
           address: pickupLocation || 'Your Location',
           coordinates: pickupCoordinates || currentLocation,
         },
         destination: {
-          address: destination || destinationAddress,
+          address: destination || destinationAddress || 'Selected Destination',
           coordinates: destinationCoordinates,
         },
         vehicleType: rideData.vehicleType,
@@ -458,13 +628,22 @@ export default function RideSelectionScreen({ route, navigation }) {
         promoCode: usePromo ? 'PROMO20' : null,
         distance: distance,
         estimatedTime: estimatedTime,
+        isMock: isMock,
       };
       
-      // Send real-time ride request via socket
-      const requestId = realTimeService.requestRide(rideRequest);
+      let requestId = null;
+      
+      if (!isMock) {
+        // Send real-time ride request via socket
+        requestId = realTimeService.requestRide(rideRequest);
+      } else {
+        // Generate mock request ID
+        requestId = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        console.log('🔧 Mock ride request created:', requestId);
+      }
       
       if (requestId) {
-        console.log('Ride requested successfully with ID:', requestId);
+        console.log('✅ Ride requested successfully with ID:', requestId);
         
         // Navigate to confirmation screen with ride ID
         navigation.navigate('RideConfirmation', {
@@ -474,9 +653,9 @@ export default function RideSelectionScreen({ route, navigation }) {
             formattedPrice: formatMK(calculatePrice(rideData)),
             estimatedTime: estimatedTime,
             distance: distance,
-            availableDrivers: rideData.availableDrivers,
+            availableDrivers: rideData.availableDrivers || (isMock ? 2 : 0),
             surgeMultiplier: ridePrices[rideData.id] || 1.0,
-            requestId: requestId, // Add request ID for tracking
+            requestId: requestId,
           },
           destination: destination || 'Selected Destination',
           destinationAddress: destinationAddress || 'Malawi Location',
@@ -487,32 +666,41 @@ export default function RideSelectionScreen({ route, navigation }) {
             paymentMethod, 
             usePromo,
             promoCode: usePromo ? promoCode : null,
-            userId: user.id,
-            userName: user.name || 'Rider',
+            userId: user?.id || 'mock_user',
+            userName: user?.name || 'Demo Rider',
           },
-          socketRequestId: requestId, // Pass socket request ID
+          socketRequestId: requestId,
+          isMock: isMock,
         });
       } else {
         Alert.alert('Request Failed', 'Failed to send ride request. Please try again.');
       }
     } catch (error) {
-      console.error('Error requesting ride:', error);
-      Alert.alert('Error', 'Failed to request ride. Please try again.');
+      console.error('❌ Error requesting ride:', error);
+      Alert.alert(
+        'Error', 
+        'Failed to request ride. Please try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const getDriverCount = (vehicleType) => {
+    if (!nearbyDrivers || !Array.isArray(nearbyDrivers)) return 0;
+    
     return nearbyDrivers.filter(driver => 
-      driver.vehicleType?.includes(vehicleType)
+      driver && driver.vehicleType?.includes(vehicleType)
     ).length;
   };
 
   const renderDriverMarkers = () => {
+    if (!nearbyDrivers || !Array.isArray(nearbyDrivers)) return null;
+    
     return nearbyDrivers.map((driver, index) => (
       <Marker
-        key={`driver-${index}`}
+        key={`driver-${driver.id || index}`}
         coordinate={{
           latitude: driver.location?.latitude || -13.9650,
           longitude: driver.location?.longitude || 33.7750
@@ -541,6 +729,18 @@ export default function RideSelectionScreen({ route, navigation }) {
     (destinationAddress?.includes('Hospital') ?
       { latitude: -13.9731, longitude: 33.7871 } :
       { latitude: -13.9897, longitude: 33.7777 });
+
+  // Get connection status text
+  const getConnectionStatusText = () => {
+    if (isMockMode) return 'Mock Mode';
+    return realTimeService.getConnectionStatus().isConnected ? 'Connected ✓' : 'Connecting...';
+  };
+
+  // Get connection dot color
+  const getConnectionDotColor = () => {
+    if (isMockMode) return '#9C27B0'; // Purple for mock mode
+    return realTimeService.getConnectionStatus().isConnected ? '#06C167' : '#EA4335';
+  };
 
   return (
     <View style={styles.container}>
@@ -631,18 +831,26 @@ export default function RideSelectionScreen({ route, navigation }) {
               </Text>
             </View>
             
-            {/* Socket connection status indicator */}
+            {/* Connection status indicator */}
             <View style={styles.connectionStatus}>
               <View style={[
                 styles.connectionDot, 
-                { backgroundColor: realTimeService.getConnectionStatus().isConnected ? '#06C167' : '#EA4335' }
+                { backgroundColor: getConnectionDotColor() }
               ]} />
               <Text style={styles.connectionText}>
-                {realTimeService.getConnectionStatus().isConnected ? 'Live' : 'Offline'}
+                {getConnectionStatusText()}
               </Text>
             </View>
           </View>
         </View>
+
+        {/* Development Mode Banner */}
+        {isMockMode && (
+          <View style={styles.devModeBanner}>
+            <MaterialIcon name="developer-mode" size={16} color="#9C27B0" />
+            <Text style={styles.devModeText}>Development Mode: Using Mock Data</Text>
+          </View>
+        )}
 
         {/* Promo */}
         <View style={styles.promoSection}>
@@ -772,7 +980,6 @@ export default function RideSelectionScreen({ route, navigation }) {
             <Text style={styles.paymentText}>Cash</Text>
           </TouchableOpacity>
           
-          {/* Additional payment options can be added here */}
           <TouchableOpacity style={styles.paymentOption} onPress={() => setPaymentMethod('card')}>
             <MaterialIcon 
               name={paymentMethod === 'card' ? "radio-button-checked" : "radio-button-unchecked"} 
@@ -833,10 +1040,10 @@ export default function RideSelectionScreen({ route, navigation }) {
           </Text>
         )}
         
-        {/* Socket status indicator */}
+        {/* Connection status indicator */}
         <View style={styles.socketStatus}>
           <Text style={styles.socketStatusText}>
-            Status: {realTimeService.getConnectionStatus().isConnected ? 'Connected ✓' : 'Connecting...'}
+            Mode: {isMockMode ? 'Development (Mock Data)' : 'Live'}
           </Text>
         </View>
       </View>
@@ -983,6 +1190,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#666',
     fontWeight: '500',
+  },
+  // NEW: Development mode banner
+  devModeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3E5F5',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  devModeText: {
+    fontSize: 12,
+    color: '#9C27B0',
+    fontWeight: '500',
+    marginLeft: 8,
+    fontStyle: 'italic',
   },
   promoSection: { 
     backgroundColor: '#FFFFFF', 

@@ -96,21 +96,8 @@ const GEOLOCATION_OPTIONS = {
   distanceFilter: 50,
 };
 
-// Show warning if API key is missing or placeholder
-if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY.includes('Placeholder')) {
-  console.warn('⚠️ Google Maps API Key is missing or using placeholder!');
-  console.log('👉 Add your real API key to: C:\\Front_End\\Kabaza\\.env.local');
-  console.log('👉 Get key from: https://console.cloud.google.com/');
-  
-  // Only show alert in development
-  if (config.ENV?.DEBUG && Platform.OS !== 'web') {
-    Alert.alert(
-      'Configuration Required',
-      'Google Maps API key is missing. Please add it to .env.local file.',
-      [{ text: 'OK' }]
-    );
-  }
-}
+// ✅ Always allow map to render (API key is in native files)
+const hasGoogleMapsKey = true;
 
 const MapComponent = ({ 
   region, 
@@ -137,23 +124,6 @@ const MapComponent = ({
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [eta, setEta] = useState(null);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
-
-  // ✅ Check if API key is available and valid
-  const hasGoogleMapsKey = React.useMemo(() => {
-    if (!GOOGLE_MAPS_API_KEY) {
-      console.error('❌ Google Maps API Key is undefined');
-      return false;
-    }
-    if (GOOGLE_MAPS_API_KEY.includes('Placeholder')) {
-      console.warn('⚠️ Using placeholder API key - maps may not work');
-      return true; // Still return true to show map with warning
-    }
-    if (GOOGLE_MAPS_API_KEY.startsWith('AIza')) {
-      return true;
-    }
-    console.error('❌ Invalid Google Maps API Key format');
-    return false;
-  }, []);
 
   // ✅ Debounce function for performance
   const debounce = (func, wait) => {
@@ -467,49 +437,19 @@ const MapComponent = ({
     );
   }, [routeCoordinates]);
 
-  // ✅ Render map or fallback
+  // ✅ Render map
   const renderMap = () => {
-    if (!hasGoogleMapsKey) {
-      return (
-        <View style={styles.apiKeyWarning}>
-          <Icon name="exclamation-triangle" size={40} color="#F59E0B" />
-          <Text style={styles.warningTitle}>Google Maps API Key Required</Text>
-          <Text style={styles.warningText}>
-            Please add your Google Maps API key to .env.local file
-          </Text>
-          <Text style={styles.warningSubtext}>
-            Get key from: https://console.cloud.google.com/
-          </Text>
-          <TouchableOpacity 
-            style={styles.helpButton}
-            onPress={() => {
-              Alert.alert(
-                'Setup Instructions',
-                '1. Go to Google Cloud Console\n2. Create API Key\n3. Enable Maps SDK\n4. Add key to .env.local\n5. Restart app',
-                [{ text: 'OK' }]
-              );
-            }}
-          >
-            <Text style={styles.helpButtonText}>Show Setup Instructions</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
+    // Check if region exists (for loading state)
     if (!region) {
       return (
         <View style={styles.mapLoading}>
           <ActivityIndicator size="large" color="#4CAF50" />
           <Text style={styles.loadingText}>Loading map...</Text>
-          {GOOGLE_MAPS_API_KEY.includes('Placeholder') && (
-            <Text style={styles.placeholderWarning}>
-              Using placeholder API key - get real key for production
-            </Text>
-          )}
         </View>
       );
     }
 
+    // Return the actual MapView
     return (
       <MapView
         ref={mapRef}
@@ -614,46 +554,6 @@ const styles = StyleSheet.create({
   map: { 
     flex: 1 
   },
-  apiKeyWarning: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFF3CD',
-    padding: ui.SPACING.LG, // ✅ Using ui constant
-  },
-  warningTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#856404',
-    marginTop: ui.SPACING.MD, // ✅ Using ui constant
-    marginBottom: ui.SPACING.SM, // ✅ Using ui constant
-  },
-  warningText: {
-    fontSize: 14,
-    color: '#856404',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: ui.SPACING.XS, // ✅ Using ui constant
-  },
-  warningSubtext: {
-    fontSize: 12,
-    color: '#856404',
-    textAlign: 'center',
-    fontStyle: 'italic',
-    marginBottom: ui.SPACING.MD, // ✅ Using ui constant
-  },
-  helpButton: {
-    backgroundColor: '#F59E0B',
-    paddingVertical: ui.SPACING.SM, // ✅ Using ui constant
-    paddingHorizontal: ui.SPACING.MD, // ✅ Using ui constant
-    borderRadius: ui.BORDER_RADIUS.MD, // ✅ Using ui constant
-    marginTop: ui.SPACING.SM, // ✅ Using ui constant
-  },
-  helpButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 12,
-  },
   mapLoading: { 
     flex: 1, 
     justifyContent: 'center', 
@@ -661,15 +561,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa' 
   },
   loadingText: {
-    marginTop: ui.SPACING.MD, // ✅ Using ui constant
+    marginTop: 16,
     fontSize: 14,
     color: '#666',
-  },
-  placeholderWarning: {
-    marginTop: ui.SPACING.SM, // ✅ Using ui constant
-    fontSize: 11,
-    color: '#F59E0B',
-    fontStyle: 'italic',
   },
   userLocationMarker: { 
     alignItems: 'center', 
@@ -697,12 +591,16 @@ const styles = StyleSheet.create({
   },
   rideMarker: { 
     backgroundColor: '#EF4444', 
-    paddingHorizontal: ui.SPACING.SM, // ✅ Using ui constant
-    paddingVertical: ui.SPACING.XS, // ✅ Using ui constant
-    borderRadius: ui.BORDER_RADIUS.MD, // ✅ Using ui constant
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 2, 
     borderColor: '#fff', 
-    ...ui.SHADOW.SM // ✅ Using ui constant
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.18,
+    shadowRadius: 1.0,
+    elevation: 1,
   },
   rideMarkerText: { 
     color: '#fff', 
@@ -723,38 +621,42 @@ const styles = StyleSheet.create({
   },
   calloutContainer: { 
     backgroundColor: '#fff', 
-    borderRadius: ui.BORDER_RADIUS.MD, // ✅ Using ui constant
-    padding: ui.SPACING.MD, // ✅ Using ui constant
+    borderRadius: 8,
+    padding: 16,
     width: 180, 
-    ...ui.SHADOW.SM // ✅ Using ui constant
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.18,
+    shadowRadius: 1.0,
+    elevation: 1,
   },
   calloutTitle: { 
     fontSize: 14, 
     fontWeight: '600', 
     color: '#333', 
-    marginBottom: ui.SPACING.XS  // ✅ Using ui constant
+    marginBottom: 4
   },
   calloutSubtitle: { 
     fontSize: 12, 
     color: '#666', 
-    marginBottom: ui.SPACING.XS  // ✅ Using ui constant
+    marginBottom: 4
   },
   calloutAmount: { 
     fontSize: 14, 
     fontWeight: 'bold', 
     color: '#4CAF50', 
-    marginBottom: ui.SPACING.XS  // ✅ Using ui constant
+    marginBottom: 4
   },
   calloutTime: { 
     fontSize: 11, 
     color: '#666', 
-    marginBottom: ui.SPACING.SM  // ✅ Using ui constant
+    marginBottom: 8
   },
   bookButton: { 
     backgroundColor: '#4CAF50', 
-    paddingVertical: ui.SPACING.XS, // ✅ Using ui constant
-    paddingHorizontal: ui.SPACING.MD, // ✅ Using ui constant
-    borderRadius: ui.BORDER_RADIUS.SM, // ✅ Using ui constant
+    paddingVertical: 4,
+    paddingHorizontal: 16,
+    borderRadius: 4,
     alignItems: 'center' 
   },
   bookButtonText: { 
@@ -787,7 +689,11 @@ const styles = StyleSheet.create({
     borderRadius: 22, 
     alignItems: 'center', 
     justifyContent: 'center', 
-    ...ui.SHADOW.SM // ✅ Using ui constant
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.18,
+    shadowRadius: 1.0,
+    elevation: 1,
   },
   activeControlButton: {
     borderWidth: 2,
@@ -799,15 +705,19 @@ const styles = StyleSheet.create({
     left: 16, 
     right: 16, 
     backgroundColor: '#fff', 
-    borderRadius: ui.BORDER_RADIUS.LG, // ✅ Using ui constant
-    padding: ui.SPACING.MD, // ✅ Using ui constant
-    ...ui.SHADOW.MD // ✅ Using ui constant
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   bookingHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: ui.SPACING.SM, // ✅ Using ui constant
+    marginBottom: 8,
   },
   bookingTitle: { 
     fontSize: 16, 
@@ -817,12 +727,12 @@ const styles = StyleSheet.create({
   bookingDriver: { 
     fontSize: 14, 
     color: '#666', 
-    marginBottom: ui.SPACING.XS  // ✅ Using ui constant
+    marginBottom: 4
   },
   bookingVehicle: { 
     fontSize: 12, 
     color: '#666', 
-    marginBottom: ui.SPACING.XS  // ✅ Using ui constant
+    marginBottom: 4
   },
   bookingStatus: { 
     fontSize: 12, 

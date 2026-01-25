@@ -137,7 +137,7 @@ export default function TripDetailsScreen({ navigation, route }) {
       await loadCachedTrip();
       
       // Initialize socket connection
-      if (!socketService.isConnected?.()) {
+      if (!socketService.isConnected) {
         await socketService.initialize();
       }
       
@@ -439,7 +439,7 @@ export default function TripDetailsScreen({ navigation, route }) {
 
   const joinTripRoom = async () => {
     try {
-      if (socketService.isConnected?.() && user?.id) {
+      if (socketService.isConnected && user?.id) {
         socketService.emit('join_trip_room', {
           tripId,
           driverId: user.id,
@@ -494,7 +494,7 @@ export default function TripDetailsScreen({ navigation, route }) {
   };
 
   const sendDriverLocationUpdate = (latitude, longitude) => {
-    if (socketService.isConnected?.() && trip.status === 'in_progress') {
+    if (socketService.isConnected&& trip.status === 'in_progress') {
       socketService.emit('driver_location_update', {
         tripId,
         location: { latitude, longitude },
@@ -513,7 +513,7 @@ export default function TripDetailsScreen({ navigation, route }) {
   };
 
   const sendBackgroundStatus = () => {
-    if (socketService.isConnected?.()) {
+    if (socketService.isConnected) {
       socketService.emit('driver_background_status', {
         tripId,
         status: 'background',
@@ -523,7 +523,7 @@ export default function TripDetailsScreen({ navigation, route }) {
   };
 
   const sendThankYouMessage = (tipAmount) => {
-    if (socketService.isConnected?.()) {
+    if (socketService.isConnected) {
       socketService.emit('trip_chat_message', {
         tripId,
         message: `Thank you for the MWK ${tipAmount.toLocaleString()} tip! 😊`,
@@ -855,7 +855,7 @@ Trip ID: ${trip.id}
     socketService.off('tip_added', handleTipAdded);
     
     // Leave trip room
-    if (socketService.isConnected?.()) {
+    if (socketService.isConnected) {
       socketService.emit('leave_trip_room', { tripId });
     }
     

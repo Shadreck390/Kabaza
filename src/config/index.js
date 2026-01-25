@@ -78,11 +78,11 @@ const AppConfig = {
   API: {
     // Base URLs with environment switching
     BASE_URL: Config.API_BASE_URL || 
-      (__DEV__ ? 'http://localhost:3000/api' : 'https://api.kabaza.mw/api'),
+      (__DEV__ ? 'http://192.168.8.2:3000/api' : 'https://api.kabaza.mw/api'),
     
     // Real-time Socket URL
     SOCKET_URL: Config.SOCKET_URL || 
-      (__DEV__ ? 'http://localhost:3001' : 'https://socket.kabaza.mw'),
+      (__DEV__ ? 'http://192.168.8.2:3000/api' : 'https://socket.kabaza.mw'),
     
     // Timeouts
     TIMEOUT: parseInt(Config.API_TIMEOUT || '30000', 10),
@@ -335,12 +335,12 @@ const AppConfig = {
     
     // Pricing (Malawi Kwacha - MWK)
     PRICING: {
-      BASE_FARE: 500,                           // MWK
-      PER_KM: 300,                              // MWK per kilometer
-      PER_MINUTE: 20,                           // MWK per minute
-      MINIMUM_FARE: 800,                        // MWK
-      CANCELLATION_FEE: 200,                    // MWK
-      WAITING_FEE_PER_MIN: 50,                  // MWK per minute after 3 min
+      BASE_FARE: 5000,                           // MWK
+      PER_KM: 1500,                              // MWK per kilometer
+      PER_MINUTE: 150,                           // MWK per minute
+      MINIMUM_FARE: 2500,                        // MWK
+      CANCELLATION_FEE: 500,                    // MWK
+      WAITING_FEE_PER_MIN: 150,                  // MWK per minute after 3 min
       
       // Vehicle type multipliers
       VEHICLE_MULTIPLIERS: {
@@ -666,5 +666,10 @@ export const ConfigHelpers = {
     return `${currency} ${amount.toLocaleString('en-MW')}`;
   },
 };
+
+console.log('🔧 DEBUG: Config.API_BASE_URL =', Config.API_BASE_URL);
+console.log('🔧 DEBUG: Config.SOCKET_URL =', Config.SOCKET_URL);
+console.log('🔧 DEBUG: Final BASE_URL =', AppConfig.API.BASE_URL);
+console.log('🔧 DEBUG: Final SOCKET_URL =', AppConfig.API.SOCKET_URL);
 
 export default AppConfig;

@@ -1,4 +1,3 @@
-// screens/driver/DriverProfileScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -9,8 +8,11 @@ import {
   Image,
   Alert,
   Switch,
-  RefreshControl
+  RefreshControl,
+  Platform, 
+  PermissionsAndroid
 } from 'react-native';
+import { Linking } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useDispatch, useSelector } from 'react-redux';
@@ -29,19 +31,19 @@ export default function DriverProfileScreen({ navigation }) {
   const auth = useSelector(state => state.auth);
   
   const [profileData, setProfileData] = useState({
-    name: 'John Driver',
-    phone: '+265 888 123 456',
-    email: 'john.driver@email.com',
-    driverId: 'DRV-2023-00123',
+    name: '',
+    phone: '',
+    email: '',
+    driverId: 'DRV-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000),
     rating: 4.8,
-    totalTrips: 127,
-    totalEarnings: 'MWK 245,300',
+    totalTrips: 0,
+    totalEarnings: 'MWK 0',
     vehicle: {
-      make: 'TVS',
-      model: 'Apache RTR 160',
-      year: '2022',
-      plate: 'LL 1234',
-      color: 'Red'
+      make: '',
+      model: '',
+      year: '',
+      plate: '',
+      color: ''
     },
     status: 'offline', // offline, available, busy, on_trip
     notifications: true,
@@ -77,6 +79,12 @@ export default function DriverProfileScreen({ navigation }) {
     }
   }, [driver]);
 
+  // Debug: Log profile data changes
+  useEffect(() => {
+    console.log('👤 Current profileData:', profileData);
+    console.log('👤 Name in profile:', profileData.name);
+  }, [profileData]);
+
   // Listen to socket connection status
   useEffect(() => {
     const updateConnectionStatus = (isConnected) => {
@@ -97,33 +105,105 @@ export default function DriverProfileScreen({ navigation }) {
   const loadDriverData = async () => {
     try {
       setIsLoading(true);
+      console.log('🔍 Loading driver data from multiple sources...');
+
+      // 1. FIRST: Try to load from registration data (NEW SAVE from ProfileCompletionScreen)
+      const registrationData = await AsyncStorage.getItem('user_profile_data');
+      if (registrationData) {
+        console.log('✅ Found NEW registration data:', registrationData);
+        const parsedData = JSON.parse(registrationData);
+
+        setProfileData(prev => ({
+          ...prev,
+          name: parsedData.name || prev.name,
+          phone: parsedData.phone || prev.phone,
+          email: parsedData.email || prev.email,
+          dateOfBirth: parsedData.dateOfBirth || prev.dateOfBirth,
+          firstName: parsedData.firstName || '',
+          surname: parsedData.surname || '',
+          gender: parsedData.gender || prev.gender,
+        }));
+        
+        console.log('✅ Set name to:', parsedData.name);
+      } else {
+        console.log('❌ No data in user_profile_data key');
+
+        // Try alternative keys
+        const altData1 = await AsyncStorage.getItem('driver_profile');
+        const altData2 = await AsyncStorage.getItem('user_data');
+
+        if (altData1) {
+          console.log('✅ Found data in driver_profile:', altData1);
+          const parsedAlt1 = JSON.parse(altData1);
+          setProfileData(prev => ({ 
+            ...prev, 
+            ...parsedAlt1,
+            name: parsedAlt1.name || prev.name,
+            phone: parsedAlt1.phone || prev.phone,
+          }));
+        }
+
+        if (altData2) {
+          console.log('✅ Found data in user_data:', altData2);
+          const parsedAlt2 = JSON.parse(altData2);
+          setProfileData(prev => ({ 
+            ...prev, 
+            ...parsedAlt2,
+            name: parsedAlt2.name || prev.name,
+            phone: parsedAlt2.phone || prev.phone,
+          }));
+        }
+      }
       
-      // Load from Redux store
+      // 2. Load from Redux store
       if (driver) {
+        console.log('📦 Driver data from Redux:', driver);
         setProfileData(prev => ({
           ...prev,
           ...driver,
           totalEarnings: formatEarnings(driver.totalEarnings || 0),
+          // Only use Redux name if we don't already have one
+          name: prev.name || driver.name || '',
+          phone: prev.phone || driver.phone || '',
+          email: prev.email || driver.email || '',
         }));
       }
 
-      // Load from AsyncStorage as backup
-      const storedProfile = await AsyncStorage.getItem('driver_profile');
+      // 3. Load from old AsyncStorage backup (if exists)
+      const storedProfile = await AsyncStorage.getItem('driver_profile_old');
       if (storedProfile) {
         const parsedProfile = JSON.parse(storedProfile);
-        setProfileData(prev => ({ ...prev, ...parsedProfile }));
+        setProfileData(prev => ({ 
+          ...prev, 
+          ...parsedProfile,
+          name: prev.name || parsedProfile.name,
+          phone: prev.phone || parsedProfile.phone,
+        }));
       }
 
-      // Check current socket connection
+      // 4. Check current socket connection
       const isConnected = await socketService.isConnected();
       setSocketConnected(isConnected);
 
-      // Check if location tracking is active
+      // 5. Check if location tracking is active
       const isLocationTracking = await LocationService.isTracking();
       setLocationTracking(isLocationTracking);
       
+      // 6. FINAL CHECK: If still no name after 1 second, try one more time
+      setTimeout(async () => {
+        if (!profileData.name) {
+          console.log('⚠️ No name found, checking again...');
+          const finalCheck = await AsyncStorage.getItem('user_profile_data');
+          if (finalCheck) {
+            const parsed = JSON.parse(finalCheck);
+            console.log('🔄 Found name on final check:', parsed.name);
+            setProfileData(prev => ({ ...prev, name: parsed.name || prev.name }));
+          }
+        }
+      }, 1000);
+      
     } catch (error) {
-      console.error('Failed to load driver data:', error);
+      console.error('❌ Failed to load driver data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -203,44 +283,101 @@ export default function DriverProfileScreen({ navigation }) {
   };
 
   const goOnline = async () => {
-    try {
-      // Start location tracking
-      await LocationService.startTracking();
-      setLocationTracking(true);
-      
-      // Update status via socket
-      const success = await realTimeService.updateDriverStatus('available');
-      
-      if (success) {
-        dispatch(updateDriverStatus('available'));
-        setProfileData(prev => ({ ...prev, status: 'available' }));
-        
-        // Start sending location updates
-        LocationService.onLocationUpdate(async (location) => {
-          await realTimeService.updateDriverLocation(location);
-        });
-      }
-    } catch (error) {
-      console.error('Failed to go online:', error);
-      Alert.alert('Error', 'Failed to go online. Please check your location settings.');
+  try {
+    // Check if we have location permission first
+    const hasPermission = await checkLocationPermission();
+    
+    if (!hasPermission) {
+      Alert.alert(
+        'Location Permission Required',
+        'Please enable location services to go online and receive ride requests.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Enable Location', 
+            onPress: () => {
+              Linking.openSettings();
+            }
+          }
+        ]
+      );
+      return;
     }
-  };
+
+    // Start location tracking
+    await LocationService.startTracking();
+    setLocationTracking(true);
+    
+    // Update status via socket - USING REAL TIME SERVICE PROPERLY
+    // Check if realTimeService exists and has emit method
+    if (realTimeService && realTimeService.emit) {
+      realTimeService.emit('driver:availability', {
+        driverId: driver?.id || auth?.user?.id,
+        isAvailable: true,
+        location: currentLocation || { latitude: -13.9626, longitude: 33.7741 }, // Malawi default
+        status: 'available',
+        timestamp: Date.now(),
+      });
+    } else {
+      // Fallback to direct socketService
+      socketService.emit('driver:status:update', {
+        driverId: driver?.id || auth?.user?.id,
+        status: 'available',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Update Redux state
+    dispatch(updateDriverStatus('available'));
+    
+    // Update local state
+    setProfileData(prev => ({ ...prev, status: 'available' }));
+    
+    Alert.alert(
+      'You are now online!',
+      'You will receive ride requests in your area.',
+      [{ text: 'OK' }]
+    );
+    
+  } catch (error) {
+    console.error('Failed to go online:', error);
+    Alert.alert('Error', 'Failed to go online. Please check your location settings and internet connection.');
+  }
+};
 
   const goOffline = async () => {
-    try {
-      // Stop location tracking
-      await LocationService.stopTracking();
-      setLocationTracking(false);
-      
-      // Update status via socket
-      await realTimeService.updateDriverStatus('offline');
-      
-      dispatch(updateDriverStatus('offline'));
-      setProfileData(prev => ({ ...prev, status: 'offline' }));
-    } catch (error) {
-      console.error('Failed to go offline:', error);
+  try {
+    // Update status via socket
+    if (realTimeService && realTimeService.emit) {
+      realTimeService.emit('driver:availability', {
+        driverId: driver?.id || auth?.user?.id,
+        isAvailable: false,
+        location: currentLocation || { latitude: -13.9626, longitude: 33.7741 },
+        status: 'offline',
+        timestamp: Date.now(),
+      });
+    } else {
+      socketService.emit('driver:status:update', {
+        driverId: driver?.id || auth?.user?.id,
+        status: 'offline',
+        timestamp: new Date().toISOString()
+      });
     }
-  };
+    
+    // Stop location tracking
+    await LocationService.stopTracking();
+    setLocationTracking(false);
+    
+    // Update states
+    dispatch(updateDriverStatus('offline'));
+    setProfileData(prev => ({ ...prev, status: 'offline' }));
+    
+    Alert.alert('You are now offline');
+    
+  } catch (error) {
+    console.error('Failed to go offline:', error);
+  }
+};
 
   const handleSelectImage = () => {
     const options = {
@@ -292,6 +429,26 @@ export default function DriverProfileScreen({ navigation }) {
       console.error('Upload error:', error);
     }
   };
+  
+  const checkLocationPermission = async () => {
+  if (Platform.OS === 'android') {
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+      {
+        title: 'Location Permission',
+        message: 'Kabaza needs access to your location to show nearby ride requests',
+        buttonNeutral: 'Ask Me Later',
+        buttonNegative: 'Cancel',
+        buttonPositive: 'OK',
+      }
+    );
+    return granted === PermissionsAndroid.RESULTS.GRANTED;
+  }
+  
+  // For iOS, we assume permission is granted (set up in Info.plist)
+  return true;
+};
+
 
   const handleLogout = () => {
     Alert.alert(
@@ -372,7 +529,7 @@ export default function DriverProfileScreen({ navigation }) {
     {
       title: 'Documents',
       icon: 'file-text',
-      onPress: () => navigation.navigate('Documents'),
+      onPress: () => navigation.navigate('DriverDocumentsScreen'),
       showArrow: true
     },
     {
@@ -384,7 +541,7 @@ export default function DriverProfileScreen({ navigation }) {
     {
       title: 'Earnings Dashboard',
       icon: 'bar-chart',
-      onPress: () => navigation.navigate('EarningsDashboard'),
+      onPress: () => navigation.navigate('EarningsScreen'),
       showArrow: true
     },
     {
@@ -473,8 +630,12 @@ export default function DriverProfileScreen({ navigation }) {
           </View>
         </TouchableOpacity>
         
-        <Text style={styles.profileName}>{profileData.name}</Text>
-        <Text style={styles.profilePhone}>{profileData.phone}</Text>
+        <Text style={styles.profileName}>
+          {profileData.name || 'Complete Your Profile'}
+        </Text>
+        <Text style={styles.profilePhone}>
+          {profileData.phone || 'Add Phone Number'}
+        </Text>
         
         <View style={styles.ratingContainer}>
           <Icon name="star" size={16} color="#FFD700" />

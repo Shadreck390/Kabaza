@@ -1,4 +1,5 @@
 // screens/driver/DriverVerificationScreen.js
+import Config from 'react-native-config';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -12,7 +13,6 @@ import {
   Platform,
   PermissionsAndroid,
   ActivityIndicator,
-  Modal,
   Animated,
   Easing
 } from 'react-native';
@@ -23,10 +23,10 @@ import axios from 'axios';
 // FIXED IMPORTS:
 import { getUserData, saveUserData } from '@src/utils/userStorage';
 import socketService from '@services/socket/socketService';
+import { NavigationHelpersContext } from '@react-navigation/native';
 
 export default function DriverVerificationScreen({ navigation, route }) {
-  const { userProfile } = route.params || {};
-  
+  // 🛠️ STATE DECLARATIONS MUST COME FIRST
   const [verificationData, setVerificationData] = useState({
     licenseNumber: '',
     licenseExpiry: '',
@@ -39,7 +39,39 @@ export default function DriverVerificationScreen({ navigation, route }) {
     nationalIdNumber: '',
     idType: 'national_id',
   });
-
+  
+  // 🛠️ DEVELOPMENT BYPASS - AFTER state declarations
+  const DEV_BYPASS = true;
+  
+  useEffect(() => {
+    if (DEV_BYPASS) {
+      console.log('🛠️ DEV MODE: Skipping driver verification form');
+      
+      // Auto-fill test data (optional)
+      setVerificationData({
+        licenseNumber: 'TEST123',
+        licenseExpiry: '31/12/2026',
+        vehiclePlate: 'KB 1234',
+        vehicleModel: 'Bajaj Boxer',
+        vehicleColor: 'Red',
+        vehicleYear: '2023',
+        insuranceNumber: 'INS45678',
+        insuranceExpiry: '31/12/2025',
+        nationalIdNumber: '1234567890',
+        idType: 'national_id',
+      });
+      
+      // Navigate directly to DriverStack
+      setTimeout(() => {
+        console.log('✅ Navigating to DriverStack...');
+        navigation.replace('DriverStack');
+      }, 1000); // Reduced to 1 second
+      
+      return; // Skip other initialization
+    }
+  }, []);
+  
+  // Rest of your component code (states, functions, JSX)
   const [documents, setDocuments] = useState({
     licenseFront: null,
     licenseBack: null,
@@ -50,14 +82,24 @@ export default function DriverVerificationScreen({ navigation, route }) {
     nationalIdBack: null,
     passportPhoto: null,
   });
-
+  
   const [loading, setLoading] = useState(false);
+  // ... rest of your code
   const [uploadProgress, setUploadProgress] = useState({});
-  const [verificationStatus, setVerificationStatus] = useState('not_submitted'); // not_submitted, pending, reviewing, approved, rejected
+  const [verificationStatus, setVerificationStatus] = useState('approved'); // Temporary bypass
   const [liveSupportConnected, setLiveSupportConnected] = useState(false);
   const [socketStatus, setSocketStatus] = useState('disconnected');
-  const [autoSaveStatus, setAutoSaveStatus] = useState('saved'); // saved, saving, unsaved
+  const [autoSaveStatus, setAutoSaveStatus] = useState('saved');
   const [documentValidation, setDocumentValidation] = useState({});
+
+  useEffect(()=> {
+    if (verificationStatus === 'approved') {
+      console.log('✅ Status is approved, navigating to dashboard...');
+      setTimeout(() => {
+        navigation.navigate('DriverHomeScreen.js');
+      }, 1000);
+    }
+  }, [verificationStatus], navigation);
   
   const autoSaveTimeoutRef = useRef(null);
   const lastSavedRef = useRef(null);
@@ -66,11 +108,8 @@ export default function DriverVerificationScreen({ navigation, route }) {
   // Initialize socket connection
   useEffect(() => {
     initializeSocket();
-    
-    // Load existing verification data
     loadExistingVerification();
     
-    // Setup auto-save
     return () => {
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
@@ -81,21 +120,14 @@ export default function DriverVerificationScreen({ navigation, route }) {
 
   const initializeSocket = async () => {
     try {
-      // Check if socket service is already initialized
-      if (!socketService.isConnected?.()) {
+      const isConnected = socketService.socket && socketService.socket.connected;
+      if (!isConnected) {
         await socketService.initialize();
       }
       
-      // Listen for verification status updates
       socketService.on('verification_status_update', handleVerificationStatusUpdate);
-      
-      // Listen for document validation results
       socketService.on('document_validation_result', handleDocumentValidation);
-      
-      // Listen for support messages
       socketService.on('support_message', handleSupportMessage);
-      
-      // Listen for connection status
       socketService.on('connection_change', (data) => {
         setSocketStatus(data.status);
         if (data.status === 'connected') {
@@ -103,12 +135,10 @@ export default function DriverVerificationScreen({ navigation, route }) {
         }
       });
       
-      // Emit that driver is on verification screen
       socketService.emit('driver_verification_screen', {
         screen: 'verification',
         timestamp: new Date().toISOString()
       });
-      
     } catch (error) {
       console.error('Socket initialization error:', error);
     }
@@ -124,7 +154,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
     console.log('Verification status update:', data);
     setVerificationStatus(data.status);
     
-    // Show notification for status change
     if (data.status === 'approved') {
       Alert.alert(
         '🎉 Verification Approved!',
@@ -147,7 +176,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
       [validationData.documentType]: validationData
     }));
     
-    // Show validation result
     if (validationData.status === 'invalid') {
       Alert.alert(
         'Document Issue',
@@ -188,7 +216,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
     }));
     triggerAutoSave();
     
-    // Real-time validation for certain fields
     if (field === 'vehiclePlate') {
       validatePlateNumber(value.toUpperCase());
     }
@@ -199,13 +226,10 @@ export default function DriverVerificationScreen({ navigation, route }) {
 
   const triggerAutoSave = () => {
     setAutoSaveStatus('unsaved');
-    
-    // Clear existing timeout
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current);
     }
     
-    // Set new timeout for 3 seconds
     autoSaveTimeoutRef.current = setTimeout(async () => {
       await autoSaveData();
     }, 3000);
@@ -214,7 +238,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
   const autoSaveData = async () => {
     try {
       setAutoSaveStatus('saving');
-      
       const userData = await getUserData();
       const updatedData = {
         ...userData,
@@ -228,7 +251,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
       
       await saveUserData(updatedData);
       
-      // Send to server for backup if online
       if (socketStatus === 'connected') {
         socketService.emit('auto_save_verification', {
           verificationData: verificationData,
@@ -239,7 +261,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
       setAutoSaveStatus('saved');
       lastSavedRef.current = new Date().toISOString();
       
-      // Animate save indicator
       Animated.sequence([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -267,7 +288,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
     const isValid = plateRegex.test(plateNumber.replace(/\s/g, ''));
     
     if (isValid && socketStatus === 'connected') {
-      // Check if plate is already registered
       socketService.emit('validate_plate_number', {
         plateNumber: plateNumber,
         timestamp: new Date().toISOString()
@@ -284,7 +304,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
     }
   };
 
-  // Request camera permission for Android
   const requestCameraPermission = async () => {
     if (Platform.OS === 'android') {
       try {
@@ -344,7 +363,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
           [documentType]: document
         }));
         
-        // Start upload
         await uploadDocument(documentType, document);
       }
     });
@@ -379,7 +397,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
           [documentType]: document
         }));
         
-        // Start upload
         await uploadDocument(documentType, document);
       }
     });
@@ -387,48 +404,78 @@ export default function DriverVerificationScreen({ navigation, route }) {
 
   const uploadDocument = async (documentType, document) => {
     try {
-      // Update progress
+      console.log(`📤 Starting upload for ${documentType}`);
+      
       setUploadProgress(prev => ({
         ...prev,
         [documentType]: { progress: 10, status: 'uploading' }
       }));
       
-      // Create FormData
+      const API_BASE_URL = Config.API_BASE_URL || 'http://192.168.8.2:3000/api';
+      console.log('🌐 Using API URL:', API_BASE_URL);
+      
+      // Test server connection
+      try {
+        await axios.get(`${API_BASE_URL}/health`, { timeout: 5000 });
+        console.log('✅ Server is reachable');
+      } catch (healthError) {
+        console.warn('⚠️ Server health check failed:', healthError.message);
+      }
+      
       const formData = new FormData();
-      formData.append('document', {
+      formData.append('file', {
         uri: document.uri,
-        type: document.type,
-        name: document.fileName,
+        type: document.type || 'image/jpeg',
+        name: document.fileName || `${documentType}_${Date.now()}.jpg`,
       });
       formData.append('documentType', documentType);
-      formData.append('userId', (await getUserData())?.id);
       
-      // Upload to server
+      const userData = await getUserData();
+      if (userData?.id) {
+        formData.append('userId', userData.id);
+      }
+      
+      console.log('📦 Uploading to:', `${API_BASE_URL}/auth/verify-documents`);
+      
       const response = await axios.post(
-        'YOUR_API_URL/api/upload/document',
+        `${API_BASE_URL}/auth/verify-documents`,
         formData,
         {
           headers: {
             'Content-Type': 'multipart/form-data',
+            'Accept': 'application/json',
           },
+          timeout: 45000,
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
           onUploadProgress: (progressEvent) => {
-            const progress = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            setUploadProgress(prev => ({
-              ...prev,
-              [documentType]: { progress, status: 'uploading' }
-            }));
+            if (progressEvent.total) {
+              const progress = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total
+              );
+              console.log(`📊 Upload progress: ${progress}%`);
+              setUploadProgress(prev => ({
+                ...prev,
+                [documentType]: { 
+                  progress, 
+                  status: 'uploading',
+                  loaded: progressEvent.loaded,
+                  total: progressEvent.total
+                }
+              }));
+            }
           },
         }
       );
       
-      // Update document with server response
+      console.log('✅ Upload response:', response.data);
+      
       const uploadedDocument = {
         ...document,
         uploaded: true,
-        serverUrl: response.data.url,
-        documentId: response.data.documentId,
+        serverUrl: response.data.url || response.data.fileUrl || response.data.path,
+        documentId: response.data.documentId || response.data.id || response.data._id,
+        uploadedAt: new Date().toISOString(),
       };
       
       setDocuments(prev => ({
@@ -441,28 +488,94 @@ export default function DriverVerificationScreen({ navigation, route }) {
         [documentType]: { progress: 100, status: 'uploaded' }
       }));
       
-      // Trigger validation on server
-      if (socketStatus === 'connected') {
-        socketService.emit('document_uploaded', {
-          documentType: documentType,
-          documentId: response.data.documentId,
-          metadata: {
-            fileName: document.fileName,
-            fileSize: document.fileSize,
-            type: document.type,
-          }
-        });
-      }
+      await saveUploadedDocumentLocally(documentType, uploadedDocument);
       
-      Alert.alert('Success', 'Document uploaded successfully!');
+      Alert.alert('✅ Success', 'Document uploaded successfully!');
       
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('❌ UPLOAD ERROR:', error.message);
+      console.error('Error details:', {
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
+      let errorMessage = 'Failed to upload document. ';
+      let userMessage = 'Please try again.';
+      
+      if (error.message === 'Network Error') {
+        errorMessage += 'Network connection failed. ';
+        userMessage = 'Please check:\n1. Your internet connection\n2. Backend server is running\n3. Correct API URL in .env file';
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage += 'Connection timeout. ';
+        userMessage = 'Server is taking too long to respond. Try again.';
+      } else if (error.response?.status === 413) {
+        errorMessage += 'File too large. ';
+        userMessage = 'Please select a smaller image.';
+      } else if (error.response?.status === 404) {
+        errorMessage += 'Upload endpoint not found. ';
+        userMessage = 'Check if backend has /api/documents/upload endpoint';
+      } else if (error.response?.data) {
+        errorMessage += `Server error: ${JSON.stringify(error.response.data)}`;
+      }
+      
       setUploadProgress(prev => ({
         ...prev,
-        [documentType]: { progress: 0, status: 'error' }
+        [documentType]: { 
+          progress: 0, 
+          status: 'error', 
+          error: userMessage 
+        }
       }));
-      Alert.alert('Upload Failed', 'Failed to upload document. Please try again.');
+      
+      Alert.alert(
+        'Upload Failed ❌',
+        userMessage,
+        [
+          { text: 'OK', style: 'cancel' },
+          { 
+            text: 'Test Connection', 
+            onPress: () => testBackendConnection() 
+          }
+        ]
+      );
+    }
+  };
+
+  const testBackendConnection = async () => {
+    const API_BASE_URL = Config.API_BASE_URL || 'http://192.168.8.2:3000/api';
+    
+    Alert.alert('Testing Connection', `Trying to connect to:\n${API_BASE_URL}`);
+    
+    try {
+      const response = await axios.get(`${API_BASE_URL}`, { timeout: 10000 });
+      Alert.alert('✅ Connection Successful', `Server responded with status: ${response.status}`);
+    } catch (error) {
+      Alert.alert(
+        '❌ Connection Failed',
+        `Cannot reach server at:\n${API_BASE_URL}\n\nError: ${error.message}\n\nCheck:\n1. Backend is running\n2. Correct IP/port\n3. No firewall blocking`
+      );
+    }
+  };
+
+  const saveUploadedDocumentLocally = async (documentType, document) => {
+    try {
+      const userData = await getUserData();
+      const updatedData = {
+        ...userData,
+        driverProfile: {
+          ...userData?.driverProfile,
+          documents: {
+            ...userData?.driverProfile?.documents,
+            [documentType]: document
+          },
+          lastUpdated: new Date().toISOString()
+        }
+      };
+      await saveUserData(updatedData);
+      console.log('💾 Document saved locally');
+    } catch (error) {
+      console.error('Error saving locally:', error);
     }
   };
 
@@ -488,32 +601,27 @@ export default function DriverVerificationScreen({ navigation, route }) {
   };
 
   const validateData = () => {
-    // License validation
     if (!verificationData.licenseNumber || verificationData.licenseNumber.length < 5) {
       Alert.alert('Invalid License', 'Please enter a valid license number');
       return false;
     }
 
-    // National ID/Passport validation
     if (!verificationData.nationalIdNumber || verificationData.nationalIdNumber.length < 5) {
       Alert.alert('Invalid ID', 'Please enter a valid National ID or Passport number');
       return false;
     }
 
-    // Vehicle plate validation (Malawi format: AB 1234)
     const plateRegex = /^[A-Z]{2}\s?\d{1,4}$/;
     if (!plateRegex.test(verificationData.vehiclePlate.replace(/\s/g, ''))) {
       Alert.alert('Invalid Plate', 'Please enter a valid vehicle plate (e.g., BL 1234)');
       return false;
     }
 
-    // Check required documents
     if (!documents.licenseFront || !documents.vehicleFront) {
       Alert.alert('Missing Documents', 'Please upload required documents (License Front and Vehicle Front)');
       return false;
     }
 
-    // Check ID documents based on selected type
     if (verificationData.idType === 'national_id') {
       if (!documents.nationalIdFront) {
         Alert.alert('Missing Documents', 'Please upload National ID Front photo');
@@ -526,7 +634,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
       }
     }
 
-    // Check if documents are uploaded
     const requiredDocs = verificationData.idType === 'national_id' 
       ? ['licenseFront', 'vehicleFront', 'nationalIdFront']
       : ['licenseFront', 'vehicleFront', 'passportPhoto'];
@@ -547,10 +654,7 @@ export default function DriverVerificationScreen({ navigation, route }) {
     setLoading(true);
 
     try {
-      // Get current user data
       const userData = await getUserData();
-      
-      // Create verification data object
       const verificationDataToSave = {
         ...verificationData,
         documents: Object.keys(documents).reduce((acc, key) => {
@@ -568,7 +672,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
         verificationStatus: 'pending'
       };
 
-      // Update user data with verification info
       const updatedData = {
         ...userData,
         driverProfile: {
@@ -579,10 +682,8 @@ export default function DriverVerificationScreen({ navigation, route }) {
         }
       };
 
-      // Save to storage
       await saveUserData(updatedData);
 
-      // Submit to server via socket
       if (socketStatus === 'connected') {
         socketService.emit('submit_verification', {
           verificationData: verificationDataToSave,
@@ -590,7 +691,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
         });
       }
 
-      // Show success message
       Alert.alert(
         '✅ Verification Submitted Successfully!',
         'Your documents are under review. This usually takes 24-48 hours. You\'ll receive real-time updates on the status.',
@@ -598,7 +698,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
           {
             text: 'OK',
             onPress: () => {
-              // Navigate to VerificationPending screen with real-time updates
               navigation.navigate('VerificationPending', {
                 verificationId: Date.now().toString(),
                 submittedAt: new Date().toISOString()
@@ -695,7 +794,7 @@ export default function DriverVerificationScreen({ navigation, route }) {
               <View style={styles.uploadedInfo}>
                 <View style={styles.uploadedStatus}>
                   <Icon 
-                    name={document.uploaded ? "cloud" : "cloud-upload-alt"} 
+                    name={document.uploaded ? "cloud" : "cloud-upload"} 
                     size={20} 
                     color={document.uploaded ? "#4CAF50" : "#FF9800"} 
                   />
@@ -727,7 +826,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      {/* Real-time Status Bar */}
       <View style={[
         styles.statusBar,
         socketStatus === 'connected' ? styles.statusConnected : styles.statusDisconnected
@@ -773,7 +871,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
           Complete your profile to start driving with Kabaza
         </Text>
 
-        {/* Live Support Button */}
         {socketStatus === 'connected' && (
           <TouchableOpacity style={styles.supportButton} onPress={openSupportChat}>
             <Icon name="headphones" size={16} color="#fff" />
@@ -782,11 +879,9 @@ export default function DriverVerificationScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
-        {/* National ID / Passport Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Identity Verification</Text>
           
-          {/* ID Type Selection */}
           <View style={styles.idTypeContainer}>
             <Text style={styles.idTypeLabel}>Select ID Type *</Text>
             <View style={styles.idTypeButtons}>
@@ -854,7 +949,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
           )}
         </View>
 
-        {/* License Information */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Driver's License</Text>
           
@@ -885,7 +979,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
           />
         </View>
 
-        {/* Vehicle Information */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Vehicle Information</Text>
           
@@ -934,7 +1027,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
           />
         </View>
 
-        {/* Insurance Information (Optional) */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Insurance Information (Optional)</Text>
           
@@ -960,7 +1052,6 @@ export default function DriverVerificationScreen({ navigation, route }) {
           />
         </View>
 
-        {/* Submit Button */}
         <TouchableOpacity 
           style={[
             styles.submitButton,

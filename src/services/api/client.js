@@ -6,11 +6,10 @@ import socketIO from 'socket.io-client';
 
 // Base URL - Update with your actual API URL
 const API_BASE_URL = Platform.select({
-  ios: 'http://localhost:3000/api',
-  android: 'http://10.0.2.2:3000/api',
-  default: 'http://localhost:3000/api',
+  ios: 'http://192.168.8.2:3000/api',
+  android: 'http://192.168.8.2:3000/api',
+  default: 'http://192.168.8.2:3000/api',
 });
-
 // SOCKET_URL (can be same as API or different)
 const SOCKET_URL = API_BASE_URL.replace('/api', ''); // Remove /api for socket
 

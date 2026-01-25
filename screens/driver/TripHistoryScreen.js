@@ -80,13 +80,14 @@ export default function TripHistoryScreen({ navigation }) {
     initializeRealTimeHistory();
     
     // Setup app state listener
-    AppState.addEventListener('change', handleAppStateChange);
+    const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
     
     // Load saved filters
     loadSavedFilters();
     
     return () => {
       cleanup();
+      appStateSubscription?.remove();
     };
   }, []);
 
@@ -106,7 +107,7 @@ export default function TripHistoryScreen({ navigation }) {
       await loadCachedHistory();
       
       // Initialize socket connection
-      if (!socketService.isConnected?.()) {
+      if (!socketService.isConnected) {
         await socketService.initialize();
       }
       
@@ -838,7 +839,7 @@ export default function TripHistoryScreen({ navigation }) {
     saveFilters();
     
     // Remove app state listener
-    AppState.removeEventListener('change', handleAppStateChange);
+    AppState.removeEventListener?.('change', handleAppStateChange);
   };
 
   const renderConnectionStatus = () => {

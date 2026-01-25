@@ -22,7 +22,7 @@ export default function PhoneOrGoogleScreen({ navigation }) {
   };
 
   const handleContinue = () => {
-    if (phoneNumber && phoneNumber.length >= 10) {
+    if (phoneNumber && phoneNumber.length >= 9) {
       // ✅ FIXED: Check if callingCode exists and is valid
       let fullPhoneNumber;
 
