@@ -1,4 +1,4 @@
-// screens/driver/MapScreen/MapScreen.js
+// screens/MapScreen/MapScreen.js - FIXED VERSION
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
@@ -12,32 +12,170 @@ import {
   Animated,
   PanResponder,
   Dimensions,
-  StatusBar
+  StatusBar,
+  ScrollView
 } from 'react-native';
-import MapView, { Marker, Polyline, Circle } from 'react-native-maps';
+import MapView, { Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'react-native-maps'; // ✅ ADDED PROVIDER_GOOGLE
 import Geolocation from 'react-native-geolocation-service';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useDispatch, useSelector } from 'react-redux';
-
-// COMPONENT IMPORTS (check if these files exist):
-import Header from '@components/Header';
-import Loading from '@components/Loading';
-import Button from '@components/Button';
-import RideRequestCard from '@components/RideRequestCard'; // ✓ Exists
-
-// Check if these exist in your components folder:
-// import ActiveRideCard from '@components/ActiveRideCard'; // ❓ NOT in your listed structure
-// import EarningsWidget from '@components/EarningsWidget'; // ❓ NOT in your listed structure
-// import NotificationBadge from '@components/NotificationBadge'; // ❓ NOT in your listed structure
-
-// FIXED SERVICE IMPORTS:
 import { updateDriverLocation, updateDriverStatus, addRide, updateRide } from '@store/slices/driverSlice';
 import RealTimeService from '@services/realtime/RealTimeService';
 import LocationService from '@services/location/LocationService';
 import socketService from '@services/socket/socketService';
 
-const { width, height } = Dimensions.get('window');
+// Placeholder components (you'll need to create these or adjust imports)
+const Header = ({ title, subtitle, showBack, rightComponent }) => (
+  <View style={styles.header}>
+    {showBack && (
+      <TouchableOpacity style={styles.backButton}>
+        <Icon name="arrow-left" size={20} color="#fff" />
+      </TouchableOpacity>
+    )}
+    <View style={styles.headerCenter}>
+      <Text style={styles.headerTitle}>{title}</Text>
+      {subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}
+    </View>
+    {rightComponent && <View style={styles.headerRight}>{rightComponent}</View>}
+  </View>
+);
 
+const Loading = ({ message }) => (
+  <View style={styles.loadingContainer}>
+    <View style={styles.loadingSpinner}>
+      <Icon name="spinner" size={40} color="#00B894" />
+    </View>
+    <Text style={styles.loadingText}>{message}</Text>
+  </View>
+);
+
+const Button = ({ title, onPress, style, textStyle, disabled, icon, iconPosition }) => (
+  <TouchableOpacity
+    style={[styles.buttonBase, style, disabled && styles.buttonDisabled]}
+    onPress={onPress}
+    disabled={disabled}
+  >
+    {icon && iconPosition === 'left' && <Icon name={icon} size={16} color="#fff" style={styles.buttonIconLeft} />}
+    <Text style={[styles.buttonTextBase, textStyle]}>{title}</Text>
+    {icon && iconPosition === 'right' && <Icon name={icon} size={16} color="#fff" style={styles.buttonIconRight} />}
+  </TouchableOpacity>
+);
+
+const RideRequestCard = ({ ride, onAccept, onReject, onView }) => (
+  <View style={styles.rideRequestCard}>
+    <View style={styles.rideRequestHeader}>
+      <View style={styles.passengerInfo}>
+        <Icon name="user" size={20} color="#00B894" />
+        <Text style={styles.passengerName}>{ride.passengerName}</Text>
+      </View>
+      <Text style={styles.rideDistance}>{ride.distance} km</Text>
+    </View>
+    <View style={styles.rideRequestDetails}>
+      <Icon name="map-marker" size={14} color="#666" />
+      <Text style={styles.locationText}>{ride.pickupLocation.address}</Text>
+    </View>
+    <View style={styles.rideRequestFooter}>
+      <Text style={styles.rideFare}>MWK {ride.fare}</Text>
+      <View style={styles.rideActions}>
+        <TouchableOpacity style={styles.rejectButton} onPress={onReject}>
+          <Icon name="times" size={16} color="#FF6B6B" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.acceptButton} onPress={onAccept}>
+          <Icon name="check" size={16} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+);
+
+const NotificationBadge = ({ count }) => (
+  count > 0 ? (
+    <View style={styles.notificationBadge}>
+      <Text style={styles.notificationCount}>{count}</Text>
+    </View>
+  ) : null
+);
+
+const EarningsWidget = ({ earnings, onClose, onViewDetails }) => (
+  <View style={styles.earningsWidget}>
+    <View style={styles.earningsHeader}>
+      <Text style={styles.earningsTitle}>Today's Earnings</Text>
+      <TouchableOpacity onPress={onClose}>
+        <Icon name="times" size={20} color="#666" />
+      </TouchableOpacity>
+    </View>
+    <View style={styles.earningsBody}>
+      <Text style={styles.earningsAmount}>MWK {earnings?.today || '0'}</Text>
+      <Text style={styles.earningsSubtitle}>Total earnings today</Text>
+      <View style={styles.earningsBreakdown}>
+        <View style={styles.earningsItem}>
+          <Text style={styles.earningsItemLabel}>Completed Rides</Text>
+          <Text style={styles.earningsItemValue}>{earnings?.completedRides || 0}</Text>
+        </View>
+        <View style={styles.earningsItem}>
+          <Text style={styles.earningsItemLabel}>Tips</Text>
+          <Text style={styles.earningsItemValue}>MWK {earnings?.tips || 0}</Text>
+        </View>
+        <View style={styles.earningsItem}>
+          <Text style={styles.earningsItemLabel}>Online Time</Text>
+          <Text style={styles.earningsItemValue}>{earnings?.onlineTime || '0h 0m'}</Text>
+        </View>
+      </View>
+      <Button
+        title="View Full Details"
+        onPress={onViewDetails}
+        style={styles.viewDetailsButton}
+      />
+    </View>
+  </View>
+);
+
+const ActiveRideCard = ({ ride, onComplete, onNavigate, style }) => (
+  <View style={[styles.activeRideCard, style]}>
+    <View style={styles.activeRideHeader}>
+      <Icon name="car" size={20} color="#FFA726" />
+      <Text style={styles.activeRideTitle}>Active Ride</Text>
+      <TouchableOpacity onPress={onComplete} style={styles.completeButtonSmall}>
+        <Icon name="flag-checkered" size={16} color="#fff" />
+      </TouchableOpacity>
+    </View>
+    <View style={styles.activeRideBody}>
+      <View style={styles.ridePassenger}>
+        <Icon name="user" size={16} color="#666" />
+        <Text style={styles.ridePassengerName}>{ride.passengerName}</Text>
+      </View>
+      <View style={styles.rideRoute}>
+        <View style={styles.routePoint}>
+          <Icon name="circle" size={8} color="#4CAF50" />
+          <Text style={styles.routeText}>{ride.pickupLocation.address}</Text>
+        </View>
+        <View style={styles.routeDivider}>
+          <Icon name="ellipsis-v" size={12} color="#ccc" />
+        </View>
+        <View style={styles.routePoint}>
+          <Icon name="circle" size={8} color="#F44336" />
+          <Text style={styles.routeText}>{ride.dropoffLocation.address}</Text>
+        </View>
+      </View>
+      <View style={styles.rideStats}>
+        <View style={styles.statItem}>
+          <Icon name="money" size={14} color="#666" />
+          <Text style={styles.statText}>MWK {ride.fare}</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Icon name="road" size={14} color="#666" />
+          <Text style={styles.statText}>{ride.distance} km</Text>
+        </View>
+        <TouchableOpacity style={styles.navigateButton} onPress={onNavigate}>
+          <Icon name="location-arrow" size={14} color="#fff" />
+          <Text style={styles.navigateText}>Navigate</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+);
+
+const { width, height } = Dimensions.get('window');
 
 export default function MapScreen({ route, navigation }) {
   const dispatch = useDispatch();
@@ -71,7 +209,6 @@ export default function MapScreen({ route, navigation }) {
   const socketReconnectTimeout = useRef(null);
   const rideRequestTimeout = useRef(null);
 
-  // Pan responder for ride request panel
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -90,7 +227,6 @@ export default function MapScreen({ route, navigation }) {
     })
   ).current;
 
-  // Get data from navigation params
   const { 
     phone,
     authMethod,
@@ -98,12 +234,10 @@ export default function MapScreen({ route, navigation }) {
     userProfile 
   } = route.params || {};
 
-  // Get driver name
   const getDriverName = () => {
     return driver?.name || userProfile?.fullName || socialUserInfo?.name || 'Driver';
   };
 
-  // Request location permission
   const requestLocationPermission = async () => {
     if (Platform.OS === 'ios') {
       const status = await LocationService.requestPermission();
@@ -126,7 +260,6 @@ export default function MapScreen({ route, navigation }) {
       setLocationPermission(allowed);
       
       if (allowed) {
-        // Request background location permission for Android
         if (Platform.OS === 'android' && Platform.Version >= 29) {
           const bgGranted = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
@@ -149,26 +282,19 @@ export default function MapScreen({ route, navigation }) {
     }
   };
 
-  // Initialize real-time services
   const initializeRealTimeServices = useCallback(async () => {
     try {
-      // Connect to socket server
       await socketService.connect();
       setSocketConnected(true);
       
-      // Initialize real-time service
-      await realTimeService.initialize(driver?.id || 'driver_temp');
+      await RealTimeService.initialize(driver?.id || 'driver_temp');
       
-      // Start location service
       const locationStarted = await LocationService.startTracking();
       if (locationStarted) {
         LocationService.onLocationUpdate(handleLocationUpdate);
       }
       
-      // Load heatmap data
       loadHeatmapData();
-      
-      // Listen for nearby drivers
       setupNearbyDriversListener();
       
     } catch (error) {
@@ -181,18 +307,14 @@ export default function MapScreen({ route, navigation }) {
     }
   }, [driver?.id]);
 
-  // Handle location updates
   const handleLocationUpdate = useCallback(async (location) => {
     const { latitude, longitude, accuracy } = location;
     
-    // Update local state
     setCurrentLocation({ latitude, longitude });
     setLocationAccuracy(accuracy);
     
-    // Update Redux store
     dispatch(updateDriverLocation({ latitude, longitude }));
     
-    // Update map region smoothly
     if (mapRef.current && !rideInProgress) {
       mapRef.current.animateToRegion({
         latitude,
@@ -202,17 +324,15 @@ export default function MapScreen({ route, navigation }) {
       }, 500);
     }
     
-    // Send location update to server via socket
     if (socketConnected && isOnline) {
       try {
-        await realTimeService.updateDriverLocation({
+        await RealTimeService.updateDriverLocation({
           latitude,
           longitude,
           accuracy,
           timestamp: new Date().toISOString(),
         });
         
-        // Update nearby drivers if online
         if (isOnline) {
           socketService.emit('driver:location:updated', {
             driverId: driver?.id,
@@ -227,20 +347,15 @@ export default function MapScreen({ route, navigation }) {
     }
   }, [socketConnected, isOnline, driver?.id, rideInProgress, dispatch]);
 
-  // Setup socket listeners
   const setupSocketListeners = useCallback(() => {
-    // Listen for new ride requests
     socketService.on('ride:request:new', (rideRequest) => {
       console.log('New ride request received:', rideRequest);
       
-      // Add to Redux store
       dispatch(addRide(rideRequest));
       
-      // Show notification
       setNewRideRequest(rideRequest);
       setRideRequestCount(prev => prev + 1);
       
-      // Show alert with sound/vibration
       if (isOnline) {
         Alert.alert(
           'New Ride Request!',
@@ -258,7 +373,6 @@ export default function MapScreen({ route, navigation }) {
               style: 'cancel',
               onPress: () => {
                 setNewRideRequest(null);
-                // Auto-reject after 30 seconds
                 rideRequestTimeout.current = setTimeout(() => {
                   rejectRideRequest(rideRequest.id);
                 }, 30000);
@@ -269,7 +383,6 @@ export default function MapScreen({ route, navigation }) {
       }
     });
 
-    // Listen for ride status updates
     socketService.on('ride:status:updated', (rideData) => {
       dispatch(updateRide(rideData));
       
@@ -285,23 +398,18 @@ export default function MapScreen({ route, navigation }) {
       }
     });
 
-    // Listen for nearby drivers
     socketService.on('drivers:nearby:update', (drivers) => {
       setNearbyDrivers(drivers);
     });
 
-    // Listen for heatmap updates
     socketService.on('heatmap:update', (data) => {
       setHeatmapData(data);
     });
 
-    // Listen for earnings updates
     socketService.on('earnings:update', (earningsData) => {
       // Update earnings in Redux store
-      // This would be handled by your earnings slice
     });
 
-    // Listen for connection status
     socketService.onConnectionChange((connected) => {
       setSocketConnected(connected);
       if (!connected && isOnline) {
@@ -314,12 +422,10 @@ export default function MapScreen({ route, navigation }) {
       }
     });
 
-    // Listen for admin messages
     socketService.on('admin:message', (message) => {
       Alert.alert('Admin Message', message.content);
     });
 
-    // Listen for surge pricing updates
     socketService.on('surge:pricing:update', (surgeData) => {
       Alert.alert(
         'Surge Pricing Active',
@@ -329,28 +435,25 @@ export default function MapScreen({ route, navigation }) {
     });
   }, [isOnline, driver?.id, dispatch]);
 
-  // Setup nearby drivers listener
   const setupNearbyDriversListener = useCallback(() => {
     if (socketConnected) {
       socketService.emit('driver:nearby:subscribe', {
         latitude: currentLocation?.latitude,
         longitude: currentLocation?.longitude,
-        radius: 5, // km
+        radius: 5,
       });
     }
   }, [socketConnected, currentLocation]);
 
-  // Load heatmap data
   const loadHeatmapData = async () => {
     try {
-      const data = await realTimeService.getHeatmapData();
+      const data = await RealTimeService.getHeatmapData();
       setHeatmapData(data);
     } catch (error) {
       console.error('Heatmap data error:', error);
     }
   };
 
-  // Center map on current location
   const centerOnLocation = useCallback(() => {
     if (currentLocation && mapRef.current) {
       mapRef.current.animateToRegion({
@@ -361,7 +464,6 @@ export default function MapScreen({ route, navigation }) {
     }
   }, [currentLocation]);
 
-  // Show ride requests panel
   const showRideRequestsPanel = () => {
     setShowRideRequests(true);
     Animated.spring(rideRequestPanelHeight, {
@@ -372,7 +474,6 @@ export default function MapScreen({ route, navigation }) {
     }).start();
   };
 
-  // Hide ride requests
   const hideRideRequests = () => {
     Animated.spring(rideRequestPanelHeight, {
       toValue: 0,
@@ -385,16 +486,14 @@ export default function MapScreen({ route, navigation }) {
     });
   };
 
-  // Handle accept ride
   const acceptRideRequest = async (rideId) => {
     try {
-      const result = await realTimeService.acceptRide(rideId);
+      const result = await RealTimeService.acceptRide(rideId);
       
       if (result.success) {
         setRideInProgress(true);
         setShowRideRequests(false);
         
-        // Update Redux store
         dispatch(updateDriverStatus('busy'));
         setIsOnline(false);
         
@@ -404,7 +503,6 @@ export default function MapScreen({ route, navigation }) {
           [{ text: 'Got it' }]
         );
         
-        // Start navigation to pickup
         const ride = rideRequests.find(r => r.id === rideId);
         if (ride) {
           startRideNavigation(ride);
@@ -416,17 +514,15 @@ export default function MapScreen({ route, navigation }) {
     }
   };
 
-  // Reject ride request
   const rejectRideRequest = async (rideId) => {
     try {
-      await realTimeService.rejectRide(rideId);
+      await RealTimeService.rejectRide(rideId);
       setRideRequestCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Reject ride error:', error);
     }
   };
 
-  // Start ride navigation
   const startRideNavigation = (ride) => {
     setNavigationRoute({
       pickup: ride.pickupLocation,
@@ -434,7 +530,6 @@ export default function MapScreen({ route, navigation }) {
       rideId: ride.id,
     });
     
-    // Center map on pickup location
     if (mapRef.current) {
       mapRef.current.animateToRegion({
         ...ride.pickupLocation,
@@ -444,7 +539,6 @@ export default function MapScreen({ route, navigation }) {
     }
   };
 
-  // Show ride completed summary
   const showRideCompletedSummary = (rideData) => {
     Alert.alert(
       'Ride Completed!',
@@ -459,7 +553,6 @@ export default function MapScreen({ route, navigation }) {
     );
   };
 
-  // Handle going online
   const handleGoOnline = async () => {
     if (!locationPermission) {
       const granted = await requestLocationPermission();
@@ -470,17 +563,13 @@ export default function MapScreen({ route, navigation }) {
     }
 
     try {
-      // Update status via socket
-      await realTimeService.updateDriverStatus('available');
+      await RealTimeService.updateDriverStatus('available');
       
-      // Update local state
       setIsOnline(true);
       dispatch(updateDriverStatus('available'));
       
-      // Start location tracking
       await LocationService.startTracking();
       
-      // Broadcast availability
       socketService.emit('driver:available', {
         driverId: driver?.id,
         location: currentLocation,
@@ -499,17 +588,13 @@ export default function MapScreen({ route, navigation }) {
     }
   };
 
-  // Handle going offline
   const handleGoOffline = async () => {
     try {
-      // Update status via socket
-      await realTimeService.updateDriverStatus('offline');
+      await RealTimeService.updateDriverStatus('offline');
       
-      // Update local state
       setIsOnline(false);
       dispatch(updateDriverStatus('offline'));
       
-      // Stop location tracking
       await LocationService.stopTracking();
       
       Alert.alert(
@@ -523,7 +608,6 @@ export default function MapScreen({ route, navigation }) {
     }
   };
 
-  // Toggle online status
   const toggleOnlineStatus = () => {
     if (rideInProgress) {
       Alert.alert(
@@ -548,7 +632,6 @@ export default function MapScreen({ route, navigation }) {
     }
   };
 
-  // Complete current ride
   const completeCurrentRide = async () => {
     if (!activeRide) return;
     
@@ -561,7 +644,7 @@ export default function MapScreen({ route, navigation }) {
           text: 'Complete', 
           onPress: async () => {
             try {
-              await realTimeService.completeRide(activeRide.id);
+              await RealTimeService.completeRide(activeRide.id);
               setRideInProgress(false);
               setNavigationRoute(null);
               
@@ -580,14 +663,11 @@ export default function MapScreen({ route, navigation }) {
     );
   };
 
-  // Initialize on component mount
   useEffect(() => {
     const initialize = async () => {
-      // Request location permission
       const granted = await requestLocationPermission();
       
       if (granted) {
-        // Get initial location
         LocationService.getCurrentPosition()
           .then(position => {
             const { latitude, longitude, accuracy } = position;
@@ -601,7 +681,6 @@ export default function MapScreen({ route, navigation }) {
             });
             setLoading(false);
             
-            // Initialize real-time services
             initializeRealTimeServices();
           })
           .catch(error => {
@@ -628,7 +707,6 @@ export default function MapScreen({ route, navigation }) {
     initialize();
 
     return () => {
-      // Cleanup
       if (locationWatchId.current) {
         Geolocation.clearWatch(locationWatchId.current);
       }
@@ -644,14 +722,12 @@ export default function MapScreen({ route, navigation }) {
     };
   }, []);
 
-  // Setup socket listeners when connected
   useEffect(() => {
     if (socketConnected) {
       setupSocketListeners();
     }
   }, [socketConnected, setupSocketListeners]);
 
-  // Watch for active ride changes
   useEffect(() => {
     if (activeRide) {
       setRideInProgress(true);
@@ -683,7 +759,6 @@ export default function MapScreen({ route, navigation }) {
         barStyle="light-content" 
       />
       
-      {/* Header */}
       <Header 
         title={`Welcome, ${getDriverName()}`} 
         subtitle={
@@ -705,13 +780,13 @@ export default function MapScreen({ route, navigation }) {
         }
       />
 
-      {/* Map View */}
       <View style={styles.mapContainer}>
         {region ? (
           <MapView
             ref={mapRef}
             style={styles.map}
             region={region}
+            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} // ✅ ADDED THIS LINE
             showsUserLocation={true}
             showsMyLocationButton={false}
             showsCompass={true}
@@ -722,7 +797,6 @@ export default function MapScreen({ route, navigation }) {
             mapType={mapType}
             onRegionChangeComplete={setRegion}
           >
-            {/* User Location Marker */}
             {currentLocation && (
               <Marker
                 coordinate={currentLocation}
@@ -741,7 +815,6 @@ export default function MapScreen({ route, navigation }) {
                     color="#fff" 
                   />
                 </View>
-                {/* Accuracy circle */}
                 {locationAccuracy && (
                   <Circle
                     center={currentLocation}
@@ -754,7 +827,6 @@ export default function MapScreen({ route, navigation }) {
               </Marker>
             )}
 
-            {/* Nearby Drivers */}
             {isOnline && nearbyDrivers.map((driver, index) => (
               <Marker
                 key={index}
@@ -768,7 +840,6 @@ export default function MapScreen({ route, navigation }) {
               </Marker>
             ))}
 
-            {/* Heatmap Overlay */}
             {showHeatmap && heatmapData.map((point, index) => (
               <Circle
                 key={index}
@@ -779,7 +850,6 @@ export default function MapScreen({ route, navigation }) {
               />
             ))}
 
-            {/* Navigation Route */}
             {navigationRoute && (
               <Polyline
                 coordinates={[navigationRoute.pickup, navigationRoute.dropoff]}
@@ -788,7 +858,6 @@ export default function MapScreen({ route, navigation }) {
               />
             )}
 
-            {/* Ride Pickup/Dropoff Markers */}
             {navigationRoute && (
               <>
                 <Marker
@@ -816,7 +885,6 @@ export default function MapScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Map Controls */}
         <View style={styles.mapControls}>
           <TouchableOpacity 
             style={styles.mapControlButton}
@@ -850,7 +918,6 @@ export default function MapScreen({ route, navigation }) {
           )}
         </View>
 
-        {/* Connection Status */}
         <View style={[
           styles.connectionStatus,
           { backgroundColor: socketConnected ? '#00B894' : '#FF6B6B' }
@@ -866,7 +933,6 @@ export default function MapScreen({ route, navigation }) {
         </View>
       </View>
 
-      {/* Earnings Widget Modal */}
       <Modal
         visible={showEarnings}
         transparent={true}
@@ -885,7 +951,6 @@ export default function MapScreen({ route, navigation }) {
         </View>
       </Modal>
 
-      {/* Ride Request Panel */}
       {showRideRequests && (
         <Animated.View 
           style={[
@@ -921,7 +986,6 @@ export default function MapScreen({ route, navigation }) {
         </Animated.View>
       )}
 
-      {/* New Ride Request Notification */}
       {newRideRequest && !showRideRequests && (
         <TouchableOpacity 
           style={styles.newRideNotification}
@@ -940,9 +1004,7 @@ export default function MapScreen({ route, navigation }) {
         </TouchableOpacity>
       )}
 
-      {/* Bottom Control Panel */}
       <View style={styles.bottomPanel}>
-        {/* Online Status & Earnings */}
         <View style={styles.topRow}>
           <TouchableOpacity 
             style={styles.statusContainer}
@@ -969,7 +1031,6 @@ export default function MapScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Main Action Buttons */}
         <View style={styles.mainActions}>
           <Button
             title={isOnline ? "Go Offline" : "Go Online"}
@@ -999,7 +1060,6 @@ export default function MapScreen({ route, navigation }) {
           )}
         </View>
 
-        {/* Quick Actions */}
         <View style={styles.quickActions}>
           <TouchableOpacity 
             style={styles.actionButton}
@@ -1035,7 +1095,6 @@ export default function MapScreen({ route, navigation }) {
         </View>
       </View>
 
-      {/* Active Ride Banner */}
       {rideInProgress && activeRide && (
         <ActiveRideCard 
           ride={activeRide}
@@ -1060,6 +1119,31 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
+  // Header styles
+  header: {
+    backgroundColor: '#00B894',
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
+    paddingBottom: 15,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    paddingRight: 15,
+  },
+  headerCenter: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1070,6 +1154,298 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
   },
+  // Loading styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingSpinner: {
+    marginBottom: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  // Button styles
+  buttonBase: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonTextBase: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  buttonIconLeft: {
+    marginRight: 8,
+  },
+  buttonIconRight: {
+    marginLeft: 8,
+  },
+  // RideRequestCard styles
+  rideRequestCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  rideRequestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  passengerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  passengerName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  rideDistance: {
+    fontSize: 14,
+    color: '#666',
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  rideRequestDetails: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 15,
+  },
+  locationText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  rideRequestFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  rideFare: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#00B894',
+  },
+  rideActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  rejectButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fef2f2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  acceptButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#00B894',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // NotificationBadge styles
+  notificationBadge: {
+    backgroundColor: '#FF6B6B',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    zIndex: 1,
+  },
+  notificationCount: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    paddingHorizontal: 5,
+  },
+  // EarningsWidget styles
+  earningsWidget: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    width: width * 0.9,
+    maxWidth: 400,
+    overflow: 'hidden',
+  },
+  earningsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  earningsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  earningsBody: {
+    padding: 20,
+  },
+  earningsAmount: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#00B894',
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+  earningsSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  earningsBreakdown: {
+    gap: 15,
+    marginBottom: 20,
+  },
+  earningsItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  earningsItemLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  earningsItemValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  viewDetailsButton: {
+    backgroundColor: '#00B894',
+  },
+  // ActiveRideCard styles
+  activeRideCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    margin: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  activeRideHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 15,
+  },
+  activeRideTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  completeButtonSmall: {
+    backgroundColor: '#00B894',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  activeRideBody: {
+    gap: 10,
+  },
+  ridePassenger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  ridePassengerName: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  rideRoute: {
+    marginLeft: 4,
+  },
+  routePoint: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  routeText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+  },
+  routeDivider: {
+    alignItems: 'center',
+    height: 20,
+    marginLeft: 3,
+  },
+  rideStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+    marginTop: 5,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  statText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  navigateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#00B894',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  navigateText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  // Map styles
   locationMarker: {
     width: 36,
     height: 36,
@@ -1237,6 +1613,7 @@ const styles = StyleSheet.create({
   retryButton: {
     marginTop: 10,
     paddingHorizontal: 20,
+    backgroundColor: '#00B894',
   },
   bottomPanel: {
     backgroundColor: '#fff',
@@ -1345,12 +1722,5 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 5,
     fontWeight: '500',
-  },
-  activeRideCard: {
-    position: 'absolute',
-    top: 80,
-    left: 20,
-    right: 20,
-    zIndex: 1000,
   },
 });

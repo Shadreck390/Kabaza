@@ -7,8 +7,14 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-// Storage utils
-import { getUserData, getUserRole } from '@src/utils/userStorage';
+// ✅ UPDATED: Import correct storage functions
+import { 
+  getUserData, 
+  getUserRole, 
+  getUserProfile,
+  isUserLoggedIn,
+  getOnboardingComplete 
+} from '@src/utils/userStorage';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -35,6 +41,12 @@ import RideRatingScreen from '@screens/rider/RideRatingScreen';
 import RideHistoryScreen from '@screens/rider/RideHistoryScreen';
 import SearchLocationScreen from '@screens/rider/SearchLocationScreen';
 import FavoritesScreen from '@screens/rider/FavoritesScreen';
+// Add these with your other rider imports
+import ScheduleScreen from '@screens/rider/ScheduleScreen';
+import BookAheadScreen from '@screens/rider/BookAheadScreen';
+import PackageDeliveryScreen from '@screens/rider/PackageDeliveryScreen';
+import PackageDetailsScreen from '@screens/rider/PackageDetailsScreen';
+import PackageTrackingScreen from '@screens/rider/PackageTrackingScreen';
 
 // Driver Screens
 import DriverHomeScreen from '@screens/driver/DriverHomeScreen';
@@ -81,11 +93,15 @@ import TermsScreen from '@screens/common/TermsScreen';
 const CommonDrawer = ({ userRole }) => (
   <Drawer.Navigator
     screenOptions={{
-      drawerActiveTintColor: '#4F46E5',
-      drawerInactiveTintColor: '#6B7280',
+      drawerActiveTintColor: '#00a82d', // ✅ UPDATED: Match your green theme
+      drawerInactiveTintColor: '#666666',
       drawerStyle: {
         backgroundColor: '#FFFFFF',
         width: 280,
+      },
+      drawerLabelStyle: {
+        fontSize: 16,
+        fontWeight: '500',
       },
     }}
   >
@@ -127,15 +143,17 @@ const CommonDrawer = ({ userRole }) => (
         ),
       }}
     />
-    <Drawer.Screen 
-      name="Favorites" 
-      component={FavoritesScreen}
-      options={{
-        drawerIcon: ({ color, size }) => (
-          <MaterialIcon name="favorite" size={size} color={color} />
-        ),
-      }}
-    />
+    {userRole === 'rider' && (
+      <Drawer.Screen 
+        name="Favorites" 
+        component={FavoritesScreen}
+        options={{
+          drawerIcon: ({ color, size }) => (
+            <MaterialIcon name="favorite" size={size} color={color} />
+          ),
+        }}
+      />
+    )}
     <Drawer.Screen 
       name="Settings" 
       component={SettingsScreen}
@@ -163,6 +181,24 @@ const CommonDrawer = ({ userRole }) => (
         ),
       }}
     />
+    <Drawer.Screen 
+      name="Privacy" 
+      component={PrivacyScreen}
+      options={{
+        drawerIcon: ({ color, size }) => (
+          <MaterialIcon name="privacy-tip" size={size} color={color} />
+        ),
+      }}
+    />
+    <Drawer.Screen 
+      name="Terms" 
+      component={TermsScreen}
+      options={{
+        drawerIcon: ({ color, size }) => (
+          <MaterialIcon name="description" size={size} color={color} />
+        ),
+      }}
+    />
   </Drawer.Navigator>
 );
 
@@ -187,8 +223,8 @@ const RiderTabs = () => {
 
           return <MaterialIcon name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#4F46E5',
-        tabBarInactiveTintColor: '#6B7280',
+        tabBarActiveTintColor: '#00a82d', // ✅ UPDATED: Match your green theme
+        tabBarInactiveTintColor: '#666666',
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
@@ -249,8 +285,8 @@ const DriverTabs = () => {
 
           return <MaterialIcon name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#4F46E5',
-        tabBarInactiveTintColor: '#6B7280',
+        tabBarActiveTintColor: '#00a82d', // ✅ UPDATED: Match your green theme
+        tabBarInactiveTintColor: '#666666',
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
@@ -296,7 +332,8 @@ const RiderStack = () => (
   <Stack.Navigator 
     screenOptions={{ 
       headerShown: false,
-      cardStyle: { backgroundColor: '#FFFFFF' }
+      cardStyle: { backgroundColor: '#FFFFFF' },
+      gestureEnabled: true,
     }}
   >
     <Stack.Screen name="RiderTabs" component={RiderTabs} />
@@ -314,6 +351,13 @@ const RiderStack = () => (
     <Stack.Screen name="TransactionHistory" component={TransactionHistory} />
     <Stack.Screen name="Chat" component={ChatScreen} />
     <Stack.Screen name="SOS" component={SOSScreen} />
+
+     <Stack.Screen name="Schedule" component={ScheduleScreen} />
+     <Stack.Screen name="BookAhead" component={BookAheadScreen} />
+     <Stack.Screen name="PackageDelivery" component={PackageDeliveryScreen} />
+     <Stack.Screen name="PackageDetails" component={PackageDetailsScreen} />
+     <Stack.Screen name="PackageTracking" component={PackageTrackingScreen} />
+     <Stack.Screen name="Profile" component={ProfileScreen} />
   </Stack.Navigator>
 );
 
@@ -323,7 +367,8 @@ const DriverStack = () => (
   <Stack.Navigator 
     screenOptions={{ 
       headerShown: false,
-      cardStyle: { backgroundColor: '#FFFFFF' }
+      cardStyle: { backgroundColor: '#FFFFFF' },
+      gestureEnabled: true,
     }}
   >
     <Stack.Screen name="DriverTabs" component={DriverTabs} />
@@ -359,6 +404,7 @@ const DriverVerificationFlow = () => (
     <Stack.Screen name="VerificationPending" component={VerificationPendingScreen} />
     <Stack.Screen name="DriverDocuments" component={DriverDocumentsScreen} />
     <Stack.Screen name="AddVehicle" component={AddVehicleScreen} />
+    <Stack.Screen name="Vehicle" component={VehicleScreen} />
   </Stack.Navigator>
 );
 
@@ -368,7 +414,8 @@ const AuthStack = () => (
   <Stack.Navigator 
     screenOptions={{ 
       headerShown: false,
-      cardStyle: { backgroundColor: '#FFFFFF' }
+      cardStyle: { backgroundColor: '#FFFFFF' },
+      gestureEnabled: false, // Prevent swiping back in auth flow
     }}
   >
     <Stack.Screen name="PhoneOrGoogle" component={PhoneOrGoogleScreen} />
@@ -378,59 +425,127 @@ const AuthStack = () => (
   </Stack.Navigator>
 );
 
-// ===================== APP NAVIGATOR =====================
+// ===================== MAIN APP NAVIGATOR =====================
 
 export default function AppNavigator() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState('Splash');
+  const [userData, setUserData] = useState(null);
 
   useEffect(() => {
-    const loadSavedUser = async () => {
+    const checkAuthAndLoadInitialRoute = async () => {
       try {
-        const userData = await getUserData();
-        const userRole = await getUserRole();
+        console.log('🔐 Checking authentication status...');
         
-        if (userData && userRole) {
-          if (userRole === 'driver') {
-            const isDriverVerified = userData?.driverProfile?.isVerified || false;
-            setInitialRoute(isDriverVerified ? 'DriverStack' : 'DriverVerificationFlow');
+        // Check if user is logged in
+        const loggedIn = await isUserLoggedIn();
+        console.log('🔐 User logged in:', loggedIn);
+        
+        if (!loggedIn) {
+          console.log('🔐 No user logged in, going to auth');
+          setInitialRoute('AuthStack');
+          setIsLoading(false);
+          return;
+        }
+
+        // Get user data and role
+        const user = await getUserData();
+        const userRole = await getUserRole();
+        const profile = await getUserProfile();
+        
+        console.log('👤 User data loaded:', {
+          hasData: !!user,
+          role: userRole,
+          hasProfile: !!profile,
+          profileCompleted: user?.profileCompleted,
+        });
+
+        if (!user) {
+          console.log('👤 No user data found, going to auth');
+          setInitialRoute('AuthStack');
+        } else if (!user.profileCompleted) {
+          console.log('👤 Profile not completed, going to profile completion');
+          setInitialRoute('ProfileCompletion');
+        } else if (!userRole) {
+          console.log('👤 No role selected, going to role selection');
+          setInitialRoute('RoleSelection');
+        } else if (userRole === 'driver') {
+          // Check if driver is verified
+          const isDriverVerified = user?.driverProfile?.isVerified || false;
+          console.log('🚖 Driver verification status:', isDriverVerified);
+          
+          if (isDriverVerified) {
+            setInitialRoute('DriverStack');
           } else {
-            setInitialRoute('RiderStack');
+            setInitialRoute('DriverVerificationFlow');
           }
         } else {
-          setInitialRoute('AuthStack');
+          // Default to rider
+          setInitialRoute('RiderStack');
         }
+        
+        setUserData(user);
       } catch (error) {
-        console.error('Error loading saved user:', error);
-        setInitialRoute('AuthStack');
+        console.error('❌ Error checking auth status:', error);
+        setInitialRoute('AuthStack'); // Fallback to auth on error
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Simulate splash screen delay
-    setTimeout(() => {
-      loadSavedUser();
-    }, 2000);
+    // Add a minimum splash screen time for better UX
+    const splashTimeout = setTimeout(() => {
+      checkAuthAndLoadInitialRoute();
+    }, 1500);
+
+    return () => clearTimeout(splashTimeout);
   }, []);
 
   if (isLoading) {
     return <SplashScreen />;
   }
 
+  // ✅ ADD THESE SCREENS FOR DIRECT NAVIGATION
   return (
     <Stack.Navigator 
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ 
+        headerShown: false,
+        gestureEnabled: false, // Disable swipe back on root navigator
+      }}
       initialRouteName={initialRoute}
     >
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="AuthStack" component={AuthStack} />
+      
+      {/* ✅ ADD DIRECT PROFILE COMPLETION SCREEN (for users who need to complete profile) */}
+      <Stack.Screen 
+        name="ProfileCompletion" 
+        component={ProfileCompletionScreen}
+        initialParams={{ fromNavigation: true }}
+      />
+      
+      {/* ✅ ADD DIRECT ROLE SELECTION SCREEN */}
+      <Stack.Screen 
+        name="RoleSelection" 
+        component={RoleSelectionScreen}
+        initialParams={{ fromNavigation: true }}
+      />
+      
       <Stack.Screen name="RiderStack" component={RiderStack} />
       <Stack.Screen name="DriverVerificationFlow" component={DriverVerificationFlow} />
       <Stack.Screen name="DriverStack" component={DriverStack} />
     </Stack.Navigator>
   );
 }
+
+// ===================== LOADING COMPONENT =====================
+
+const LoadingScreen = () => (
+  <View style={styles.loadingContainer}>
+    <ActivityIndicator size="large" color="#00a82d" />
+    <Text style={styles.loadingText}>Loading Kabaza...</Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
   loadingContainer: {
@@ -440,8 +555,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
+    color: '#666666',
+    fontWeight: '500',
   },
 });
