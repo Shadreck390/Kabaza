@@ -17,16 +17,29 @@ import {
   Clipboard,
   RefreshControl
 } from 'react-native';
+import { ErrorBoundary } from 'react-error-boundary';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSelector } from 'react-redux';
-
-// FIXED IMPORT:
 import socketService from '@services/socket/socketService';
 
-export default function TripDetailsScreen({ navigation, route }) {
+// Error Fallback Component
+function ErrorFallback({ error, resetErrorBoundary }) {
+  return (
+    <View style={styles.errorContainer}>
+      <Icon name="exclamation-triangle" size={60} color="#FF6B6B" />
+      <Text style={styles.errorTitle}>Something went wrong</Text>
+      <Text style={styles.errorText}>{error.message}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={resetErrorBoundary}>
+        <Text style={styles.retryText}>Try Again</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function TripDetailsScreen({ navigation, route }) {
   const [trip, setTrip] = useState(route.params?.trip || {
     id: '1',
     date: 'Today, 14:30',
@@ -104,10 +117,11 @@ export default function TripDetailsScreen({ navigation, route }) {
     calculateRoute();
     
     // Setup app state listener
-    AppState.addEventListener('change', handleAppStateChange);
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
     
     return () => {
       cleanup();
+      subscription.remove();
     };
   }, []);
 
@@ -494,7 +508,7 @@ export default function TripDetailsScreen({ navigation, route }) {
   };
 
   const sendDriverLocationUpdate = (latitude, longitude) => {
-    if (socketService.isConnected&& trip.status === 'in_progress') {
+    if (socketService.isConnected && trip.status === 'in_progress') {
       socketService.emit('driver_location_update', {
         tripId,
         location: { latitude, longitude },
@@ -858,9 +872,6 @@ Trip ID: ${trip.id}
     if (socketService.isConnected) {
       socketService.emit('leave_trip_room', { tripId });
     }
-    
-    // Remove app state listener
-    AppState.removeEventListener('change', handleAppStateChange);
   };
 
   const renderConnectionStatus = () => (
@@ -923,385 +934,421 @@ Trip ID: ${trip.id}
   }
 
   return (
-    <ScrollView 
-      style={styles.container}
-      refreshControl={
-        <RefreshControl 
-          refreshing={refreshing} 
-          onRefresh={refreshTripData}
-          colors={['#00B894']}
-          tintColor="#00B894"
-        />
-      }
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="arrow-left" size={20} color="#333" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Trip Details</Text>
-          {renderConnectionStatus()}
-        </View>
-        <View style={styles.headerRight}>
-          {liveChat.unreadCount > 0 && (
-            <TouchableOpacity 
-              style={styles.chatBadge}
-              onPress={handleOpenChat}
-            >
-              <Icon name="comments" size={16} color="#fff" />
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadText}>{liveChat.unreadCount}</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Map Preview */}
-      <Animated.View 
-        style={[
-          styles.mapContainer,
-          { opacity: animatedValue.interpolate({
-            inputRange: [0, 1],
-            outputRange: [1, 0.7]
-          })}
-        ]}
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <ScrollView 
+        style={styles.container}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={refreshTripData}
+            colors={['#00B894']}
+            tintColor="#00B894"
+          />
+        }
       >
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          initialRegion={mapRegion}
-          scrollEnabled={false}
-          zoomEnabled={false}
-        >
-          <Marker coordinate={trip.pickupCoords} title="Pickup" pinColor="#00B894" />
-          <Marker coordinate={trip.destinationCoords} title="Destination" pinColor="#FF6B6B" />
-          
-          {realTimeData.liveLocation && trip.status === 'in_progress' && (
-            <Marker coordinate={realTimeData.liveLocation} title="You">
-              <Icon name="car" size={24} color="#2196F3" />
-            </Marker>
-          )}
-          
-          {realTimeData.passengerLocation && trip.status === 'in_progress' && (
-            <Marker coordinate={realTimeData.passengerLocation} title="Passenger">
-              <Icon name="user" size={20} color="#FF6B6B" />
-            </Marker>
-          )}
-          
-          {showRoute && routeCoordinates.length > 0 && (
-            <Polyline
-              coordinates={routeCoordinates}
-              strokeColor="#00B894"
-              strokeWidth={3}
-            />
-          )}
-        </MapView>
-        
-        {trip.status === 'in_progress' && (
+        {/* Header */}
+        <View style={styles.header}>
           <TouchableOpacity 
-            style={styles.locationButton}
-            onPress={sendDriverLocation}
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
           >
-            <Icon name="location-arrow" size={16} color="#fff" />
+            <Icon name="arrow-left" size={20} color="#333" />
           </TouchableOpacity>
-        )}
-      </Animated.View>
-
-      {/* Real-time Info */}
-      {renderRealTimeInfo()}
-
-      {/* Trip Summary Card */}
-      <View style={styles.summaryCard}>
-        <View style={styles.statusBadge}>
-          <Icon name={getStatusIcon()} size={14} color="#fff" />
-          <Text style={styles.statusText}>{trip.status.replace('_', ' ').toUpperCase()}</Text>
-        </View>
-        
-        <View style={styles.fareContainer}>
-          <Text style={styles.fareLabel}>Total Fare</Text>
-          <Text style={styles.fareAmount}>{trip.fare}</Text>
-          {trip.tip > 0 && (
-            <Text style={styles.tipText}>+ MWK {trip.tip.toLocaleString()} tip</Text>
-          )}
-        </View>
-        
-        <View style={styles.tripMeta}>
-          <View style={styles.metaItem}>
-            <Icon name="road" size={16} color="#666" />
-            <Text style={styles.metaText}>{trip.distance}</Text>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Trip Details</Text>
+            {renderConnectionStatus()}
           </View>
-          <View style={styles.metaItem}>
-            <Icon name="clock-o" size={16} color="#666" />
-            <Text style={styles.metaText}>{trip.duration}</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Icon name="money" size={16} color="#666" />
-            <Text style={styles.metaText}>{trip.paymentMethod}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Passenger Details */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Passenger</Text>
-        <View style={styles.passengerCard}>
-          <View style={styles.passengerInfo}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{trip.passengerName.charAt(0)}</Text>
-            </View>
-            <View style={styles.passengerDetails}>
-              <Text style={styles.passengerName}>{trip.passengerName}</Text>
-              <View style={styles.ratingContainer}>
-                {[...Array(5)].map((_, i) => (
-                  <Icon 
-                    key={i} 
-                    name="star" 
-                    size={14} 
-                    color={i < trip.passengerRating ? "#FFD700" : "#ddd"} 
-                  />
-                ))}
-                <Text style={styles.ratingText}>({trip.passengerRating}.0)</Text>
-              </View>
-            </View>
-          </View>
-          <View style={styles.passengerActions}>
-            <TouchableOpacity style={styles.callButton} onPress={handleCallPassenger}>
-              <Icon name="phone" size={18} color="#00B894" />
-              <Text style={styles.callText}>Call</Text>
-            </TouchableOpacity>
-            {liveChat.chatEnabled && (
-              <TouchableOpacity style={styles.chatButton} onPress={handleOpenChat}>
-                <Icon name="comments" size={18} color="#2196F3" />
-                {liveChat.unreadCount > 0 && (
-                  <View style={styles.inlineBadge}>
-                    <Text style={styles.inlineBadgeText}>{liveChat.unreadCount}</Text>
-                  </View>
-                )}
+          <View style={styles.headerRight}>
+            {liveChat.unreadCount > 0 && (
+              <TouchableOpacity 
+                style={styles.chatBadge}
+                onPress={handleOpenChat}
+              >
+                <Icon name="comments" size={16} color="#fff" />
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadText}>{liveChat.unreadCount}</Text>
+                </View>
               </TouchableOpacity>
             )}
           </View>
         </View>
-        
-        {liveChat.passengerTyping && (
-          <View style={styles.typingIndicator}>
-            <Text style={styles.typingText}>{trip.passengerName} is typing...</Text>
+
+        {/* Map Preview */}
+        <Animated.View 
+          style={[
+            styles.mapContainer,
+            { opacity: animatedValue.interpolate({
+              inputRange: [0, 1],
+              outputRange: [1, 0.7]
+            })}
+          ]}
+        >
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={PROVIDER_GOOGLE}
+            initialRegion={mapRegion}
+            scrollEnabled={false}
+            zoomEnabled={false}
+          >
+            <Marker coordinate={trip.pickupCoords} title="Pickup" pinColor="#00B894" />
+            <Marker coordinate={trip.destinationCoords} title="Destination" pinColor="#FF6B6B" />
+            
+            {realTimeData.liveLocation && trip.status === 'in_progress' && (
+              <Marker coordinate={realTimeData.liveLocation} title="You">
+                <Icon name="car" size={24} color="#2196F3" />
+              </Marker>
+            )}
+            
+            {realTimeData.passengerLocation && trip.status === 'in_progress' && (
+              <Marker coordinate={realTimeData.passengerLocation} title="Passenger">
+                <Icon name="user" size={20} color="#FF6B6B" />
+              </Marker>
+            )}
+            
+            {showRoute && routeCoordinates.length > 0 && (
+              <Polyline
+                coordinates={routeCoordinates}
+                strokeColor="#00B894"
+                strokeWidth={3}
+              />
+            )}
+          </MapView>
+          
+          {trip.status === 'in_progress' && (
+            <TouchableOpacity 
+              style={styles.locationButton}
+              onPress={sendDriverLocation}
+            >
+              <Icon name="location-arrow" size={16} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </Animated.View>
+
+        {/* Real-time Info */}
+        {renderRealTimeInfo()}
+
+        {/* Trip Summary Card */}
+        <View style={styles.summaryCard}>
+          <View style={styles.statusBadge}>
+            <Icon name={getStatusIcon()} size={14} color="#fff" />
+            <Text style={styles.statusText}>{trip.status.replace('_', ' ').toUpperCase()}</Text>
+          </View>
+          
+          <View style={styles.fareContainer}>
+            <Text style={styles.fareLabel}>Total Fare</Text>
+            <Text style={styles.fareAmount}>{trip.fare}</Text>
+            {trip.tip > 0 && (
+              <Text style={styles.tipText}>+ MWK {trip.tip.toLocaleString()} tip</Text>
+            )}
+          </View>
+          
+          <View style={styles.tripMeta}>
+            <View style={styles.metaItem}>
+              <Icon name="road" size={16} color="#666" />
+              <Text style={styles.metaText}>{trip.distance}</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Icon name="clock-o" size={16} color="#666" />
+              <Text style={styles.metaText}>{trip.duration}</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Icon name="money" size={16} color="#666" />
+              <Text style={styles.metaText}>{trip.paymentMethod}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Passenger Details */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Passenger</Text>
+          <View style={styles.passengerCard}>
+            <View style={styles.passengerInfo}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{trip.passengerName.charAt(0)}</Text>
+              </View>
+              <View style={styles.passengerDetails}>
+                <Text style={styles.passengerName}>{trip.passengerName}</Text>
+                <View style={styles.ratingContainer}>
+                  {[...Array(5)].map((_, i) => (
+                    <Icon 
+                      key={i} 
+                      name="star" 
+                      size={14} 
+                      color={i < trip.passengerRating ? "#FFD700" : "#ddd"} 
+                    />
+                  ))}
+                  <Text style={styles.ratingText}>({trip.passengerRating}.0)</Text>
+                </View>
+              </View>
+            </View>
+            <View style={styles.passengerActions}>
+              <TouchableOpacity style={styles.callButton} onPress={handleCallPassenger}>
+                <Icon name="phone" size={18} color="#00B894" />
+                <Text style={styles.callText}>Call</Text>
+              </TouchableOpacity>
+              {liveChat.chatEnabled && (
+                <TouchableOpacity style={styles.chatButton} onPress={handleOpenChat}>
+                  <Icon name="comments" size={18} color="#2196F3" />
+                  {liveChat.unreadCount > 0 && (
+                    <View style={styles.inlineBadge}>
+                      <Text style={styles.inlineBadgeText}>{liveChat.unreadCount}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+          
+          {liveChat.passengerTyping && (
+            <View style={styles.typingIndicator}>
+              <Text style={styles.typingText}>{trip.passengerName} is typing...</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Trip Details */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Trip Details</Text>
+          <View style={styles.detailsCard}>
+            {/* Pickup */}
+            <View style={styles.detailRow}>
+              <View style={styles.detailIcon}>
+                <Icon name="map-marker" size={18} color="#00B894" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Pickup Location</Text>
+                <Text style={styles.detailValue}>{trip.pickup}</Text>
+                {realTimeData.liveLocation && trip.status === 'in_progress' && (
+                  <Text style={styles.detailSubtext}>
+                    You are {calculateDistance(
+                      realTimeData.liveLocation.latitude,
+                      realTimeData.liveLocation.longitude,
+                      trip.pickupCoords.latitude,
+                      trip.pickupCoords.longitude
+                    ).toFixed(1)} km away
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Destination */}
+            <View style={styles.detailRow}>
+              <View style={styles.detailIcon}>
+                <Icon name="flag" size={18} color="#FF6B6B" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Destination</Text>
+                <Text style={styles.detailValue}>{trip.destination}</Text>
+                {realTimeData.estimatedArrival && trip.status === 'in_progress' && (
+                  <Text style={styles.detailSubtext}>
+                    Arrival: {formatTime(realTimeData.estimatedArrival)}
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Date & Time */}
+            <View style={styles.detailRow}>
+              <View style={styles.detailIcon}>
+                <Icon name="calendar" size={18} color="#666" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Date & Time</Text>
+                <Text style={styles.detailValue}>{trip.date}</Text>
+                {trip.startedAt && (
+                  <Text style={styles.detailSubtext}>
+                    Started: {formatTime(trip.startedAt)}
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Trip ID */}
+            <View style={styles.detailRow}>
+              <View style={styles.detailIcon}>
+                <Icon name="hashtag" size={18} color="#666" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Trip ID</Text>
+                <Text style={styles.detailValue}>{trip.id}</Text>
+                <TouchableOpacity 
+                  style={styles.copyButton}
+                  onPress={() => {
+                    Clipboard.setString(trip.id);
+                    Alert.alert('Copied!', 'Trip ID copied to clipboard');
+                  }}
+                >
+                  <Text style={styles.copyText}>Copy ID</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Trip Metrics */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Trip Metrics</Text>
+          <View style={styles.metricsGrid}>
+            <View style={styles.metricCard}>
+              <Icon name="tachometer" size={20} color="#2196F3" />
+              <Text style={styles.metricValue}>MWK {tripMetrics.netEarnings.toLocaleString()}</Text>
+              <Text style={styles.metricLabel}>Net Earnings</Text>
+            </View>
+            
+            <View style={styles.metricCard}>
+              <Icon name="gas-pump" size={20} color="#FF9800" />
+              <Text style={styles.metricValue}>MWK {tripMetrics.fuelCost.toLocaleString()}</Text>
+              <Text style={styles.metricLabel}>Fuel Cost</Text>
+            </View>
+            
+            <View style={styles.metricCard}>
+              <Icon name="leaf" size={20} color="#4CAF50" />
+              <Text style={styles.metricValue}>{tripMetrics.carbonSaved} kg</Text>
+              <Text style={styles.metricLabel}>CO₂ Saved</Text>
+            </View>
+            
+            <View style={styles.metricCard}>
+              <Icon name="clock" size={20} color="#9C27B0" />
+              <Text style={styles.metricValue}>{tripMetrics.timeSaved} min</Text>
+              <Text style={styles.metricLabel}>Time Saved</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Trip Notes */}
+        {trip.notes && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Trip Notes</Text>
+            <View style={styles.notesCard}>
+              <Icon name="sticky-note" size={16} color="#666" style={styles.notesIcon} />
+              <Text style={styles.notesText}>{trip.notes}</Text>
+            </View>
           </View>
         )}
-      </View>
 
-      {/* Trip Details */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Trip Details</Text>
-        <View style={styles.detailsCard}>
-                    {/* Pickup */}
-          <View style={styles.detailRow}>
-            <View style={styles.detailIcon}>
-              <Icon name="map-marker" size={18} color="#00B894" />
-            </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Pickup Location</Text>
-              <Text style={styles.detailValue}>{trip.pickup}</Text>
-              {realTimeData.liveLocation && trip.status === 'in_progress' && (
-                <Text style={styles.detailSubtext}>
-                  You are {calculateDistance(
-                    realTimeData.liveLocation.latitude,
-                    realTimeData.liveLocation.longitude,
-                    trip.pickupCoords.latitude,
-                    trip.pickupCoords.longitude
-                  ).toFixed(1)} km away
+        {/* Real-time Updates */}
+        {trip.status === 'in_progress' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Live Updates</Text>
+            <View style={styles.updatesCard}>
+              <View style={styles.updateItem}>
+                <Icon name="wifi" size={16} color={realTimeData.socketConnected ? "#4CAF50" : "#F44336"} />
+                <Text style={styles.updateLabel}>Connection</Text>
+                <Text style={[
+                  styles.updateValue,
+                  { color: realTimeData.socketConnected ? "#4CAF50" : "#F44336" }
+                ]}>
+                  {realTimeData.socketConnected ? 'Connected' : 'Offline'}
                 </Text>
-              )}
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Destination */}
-          <View style={styles.detailRow}>
-            <View style={styles.detailIcon}>
-              <Icon name="flag" size={18} color="#FF6B6B" />
-            </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Destination</Text>
-              <Text style={styles.detailValue}>{trip.destination}</Text>
-              {realTimeData.estimatedArrival && trip.status === 'in_progress' && (
-                <Text style={styles.detailSubtext}>
-                  Arrival: {formatTime(realTimeData.estimatedArrival)}
+              </View>
+              
+              <View style={styles.updateItem}>
+                <Icon name="refresh" size={16} color="#2196F3" />
+                <Text style={styles.updateLabel}>Last Update</Text>
+                <Text style={styles.updateValue}>
+                  {realTimeData.lastUpdated ? formatTime(realTimeData.lastUpdated) : 'Never'}
                 </Text>
-              )}
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Date & Time */}
-          <View style={styles.detailRow}>
-            <View style={styles.detailIcon}>
-              <Icon name="calendar" size={18} color="#666" />
-            </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Date & Time</Text>
-              <Text style={styles.detailValue}>{trip.date}</Text>
-              {trip.startedAt && (
-                <Text style={styles.detailSubtext}>
-                  Started: {formatTime(trip.startedAt)}
-                </Text>
-              )}
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Trip ID */}
-          <View style={styles.detailRow}>
-            <View style={styles.detailIcon}>
-              <Icon name="hashtag" size={18} color="#666" />
-            </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Trip ID</Text>
-              <Text style={styles.detailValue}>{trip.id}</Text>
+              </View>
+              
               <TouchableOpacity 
-                style={styles.copyButton}
-                onPress={() => {
-                  Clipboard.setString(trip.id);
-                  Alert.alert('Copied!', 'Trip ID copied to clipboard');
-                }}
+                style={styles.refreshButton}
+                onPress={refreshTripData}
+                disabled={refreshing}
               >
-                <Text style={styles.copyText}>Copy ID</Text>
+                <Icon name="sync" size={14} color={refreshing ? "#ccc" : "#00B894"} />
+                <Text style={[
+                  styles.refreshText,
+                  { color: refreshing ? "#ccc" : "#00B894" }
+                ]}>
+                  {refreshing ? 'Refreshing...' : 'Refresh Now'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </View>
+        )}
 
-      {/* Trip Metrics */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Trip Metrics</Text>
-        <View style={styles.metricsGrid}>
-          <View style={styles.metricCard}>
-            <Icon name="tachometer" size={20} color="#2196F3" />
-            <Text style={styles.metricValue}>MWK {tripMetrics.netEarnings.toLocaleString()}</Text>
-            <Text style={styles.metricLabel}>Net Earnings</Text>
-          </View>
+        {/* Actions */}
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleShareTrip}>
+            <Icon name="share-alt" size={18} color="#666" />
+            <Text style={styles.secondaryButtonText}>Share Trip</Text>
+          </TouchableOpacity>
           
-          <View style={styles.metricCard}>
-            <Icon name="gas-pump" size={20} color="#FF9800" />
-            <Text style={styles.metricValue}>MWK {tripMetrics.fuelCost.toLocaleString()}</Text>
-            <Text style={styles.metricLabel}>Fuel Cost</Text>
-          </View>
-          
-          <View style={styles.metricCard}>
-            <Icon name="leaf" size={20} color="#4CAF50" />
-            <Text style={styles.metricValue}>{tripMetrics.carbonSaved} kg</Text>
-            <Text style={styles.metricLabel}>CO₂ Saved</Text>
-          </View>
-          
-          <View style={styles.metricCard}>
-            <Icon name="clock" size={20} color="#9C27B0" />
-            <Text style={styles.metricValue}>{tripMetrics.timeSaved} min</Text>
-            <Text style={styles.metricLabel}>Time Saved</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Trip Notes */}
-      {trip.notes && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Trip Notes</Text>
-          <View style={styles.notesCard}>
-            <Icon name="sticky-note" size={16} color="#666" style={styles.notesIcon} />
-            <Text style={styles.notesText}>{trip.notes}</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Real-time Updates */}
-      {trip.status === 'in_progress' && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Live Updates</Text>
-          <View style={styles.updatesCard}>
-            <View style={styles.updateItem}>
-              <Icon name="wifi" size={16} color={realTimeData.socketConnected ? "#4CAF50" : "#F44336"} />
-              <Text style={styles.updateLabel}>Connection</Text>
-              <Text style={[
-                styles.updateValue,
-                { color: realTimeData.socketConnected ? "#4CAF50" : "#F44336" }
-              ]}>
-                {realTimeData.socketConnected ? 'Connected' : 'Offline'}
-              </Text>
-            </View>
-            
-            <View style={styles.updateItem}>
-              <Icon name="refresh" size={16} color="#2196F3" />
-              <Text style={styles.updateLabel}>Last Update</Text>
-              <Text style={styles.updateValue}>
-                {realTimeData.lastUpdated ? formatTime(realTimeData.lastUpdated) : 'Never'}
-              </Text>
-            </View>
-            
-            <TouchableOpacity 
-              style={styles.refreshButton}
-              onPress={refreshTripData}
-              disabled={refreshing}
-            >
-              <Icon name="sync" size={14} color={refreshing ? "#ccc" : "#00B894"} />
-              <Text style={[
-                styles.refreshText,
-                { color: refreshing ? "#ccc" : "#00B894" }
-              ]}>
-                {refreshing ? 'Refreshing...' : 'Refresh Now'}
-              </Text>
+          {trip.status === 'completed' && !tripMetrics.ratingGiven && (
+            <TouchableOpacity style={styles.primaryButton} onPress={handleRatePassenger}>
+              <Icon name="star" size={18} color="#fff" />
+              <Text style={styles.primaryButtonText}>Rate Passenger</Text>
             </TouchableOpacity>
-          </View>
+          )}
+          
+          {trip.status === 'completed' && tripMetrics.ratingGiven && (
+            <TouchableOpacity style={styles.tertiaryButton} onPress={() => navigation.navigate('TripHistory')}>
+              <Icon name="arrow-left" size={18} color="#fff" />
+              <Text style={styles.tertiaryButtonText}>Back to History</Text>
+            </TouchableOpacity>
+          )}
+          
+          {trip.status === 'cancelled' && (
+            <TouchableOpacity style={styles.reportButton} onPress={handleReportIssue}>
+              <Icon name="exclamation-triangle" size={18} color="#fff" />
+              <Text style={styles.reportButtonText}>Report Issue</Text>
+            </TouchableOpacity>
+          )}
         </View>
-      )}
 
-      {/* Actions */}
-      <View style={styles.actionsContainer}>
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleShareTrip}>
-          <Icon name="share-alt" size={18} color="#666" />
-          <Text style={styles.secondaryButtonText}>Share Trip</Text>
-        </TouchableOpacity>
-        
-        {trip.status === 'completed' && !tripMetrics.ratingGiven && (
-          <TouchableOpacity style={styles.primaryButton} onPress={handleRatePassenger}>
-            <Icon name="star" size={18} color="#fff" />
-            <Text style={styles.primaryButtonText}>Rate Passenger</Text>
-          </TouchableOpacity>
-        )}
-        
-        {trip.status === 'completed' && tripMetrics.ratingGiven && (
-          <TouchableOpacity style={styles.tertiaryButton} onPress={() => navigation.navigate('TripHistory')}>
-            <Icon name="arrow-left" size={18} color="#fff" />
-            <Text style={styles.tertiaryButtonText}>Back to History</Text>
-          </TouchableOpacity>
-        )}
-        
-        {trip.status === 'cancelled' && (
-          <TouchableOpacity style={styles.reportButton} onPress={handleReportIssue}>
-            <Icon name="exclamation-triangle" size={18} color="#fff" />
-            <Text style={styles.reportButtonText}>Report Issue</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Last Updated */}
-      <Text style={styles.lastUpdated}>
-        Last updated: {realTimeData.lastUpdated ? formatTime(realTimeData.lastUpdated) : 'Never'}
-        {realTimeData.socketConnected && ' • Live updates active'}
-      </Text>
-    </ScrollView>
+        {/* Last Updated */}
+        <Text style={styles.lastUpdated}>
+          Last updated: {realTimeData.lastUpdated ? formatTime(realTimeData.lastUpdated) : 'Never'}
+          {realTimeData.socketConnected && ' • Live updates active'}
+        </Text>
+      </ScrollView>
+    </ErrorBoundary>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#f8f9fa' 
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#00B894',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1321,13 +1368,19 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     backgroundColor: '#fff',
   },
-  backButton: { padding: 5 },
+  backButton: { 
+    padding: 5 
+  },
   headerCenter: { 
     flex: 1, 
     alignItems: 'center',
     marginHorizontal: 10,
   },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  headerTitle: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: '#333' 
+  },
   connectionStatus: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1378,7 +1431,9 @@ const styles = StyleSheet.create({
     height: 200,
     position: 'relative',
   },
-  map: { flex: 1 },
+  map: { 
+    flex: 1 
+  },
   locationButton: {
     position: 'absolute',
     bottom: 10,
@@ -1444,9 +1499,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  fareContainer: { alignItems: 'center', marginBottom: 15, marginTop: 10 },
-  fareLabel: { fontSize: 14, color: '#666', marginBottom: 5 },
-  fareAmount: { fontSize: 36, fontWeight: 'bold', color: '#00B894' },
+  fareContainer: { 
+    alignItems: 'center', 
+    marginBottom: 15, 
+    marginTop: 10 
+  },
+  fareLabel: { 
+    fontSize: 14, 
+    color: '#666', 
+    marginBottom: 5 
+  },
+  fareAmount: { 
+    fontSize: 36, 
+    fontWeight: 'bold', 
+    color: '#00B894' 
+  },
   tipText: {
     fontSize: 12,
     color: '#FFD700',
@@ -1460,10 +1527,24 @@ const styles = StyleSheet.create({
     borderTopColor: '#eee',
     paddingTop: 15,
   },
-  metaItem: { alignItems: 'center' },
-  metaText: { fontSize: 12, color: '#666', marginTop: 5 },
-  section: { marginHorizontal: 15, marginBottom: 20 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 10 },
+  metaItem: { 
+    alignItems: 'center' 
+  },
+  metaText: { 
+    fontSize: 12, 
+    color: '#666', 
+    marginTop: 5 
+  },
+  section: { 
+    marginHorizontal: 15, 
+    marginBottom: 20 
+  },
+  sectionTitle: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#333', 
+    marginBottom: 10 
+  },
   passengerCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1477,7 +1558,11 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  passengerInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  passengerInfo: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    flex: 1 
+  },
   avatar: {
     width: 50,
     height: 50,
@@ -1487,12 +1572,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 15,
   },
-  avatarText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-  passengerDetails: { flex: 1 },
-  passengerName: { fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 5 },
-  ratingContainer: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  ratingText: { fontSize: 12, color: '#666', marginLeft: 5 },
-  passengerActions: { flexDirection: 'row', gap: 10 },
+  avatarText: { 
+    color: '#fff', 
+    fontSize: 20, 
+    fontWeight: 'bold' 
+  },
+  passengerDetails: { 
+    flex: 1 
+  },
+  passengerName: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#333', 
+    marginBottom: 5 
+  },
+  ratingContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 2 
+  },
+  ratingText: { 
+    fontSize: 12, 
+    color: '#666', 
+    marginLeft: 5 
+  },
+  passengerActions: { 
+    flexDirection: 'row', 
+    gap: 10 
+  },
   callButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1503,7 +1610,11 @@ const styles = StyleSheet.create({
     borderColor: '#00B894',
     gap: 5,
   },
-  callText: { fontSize: 14, color: '#00B894', fontWeight: '500' },
+  callText: { 
+    fontSize: 14, 
+    color: '#00B894', 
+    fontWeight: '500' 
+  },
   chatButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1564,9 +1675,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 2,
   },
-  detailContent: { flex: 1 },
-  detailLabel: { fontSize: 12, color: '#999', marginBottom: 2 },
-  detailValue: { fontSize: 14, color: '#333', fontWeight: '500' },
+  detailContent: { 
+    flex: 1 
+  },
+  detailLabel: { 
+    fontSize: 12, 
+    color: '#999', 
+    marginBottom: 2 
+  },
+  detailValue: { 
+    fontSize: 14, 
+    color: '#333', 
+    fontWeight: '500' 
+  },
   detailSubtext: {
     fontSize: 11,
     color: '#666',
@@ -1765,3 +1886,5 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 });
+
+export default TripDetailsScreen;

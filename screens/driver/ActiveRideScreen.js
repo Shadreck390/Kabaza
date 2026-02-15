@@ -1,5 +1,13 @@
-// screens/driver/ActiveRideScreen.js
-import React, { useState, useEffect, useRef } from 'react';
+/**
+ * ============================================================================
+ * screens/driver/ActiveRideScreen.js
+ * ============================================================================
+
+ * 
+ * ============================================================================
+ */
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,12 +19,18 @@ import {
   Animated,
   ScrollView,
   Platform,
+  TextInput,
+  BackHandler,
+  AppState,
+  Linking,
+  Vibration,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSelector, useDispatch } from 'react-redux';
 import Slider from '@react-native-community/slider';
+import NetInfo from '@react-native-community/netinfo';
 
 // Import hooks and actions - FIXED WITH ALIASES
 import {
@@ -30,14 +44,42 @@ import {
 } from '@store/slices/driverSlice';
 import { useAuth, useDriver } from '@hooks/useRedux';
 
-// FIX THESE IMPORTS:
-import { getUserData, saveUserData } from '@src/utils/userStorage'; // Check if named export
-import LocationService from '@services/location/LocationService'; // Fixed path
-import socketService, { SocketEvents } from '@services/socket/socketService'; // Fixed path
+// Fixed imports:
+import { getUserData, saveUserData } from '@src/utils/userStorage';
+import LocationService from '@services/location/LocationService';
+import socketService, { SocketEvents } from '@services/socket/socketService';
 import { calculateFare, formatPrice } from '@services/ride/rideutils';
+import { logRideEvent } from '@utils/analytics/rideAnalytics';
+import { checkPermissions, requestPermissions } from '@utils/permissions';
+import { debounce } from '@utils/performance';
+
 
 const { width, height } = Dimensions.get('window');
 
+// Constants
+const RIDE_STATUSES = {
+  ACCEPTED: 'accepted',
+  PICKING_UP: 'picking_up',
+  ON_TRIP: 'on_trip',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled'
+};
+
+const CANCELLATION_REASONS = [
+  { id: 'passenger_not_ready', label: 'Passenger Not Ready', description: 'Passenger was not at pickup location' },
+  { id: 'vehicle_issue', label: 'Vehicle Issue', description: 'Vehicle breakdown or maintenance' },
+  { id: 'emergency', label: 'Emergency', description: 'Personal emergency situation' },
+  { id: 'wrong_location', label: 'Wrong Location', description: 'Incorrect pickup/destination' },
+  { id: 'safety_concern', label: 'Safety Concern', description: 'Safety or security concerns' },
+  { id: 'other', label: 'Other', description: 'Other reason (please specify)' }
+];
+
+const EMERGENCY_CONTACTS = [
+  { name: 'Police', number: '997', type: 'police' },
+  { name: 'Ambulance', number: '998', type: 'ambulance' },
+  { name: 'Fire Brigade', number: '999', type: 'fire' },
+  { name: 'Kabaza Support', number: '+265888123456', type: 'support' }
+];
 
 export default function ActiveRideScreen({ navigation, route }) {
   const dispatch = useDispatch();
@@ -49,7 +91,7 @@ export default function ActiveRideScreen({ navigation, route }) {
   const driverLocation = useSelector(selectCurrentLocation);
   
   // State
-  const [rideStatus, setRideStatus] = useState(currentRide?.status || 'accepted');
+  const [rideStatus, setRideStatus] = useState(currentRide?.status || RIDE_STATUSES.ACCEPTED);
   const [timer, setTimer] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,6 +105,23 @@ export default function ActiveRideScreen({ navigation, route }) {
   const [newMessage, setNewMessage] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
+  const [batteryOptimization, setBatteryOptimization] = useState(false);
+  const [appState, setAppState] = useState(AppState.currentState);
+  const [lastLocationUpdate, setLastLocationUpdate] = useState(null);
+  const [rideAnalytics, setRideAnalytics] = useState({
+    waitingTime: 0,
+    drivingTime: 0,
+    idleTime: 0,
+    maxSpeed: 0,
+    averageSpeed: 0,
+    stops: 0
+  });
+  const [safetyCheck, setSafetyCheck] = useState({
+    lastCheck: null,
+    isSafe: true,
+    checkCount: 0
+  });
   
   // Refs
   const mapRef = useRef(null);
@@ -70,6 +129,16 @@ export default function ActiveRideScreen({ navigation, route }) {
   const locationWatcherRef = useRef(null);
   const animationRef = useRef(new Animated.Value(0)).current;
   const pulseAnimation = useRef(new Animated.Value(1)).current;
+  const networkSubscription = useRef(null);
+  const appStateSubscription = useRef(null);
+  const rideAnalyticsRef = useRef({
+    startTime: Date.now(),
+    lastLocation: null,
+    totalDistance: 0,
+    speedSamples: [],
+    lastStopTime: null,
+    isMoving: false
+  });
   
   // Mock or real data
   const rideData = currentRide || route.params?.request || {
@@ -77,17 +146,23 @@ export default function ActiveRideScreen({ navigation, route }) {
     passengerName: 'John Doe',
     passengerRating: 4.8,
     pickup: 'Area 3, Lilongwe',
+    pickupCoordinates: { latitude: -13.9626, longitude: 33.7741 },
     destination: '6th Avenue, Lilongwe, Malawi',
+    destinationCoordinates: { latitude: -13.9632, longitude: 33.7750 },
     distance: '3.2 km',
     fare: 'MWK 1,200',
     paymentMethod: 'cash',
     passengerPhone: '+265888123456',
+    passengerId: 'pass_123',
+    estimatedDuration: 12, // minutes
+    vehicleType: 'kabaza',
+    specialRequests: '',
   };
 
-  // Initial coordinates (pickup and destination)
+  // Initial coordinates
   const initialCoordinates = [
-    { latitude: -13.9626, longitude: 33.7741 }, // Pickup
-    { latitude: -13.9632, longitude: 33.7750 }, // Destination
+    rideData.pickupCoordinates || { latitude: -13.9626, longitude: 33.7741 },
+    rideData.destinationCoordinates || { latitude: -13.9632, longitude: 33.7750 },
   ];
 
   // ====================
@@ -96,27 +171,43 @@ export default function ActiveRideScreen({ navigation, route }) {
 
   useEffect(() => {
     initializeRide();
+    setupNetworkMonitoring();
+    setupAppStateMonitoring();
+    setupBackHandler();
     
     return () => {
       cleanupRide();
+      cleanupSubscriptions();
     };
   }, []);
 
   useEffect(() => {
-    if (rideStatus === 'on_trip') {
+    if (rideStatus === RIDE_STATUSES.ON_TRIP) {
       startRideTimer();
       startPulseAnimation();
+      startSafetyChecks();
     } else {
       stopRideTimer();
       stopPulseAnimation();
+      stopSafetyChecks();
     }
+    
+    // Log ride status change
+    logRideEvent('ride_status_change', {
+      rideId: rideData.id,
+      from: rideStatus,
+      to: rideStatus,
+      timestamp: Date.now()
+    });
   }, [rideStatus]);
 
   useEffect(() => {
-    if (driverLocation && rideStatus !== 'completed') {
+    if (driverLocation && rideStatus !== RIDE_STATUSES.COMPLETED) {
       updateDriverOnMap(driverLocation);
       calculateETA();
       updateDistanceTraveled();
+      updateRideAnalytics(driverLocation);
+      setLastLocationUpdate(Date.now());
     }
   }, [driverLocation]);
 
@@ -128,180 +219,348 @@ export default function ActiveRideScreen({ navigation, route }) {
     try {
       setIsLoading(true);
       
-      // Start location tracking for the ride
+      // Log ride start
+      await logRideEvent('ride_started', {
+        rideId: rideData.id,
+        driverId: user?.id,
+        passengerId: rideData.passengerId,
+        timestamp: Date.now()
+      });
+      
+      // Check network connectivity
+      await checkNetworkConnectivity();
+      
+      // Check and request permissions
+      await checkAndRequestPermissions();
+      
+      // Initialize location tracking
       await startLocationTracking();
       
-      // Subscribe to ride updates via socket
-      subscribeToRideUpdates();
+      // Initialize real-time services if connected
+      if (isConnected) {
+        await initializeRealtimeServices();
+      } else {
+        showOfflineWarning();
+      }
       
-      // Subscribe to chat messages
-      subscribeToChat();
-      
-      // Initialize route coordinates
+      // Fetch route
       await fetchRouteCoordinates();
       
       // Start ride timer
       startRideTimer();
       
-      // Update driver location in real-time
-      if (driverLocation) {
-        setDriverCoordinates(driverLocation);
-        animateToLocation(driverLocation);
+      // Send initial status update
+      if (rideStatus === RIDE_STATUSES.ACCEPTED) {
+        await sendRideStatusUpdate(RIDE_STATUSES.ACCEPTED);
       }
       
-      // Send ride started notification
-      if (rideStatus === 'accepted') {
-        sendRideStatusUpdate('started');
-      }
+      // Check battery optimization
+      checkBatteryOptimization();
       
       setIsLoading(false);
+      
     } catch (error) {
       console.error('Error initializing ride:', error);
-      Alert.alert('Error', 'Failed to initialize ride tracking');
+      Alert.alert(
+        'Initialization Error',
+        'Failed to initialize ride tracking. Please check your connection and permissions.',
+        [
+          { text: 'Retry', onPress: initializeRide },
+          { text: 'Cancel', onPress: () => navigation.goBack() }
+        ]
+      );
       setIsLoading(false);
     }
   };
 
-  const startLocationTracking = async () => {
-    try {
-      // Use LocationService for accurate tracking
-      const watchId = await LocationService.watchPositionForRide(
-        rideData.id,
-        (position) => {
-          const location = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            bearing: position.coords.heading,
-            speed: position.coords.speed,
-            timestamp: Date.now(),
-          };
-          
-          // Update driver location in state
-          setDriverCoordinates(location);
-          
-          // Send location update via socket
-          socketService.emit(SocketEvents.LOCATION_UPDATE, {
-            rideId: rideData.id,
-            driverId: user?.id,
-            location,
-            timestamp: Date.now(),
-          });
-          
-          // Dispatch to Redux
-          dispatch(updateDriverLocation(location));
-        },
-        (error) => {
-          console.error('Location tracking error:', error);
-        },
-        {
-          enableHighAccuracy: true,
-          distanceFilter: 5, // Update every 5 meters
-          interval: 3000, // Update every 3 seconds
-        }
-      );
+  const setupNetworkMonitoring = () => {
+    networkSubscription.current = NetInfo.addEventListener(state => {
+      const connected = state.isConnected && state.isInternetReachable;
+      setIsConnected(connected);
       
-      locationWatcherRef.current = watchId;
-      console.log('Location tracking started:', watchId);
+      if (!connected && isConnected) {
+        showOfflineWarning();
+      } else if (connected && !isConnected) {
+        showReconnectedNotification();
+        initializeRealtimeServices();
+      }
+    });
+  };
+
+  const setupAppStateMonitoring = () => {
+    appStateSubscription.current = AppState.addEventListener('change', handleAppStateChange);
+  };
+
+  const setupBackHandler = () => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (rideStatus !== RIDE_STATUSES.COMPLETED && rideStatus !== RIDE_STATUSES.CANCELLED) {
+        Alert.alert(
+          'Active Ride',
+          'You have an active ride in progress. Are you sure you want to exit?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Exit', 
+              style: 'destructive',
+              onPress: () => {
+                navigation.goBack();
+                return false;
+              }
+            }
+          ]
+        );
+        return true;
+      }
+      return false;
+    });
+
+    return () => backHandler.remove();
+  };
+
+  const checkAndRequestPermissions = async () => {
+    const permissions = await checkPermissions(['location', 'notifications']);
+    
+    if (!permissions.location) {
+      const granted = await requestPermissions(['location']);
+      if (!granted.location) {
+        throw new Error('Location permission required');
+      }
+    }
+  };
+
+  const checkNetworkConnectivity = async () => {
+    try {
+      const netState = await NetInfo.fetch();
+      setIsConnected(netState.isConnected && netState.isInternetReachable);
+      return netState.isConnected && netState.isInternetReachable;
     } catch (error) {
-      console.error('Failed to start location tracking:', error);
+      console.error('Network check error:', error);
+      return false;
+    }
+  };
+
+  const checkBatteryOptimization = async () => {
+    if (Platform.OS === 'android') {
+      // Check if app is optimized for battery
+      // This would require a native module or third-party library
+      // For now, just show a warning for Android devices
+      setBatteryOptimization(true);
+    }
+  };
+
+  // ====================
+  // REAL-TIME SERVICES
+  // ====================
+
+  const initializeRealtimeServices = async () => {
+    if (!isConnected) return;
+    
+    try {
+      // Connect to socket if not connected
+      if (!socketService.isConnected()) {
+        await socketService.connect();
+      }
+      
+      // Subscribe to ride updates
+      subscribeToRideUpdates();
+      
+      // Subscribe to chat
+      subscribeToChat();
+      
+      // Send initial location if available
+      if (driverCoordinates) {
+        sendLocationUpdate(driverCoordinates);
+      }
+      
+    } catch (error) {
+      console.error('Error initializing real-time services:', error);
     }
   };
 
   const subscribeToRideUpdates = () => {
-    // Subscribe to ride status updates
-    socketService.on(SocketEvents.RIDE_STATUS_UPDATE, (update) => {
+    // Ride status updates
+    socketService.on(SocketEvents.RIDE_STATUS_UPDATE, debounce((update) => {
       if (update.rideId === rideData.id) {
         handleRideUpdate(update);
       }
-    });
+    }, 300));
     
-    // Subscribe to ETA updates
+    // ETA updates
     socketService.on(SocketEvents.ETA_UPDATE, (etaUpdate) => {
       if (etaUpdate.rideId === rideData.id) {
         setEta(etaUpdate.minutes);
+        // Show ETA update notification
+        showNotification('ETA Updated', `New ETA: ${etaUpdate.minutes} minutes`);
       }
     });
     
-    // Subscribe to cancellation
+    // Ride cancellation
     socketService.on(SocketEvents.RIDE_CANCELLED, (cancellation) => {
       if (cancellation.rideId === rideData.id) {
         handleRideCancelled(cancellation);
       }
     });
+    
+    // Passenger location updates
+    socketService.on(`${SocketEvents.PASSENGER_LOCATION}_${rideData.id}`, (location) => {
+      updatePassengerLocation(location);
+    });
   };
 
   const subscribeToChat = () => {
+    // Chat messages
     socketService.on(`${SocketEvents.CHAT_MESSAGE}_${rideData.id}`, (message) => {
-      setChatMessages(prev => [...prev, message]);
-      
-      // Show notification for new message
-      if (!isChatOpen) {
-        Alert.alert('New Message', `From ${message.senderName}: ${message.message}`, [
-          { text: 'Reply', onPress: () => setIsChatOpen(true) },
-          { text: 'Close', style: 'cancel' },
-        ]);
-      }
+      handleNewMessage(message);
     });
     
+    // Typing indicators
     socketService.on(`${SocketEvents.TYPING}_${rideData.id}`, (typingData) => {
       if (typingData.userId !== user?.id) {
         setIsTyping(typingData.isTyping);
       }
     });
-  };
-
-  const fetchRouteCoordinates = async () => {
-    // In a real app, you would fetch route from Google Directions API
-    // For now, generate intermediate points between pickup and destination
-    const points = generateRoutePoints(
-      initialCoordinates[0],
-      initialCoordinates[1],
-      10 // Number of intermediate points
-    );
     
-    setRouteCoordinates([initialCoordinates[0], ...points, initialCoordinates[1]]);
+    // Chat read receipts
+    socketService.on(`${SocketEvents.CHAT_READ}_${rideData.id}`, (readData) => {
+      markMessagesAsRead(readData);
+    });
   };
 
   // ====================
-  // TIMER & ANIMATION
+  // LOCATION TRACKING
   // ====================
 
-  const startRideTimer = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    
-    timerRef.current = setInterval(() => {
-      setTimer(prev => prev + 1);
-      setElapsedTime(prev => prev + 1);
-    }, 1000);
-  };
-
-  const stopRideTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+  const startLocationTracking = async () => {
+    try {
+      // Configure location tracking based on ride status
+      const config = {
+        enableHighAccuracy: true,
+        distanceFilter: rideStatus === RIDE_STATUSES.ON_TRIP ? 5 : 10,
+        interval: rideStatus === RIDE_STATUSES.ON_TRIP ? 3000 : 5000,
+        fastestInterval: rideStatus === RIDE_STATUSES.ON_TRIP ? 2000 : 3000,
+        showsBackgroundLocationIndicator: true,
+        useSignificantChanges: false,
+        foregroundService: {
+          notificationTitle: 'Kabaza - Active Ride',
+          notificationBody: 'Tracking your ride location',
+          notificationIcon: 'ic_notification',
+          notificationColor: '#00B894'
+        }
+      };
+      
+      const watchId = await LocationService.watchPositionForRide(
+        rideData.id,
+        handleLocationUpdate,
+        handleLocationError,
+        config
+      );
+      
+      locationWatcherRef.current = watchId;
+      
+    } catch (error) {
+      console.error('Failed to start location tracking:', error);
+      throw error;
     }
   };
 
-  const startPulseAnimation = () => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnimation, {
-          toValue: 1.2,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnimation, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+  const handleLocationUpdate = (position) => {
+    const location = {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+      accuracy: position.coords.accuracy,
+      bearing: position.coords.heading,
+      speed: position.coords.speed,
+      timestamp: Date.now(),
+    };
+    
+    // Update state
+    setDriverCoordinates(location);
+    dispatch(updateDriverLocation(location));
+    
+    // Send location update via socket if connected
+    if (isConnected) {
+      sendLocationUpdate(location);
+    }
+    
+    // Update map if needed
+    if (mapRef.current && shouldUpdateMap()) {
+      animateToLocation(location);
+    }
+    
+    // Update analytics
+    updateRideAnalytics(location);
   };
 
-  const stopPulseAnimation = () => {
-    pulseAnimation.stopAnimation();
+  const sendLocationUpdate = debounce((location) => {
+    socketService.emit(SocketEvents.LOCATION_UPDATE, {
+      rideId: rideData.id,
+      driverId: user?.id,
+      location,
+      timestamp: Date.now(),
+      status: rideStatus,
+    });
+  }, 2000); // Throttle location updates to every 2 seconds
+
+  const handleLocationError = (error) => {
+    console.error('Location tracking error:', error.code, error.message);
+    
+    switch (error.code) {
+      case 1: // PERMISSION_DENIED
+        showPermissionAlert();
+        break;
+      case 2: // POSITION_UNAVAILABLE
+        showLocationUnavailableAlert();
+        break;
+      case 3: // TIMEOUT
+        console.warn('Location request timeout');
+        break;
+      default:
+        console.error('Unknown location error:', error);
+    }
+  };
+
+  // ====================
+  // ROUTE & NAVIGATION
+  // ====================
+
+  const fetchRouteCoordinates = async () => {
+    try {
+      // In production, use Google Directions API or similar
+      if (isConnected && rideData.pickupCoordinates && rideData.destinationCoordinates) {
+        // Here you would make API call to get route
+        // For now, generate interpolated points
+        const points = generateRoutePoints(
+          initialCoordinates[0],
+          initialCoordinates[1],
+          15
+        );
+        
+        setRouteCoordinates([initialCoordinates[0], ...points, initialCoordinates[1]]);
+        
+        // Calculate initial ETA
+        const routeDistance = calculateRouteDistance(points);
+        const initialEta = Math.ceil((routeDistance / 30) * 60); // Assuming 30 km/h average
+        setEta(Math.max(1, initialEta));
+        
+      } else {
+        // Fallback to straight line route
+        const points = generateRoutePoints(
+          initialCoordinates[0],
+          initialCoordinates[1],
+          10
+        );
+        setRouteCoordinates([initialCoordinates[0], ...points, initialCoordinates[1]]);
+      }
+    } catch (error) {
+      console.error('Error fetching route:', error);
+      // Generate basic route as fallback
+      const points = generateRoutePoints(
+        initialCoordinates[0],
+        initialCoordinates[1],
+        8
+      );
+      setRouteCoordinates([initialCoordinates[0], ...points, initialCoordinates[1]]);
+    }
   };
 
   // ====================
@@ -312,138 +571,186 @@ export default function ActiveRideScreen({ navigation, route }) {
     try {
       setIsLoading(true);
       
-      // Update local state
-      setRideStatus('on_trip');
+      // Update status
+      const newStatus = RIDE_STATUSES.ON_TRIP;
+      setRideStatus(newStatus);
       
-      // Send update via socket
-      await sendRideStatusUpdate('on_trip');
+      // Send status update
+      await sendRideStatusUpdate(newStatus);
       
-      // Start trip timer
-      startRideTimer();
-      
-      // Update ride in storage
-      await userStorage.updateRideInHistory(rideData.id, {
-        status: 'on_trip',
-        startedAt: Date.now(),
+      // Log event
+      await logRideEvent('passenger_picked_up', {
+        rideId: rideData.id,
+        timestamp: Date.now(),
+        location: driverCoordinates,
+        waitTime: elapsedTime
       });
+      
+      // Update location tracking config for trip
+      await updateLocationTrackingConfig();
+      
+      // Show notification
+      showNotification('Ride Started', 'Trip is now in progress. Drive safely!');
+      
+      // Vibration feedback
+      Vibration.vibrate(100);
       
       setIsLoading(false);
       
-      Alert.alert(
-        'Ride Started',
-        'Trip is now in progress. Please drive safely.',
-        [{ text: 'OK' }]
-      );
     } catch (error) {
       console.error('Error starting ride:', error);
-      Alert.alert('Error', 'Failed to start ride');
+      Alert.alert('Error', 'Failed to update ride status. Please try again.');
       setIsLoading(false);
     }
   };
 
-  const handleCompleteRide = async () => {
+  const handleCompleteRide = () => {
     Alert.alert(
       'Complete Ride',
-      'Are you sure you want to complete this ride?',
+      'Confirm that you have reached the destination and received payment.',
+      [
+        { text: 'Not Yet', style: 'cancel' },
+        {
+          text: 'Complete Ride',
+          style: 'default',
+          onPress: () => showCompletionConfirmation()
+        }
+      ]
+    );
+  };
+
+  const showCompletionConfirmation = () => {
+    Alert.alert(
+      'Final Confirmation',
+      `Please confirm:\n\n1. Passenger has been dropped off\n2. Payment received: ${rideData.paymentMethod === 'cash' ? 'Cash' : 'Mobile Money'}\n3. Fare: ${formatPrice(calculateFinalFare())}`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Complete',
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              
-              // Calculate final fare (including waiting time, distance, etc.)
-              const finalFare = calculateFinalFare();
-              
-              // Update local state
-              setRideStatus('completed');
-              
-              // Send completion via socket
-              await sendRideStatusUpdate('completed', { fare: finalFare });
-              
-              // Dispatch Redux action
-              await dispatch(completeRideTrip({
-                rideId: rideData.id,
-                rating: passengerRating,
-                review: rideReview,
-                paymentData: {
-                  amount: finalFare,
-                  method: rideData.paymentMethod || 'cash',
-                  status: 'completed',
-                },
-              })).unwrap();
-              
-              // Stop location tracking
-              await cleanupRide();
-              
-              // Show completion screen
-              navigation.replace('RideCompletion', {
-                ride: { ...rideData, fare: finalFare },
-                rating: passengerRating,
-                elapsedTime,
-                distanceTraveled,
-              });
-              
-              setIsLoading(false);
-            } catch (error) {
-              console.error('Error completing ride:', error);
-              Alert.alert('Error', 'Failed to complete ride');
-              setIsLoading(false);
-            }
-          },
-        },
+          text: 'Confirm & Complete',
+          style: 'default',
+          onPress: () => processRideCompletion()
+        }
       ]
     );
+  };
+
+  const processRideCompletion = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Calculate final fare
+      const finalFare = calculateFinalFare();
+      
+      // Update status
+      setRideStatus(RIDE_STATUSES.COMPLETED);
+      
+      // Send completion via socket
+      await sendRideStatusUpdate(RIDE_STATUSES.COMPLETED, { 
+        fare: finalFare,
+        rating: passengerRating,
+        review: rideReview 
+      });
+      
+      // Dispatch Redux action
+      await dispatch(completeRideTrip({
+        rideId: rideData.id,
+        rating: passengerRating,
+        review: rideReview,
+        paymentData: {
+          amount: finalFare,
+          method: rideData.paymentMethod || 'cash',
+          status: 'completed',
+          timestamp: Date.now()
+        },
+        analytics: rideAnalyticsRef.current
+      })).unwrap();
+      
+      // Log completion
+      await logRideEvent('ride_completed', {
+        rideId: rideData.id,
+        fare: finalFare,
+        duration: elapsedTime,
+        distance: distanceTraveled,
+        rating: passengerRating,
+        timestamp: Date.now()
+      });
+      
+      // Cleanup
+      await cleanupRide();
+      
+      // Navigate to completion screen
+      navigation.replace('RideCompletion', {
+        ride: { ...rideData, fare: finalFare },
+        rating: passengerRating,
+        elapsedTime,
+        distanceTraveled,
+        analytics: rideAnalyticsRef.current
+      });
+      
+      setIsLoading(false);
+      
+    } catch (error) {
+      console.error('Error completing ride:', error);
+      Alert.alert('Error', 'Failed to complete ride. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   const handleCancelRide = () => {
     Alert.alert(
       'Cancel Ride',
-      'Are you sure you want to cancel this ride? This may affect your rating.',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              
-              // Show cancellation reason options
-              Alert.alert(
-                'Cancellation Reason',
-                'Please select a reason for cancellation:',
-                [
-                  { text: 'Passenger Not Ready', onPress: () => cancelWithReason('passenger_not_ready') },
-                  { text: 'Vehicle Issue', onPress: () => cancelWithReason('vehicle_issue') },
-                  { text: 'Emergency', onPress: () => cancelWithReason('emergency') },
-                  { text: 'Other', onPress: () => promptCustomReason() },
-                  { text: 'Back', style: 'cancel' },
-                ]
-              );
-            } catch (error) {
-              console.error('Error cancelling ride:', error);
-              Alert.alert('Error', 'Failed to cancel ride');
-              setIsLoading(false);
-            }
-          },
-        },
-      ]
+      'Select cancellation reason:',
+      CANCELLATION_REASONS.map(reason => ({
+        text: reason.label,
+        onPress: () => handleCancellationReason(reason)
+      })).concat([
+        { text: 'Cancel', style: 'cancel' }
+      ])
     );
   };
 
-  const cancelWithReason = async (reason) => {
+  const handleCancellationReason = (reason) => {
+    if (reason.id === 'other') {
+      Alert.prompt(
+        'Cancellation Reason',
+        'Please specify reason:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Submit',
+            onPress: (customReason) => cancelRideWithReason(`other: ${customReason}`)
+          }
+        ]
+      );
+    } else {
+      cancelRideWithReason(reason.id);
+    }
+  };
+
+  const cancelRideWithReason = async (reason) => {
     try {
-      // Send cancellation via socket
-      await sendRideStatusUpdate('cancelled', { reason });
+      setIsLoading(true);
+      
+      // Send cancellation
+      await sendRideStatusUpdate(RIDE_STATUSES.CANCELLED, { reason });
       
       // Dispatch Redux action
       await dispatch(cancelRideRequest({
         rideId: rideData.id,
         reason,
         cancelledBy: 'driver',
+        timestamp: Date.now()
       })).unwrap();
+      
+      // Log cancellation
+      await logRideEvent('ride_cancelled', {
+        rideId: rideData.id,
+        reason,
+        cancelledBy: 'driver',
+        timestamp: Date.now(),
+        status: rideStatus,
+        elapsedTime
+      });
       
       // Cleanup
       await cleanupRide();
@@ -452,123 +759,12 @@ export default function ActiveRideScreen({ navigation, route }) {
       navigation.goBack();
       
       Alert.alert('Ride Cancelled', 'The ride has been cancelled.');
+      
     } catch (error) {
       console.error('Error cancelling ride:', error);
-      Alert.alert('Error', 'Failed to cancel ride');
+      Alert.alert('Error', 'Failed to cancel ride. Please try again.');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const promptCustomReason = () => {
-    // Implement custom reason input
-    Alert.prompt(
-      'Cancellation Reason',
-      'Please enter the reason for cancellation:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Submit',
-          onPress: (reason) => cancelWithReason(`other: ${reason}`),
-        },
-      ]
-    );
-  };
-
-  const handleRideUpdate = (update) => {
-    if (update.status && update.status !== rideStatus) {
-      setRideStatus(update.status);
-      
-      if (update.status === 'cancelled') {
-        handleRideCancelled(update);
-      }
-    }
-  };
-
-  const handleRideCancelled = (cancellation) => {
-    Alert.alert(
-      'Ride Cancelled',
-      `This ride has been cancelled${cancellation.reason ? `: ${cancellation.reason}` : ''}.`,
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            cleanupRide();
-            navigation.goBack();
-          },
-        },
-      ]
-    );
-  };
-
-  // ====================
-  // MAP & LOCATION FUNCTIONS
-  // ====================
-
-  const updateDriverOnMap = (location) => {
-    setDriverCoordinates(location);
-    
-    // Animate map to driver location if needed
-    if (mapRef.current && rideStatus === 'on_trip') {
-      mapRef.current.animateCamera({
-        center: location,
-        zoom: 15,
-      });
-    }
-  };
-
-  const animateToLocation = (location) => {
-    if (mapRef.current) {
-      mapRef.current.animateCamera({
-        center: location,
-        zoom: 15,
-        duration: 1000,
-      });
-    }
-  };
-
-  const calculateETA = () => {
-    if (!driverCoordinates || !routeCoordinates.length) return;
-    
-    // Simplified ETA calculation
-    // In real app, use Google Distance Matrix API
-    const remainingDistance = calculateRemainingDistance();
-    const averageSpeed = 30; // km/h
-    const etaMinutes = Math.ceil((remainingDistance / averageSpeed) * 60);
-    
-    setEta(Math.max(1, etaMinutes));
-  };
-
-  const calculateRemainingDistance = () => {
-    if (!driverCoordinates || routeCoordinates.length < 2) return 0;
-    
-    // Find closest point on route
-    let minDistance = Infinity;
-    let closestIndex = 0;
-    
-    for (let i = 0; i < routeCoordinates.length; i++) {
-      const distance = calculateDistance(driverCoordinates, routeCoordinates[i]);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestIndex = i;
-      }
-    }
-    
-    // Calculate remaining distance from closest point to destination
-    let remaining = 0;
-    for (let i = closestIndex; i < routeCoordinates.length - 1; i++) {
-      remaining += calculateDistance(routeCoordinates[i], routeCoordinates[i + 1]);
-    }
-    
-    return remaining;
-  };
-
-  const updateDistanceTraveled = () => {
-    // In a real app, you would accumulate distance from location updates
-    // For now, simulate based on time
-    if (rideStatus === 'on_trip') {
-      const speed = 30 / 3600; // 30 km/h in km per second
-      setDistanceTraveled(prev => prev + speed);
     }
   };
 
@@ -576,20 +772,42 @@ export default function ActiveRideScreen({ navigation, route }) {
   // CHAT FUNCTIONS
   // ====================
 
+  const handleNewMessage = (message) => {
+    setChatMessages(prev => [...prev, message]);
+    
+    // Show notification if chat is closed
+    if (!isChatOpen) {
+      showNotification(
+        'New Message',
+        `${message.senderName}: ${message.message}`,
+        () => setIsChatOpen(true)
+      );
+      
+      // Play sound or vibration
+      Vibration.vibrate(50);
+    }
+  };
+
   const sendMessage = () => {
     if (!newMessage.trim()) return;
     
     const message = {
       rideId: rideData.id,
-      message: newMessage,
+      message: newMessage.trim(),
       senderId: user?.id,
       senderName: user?.name || 'Driver',
       senderType: 'driver',
       timestamp: Date.now(),
+      read: false
     };
     
     // Send via socket
-    socketService.emit(SocketEvents.CHAT_MESSAGE, message);
+    if (isConnected) {
+      socketService.emit(SocketEvents.CHAT_MESSAGE, message);
+    } else {
+      // Queue for later if offline
+      queueMessageForLater(message);
+    }
     
     // Add to local state
     setChatMessages(prev => [...prev, message]);
@@ -599,13 +817,103 @@ export default function ActiveRideScreen({ navigation, route }) {
     sendTypingIndicator(false);
   };
 
-  const sendTypingIndicator = (isTyping) => {
-    socketService.emit(SocketEvents.TYPING, {
-      rideId: rideData.id,
-      userId: user?.id,
-      isTyping,
-      timestamp: Date.now(),
-    });
+  const sendTypingIndicator = debounce((isTyping) => {
+    if (isConnected) {
+      socketService.emit(SocketEvents.TYPING, {
+        rideId: rideData.id,
+        userId: user?.id,
+        isTyping,
+        timestamp: Date.now(),
+      });
+    }
+  }, 300);
+
+  // ====================
+  // SAFETY & EMERGENCY
+  // ====================
+
+  const startSafetyChecks = () => {
+    // Periodic safety checks during trip
+    const safetyInterval = setInterval(() => {
+      performSafetyCheck();
+    }, 300000); // Every 5 minutes
+    
+    return () => clearInterval(safetyInterval);
+  };
+
+  const performSafetyCheck = () => {
+    const checkData = {
+      lastCheck: Date.now(),
+      location: driverCoordinates,
+      rideStatus,
+      elapsedTime,
+      isConnected
+    };
+    
+    // Update safety state
+    setSafetyCheck(prev => ({
+      ...prev,
+      lastCheck: Date.now(),
+      checkCount: prev.checkCount + 1
+    }));
+    
+    // Log safety check
+    logRideEvent('safety_check', checkData);
+    
+    // If no location updates for 5 minutes, trigger warning
+    if (lastLocationUpdate && Date.now() - lastLocationUpdate > 300000) {
+      showSafetyWarning();
+    }
+  };
+
+  const handleEmergency = () => {
+    Alert.alert(
+      'Emergency Assistance',
+      'Select emergency contact:',
+      EMERGENCY_CONTACTS.map(contact => ({
+        text: contact.name,
+        onPress: () => initiateEmergencyCall(contact)
+      })).concat([
+        { text: 'Cancel', style: 'cancel' }
+      ])
+    );
+  };
+
+  const initiateEmergencyCall = (contact) => {
+    Alert.alert(
+      `Call ${contact.name}?`,
+      `Emergency number: ${contact.number}\n\nYour location and ride details will be shared.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Call',
+          style: 'destructive',
+          onPress: () => {
+            // Log emergency call
+            logRideEvent('emergency_call', {
+              rideId: rideData.id,
+              contactType: contact.type,
+              timestamp: Date.now(),
+              location: driverCoordinates
+            });
+            
+            // Make the call
+            Linking.openURL(`tel:${contact.number}`);
+            
+            // Send emergency notification via socket
+            if (isConnected) {
+              socketService.emit(SocketEvents.EMERGENCY_ALERT, {
+                rideId: rideData.id,
+                driverId: user?.id,
+                contactType: contact.type,
+                location: driverCoordinates,
+                timestamp: Date.now()
+              });
+            }
+          }
+        }
+      ]
+    );
   };
 
   // ====================
@@ -613,69 +921,154 @@ export default function ActiveRideScreen({ navigation, route }) {
   // ====================
 
   const calculateFinalFare = () => {
-    // Base fare calculation
+    // Base fare from ride data
     const baseFare = parseFloat(rideData.fare?.replace(/[^0-9.]/g, '') || 1200);
     
-    // Add waiting time charges (if any)
-    const waitingMinutes = Math.max(0, timer / 60 - 3); // First 3 minutes free
-    const waitingCharge = waitingMinutes * 50; // 50 MWK per minute
+    // Calculate additional charges
+    const additionalCharges = {
+      waitingTime: calculateWaitingCharges(),
+      distance: calculateDistanceCharges(),
+      timeOfDay: calculateTimeOfDayCharges(),
+      specialRequests: calculateSpecialRequestCharges()
+    };
     
-    // Add distance-based charges
-    const distanceCharge = distanceTraveled * 300; // 300 MWK per km
+    const totalAdditional = Object.values(additionalCharges).reduce((a, b) => a + b, 0);
     
-    return baseFare + waitingCharge + distanceCharge;
+    return baseFare + totalAdditional;
+  };
+
+  const calculateWaitingCharges = () => {
+    const waitingMinutes = Math.max(0, elapsedTime / 60 - 3); // First 3 minutes free
+    return waitingMinutes * 50; // 50 MWK per minute after free period
+  };
+
+  const calculateDistanceCharges = () => {
+    return distanceTraveled * 300; // 300 MWK per km
+  };
+
+  const calculateTimeOfDayCharges = () => {
+    const hour = new Date().getHours();
+    if (hour >= 22 || hour < 6) {
+      return 200; // Night surcharge
+    }
+    return 0;
+  };
+
+  const calculateSpecialRequestCharges = () => {
+    // Add charges for special requests
+    return rideData.specialRequests ? 100 : 0;
   };
 
   const sendRideStatusUpdate = async (status, extraData = {}) => {
     try {
-      socketService.emit(SocketEvents.RIDE_STATUS_UPDATE, {
-        rideId: rideData.id,
-        driverId: user?.id,
-        status,
-        timestamp: Date.now(),
-        ...extraData,
-      });
+      if (isConnected) {
+        socketService.emit(SocketEvents.RIDE_STATUS_UPDATE, {
+          rideId: rideData.id,
+          driverId: user?.id,
+          status,
+          timestamp: Date.now(),
+          ...extraData
+        });
+      } else {
+        // Queue for later if offline
+        await queueStatusUpdateForLater(status, extraData);
+      }
     } catch (error) {
       console.error('Error sending status update:', error);
+      throw error;
     }
   };
 
-  const generateRoutePoints = (start, end, numPoints) => {
-    const points = [];
-    for (let i = 1; i <= numPoints; i++) {
-      const fraction = i / (numPoints + 1);
-      points.push({
-        latitude: start.latitude + (end.latitude - start.latitude) * fraction,
-        longitude: start.longitude + (end.longitude - start.longitude) * fraction,
-      });
+  const updateRideAnalytics = (location) => {
+    const analytics = rideAnalyticsRef.current;
+    const now = Date.now();
+    
+    // Calculate distance from last location
+    if (analytics.lastLocation) {
+      const distance = calculateDistance(analytics.lastLocation, location);
+      analytics.totalDistance += distance;
+      setDistanceTraveled(analytics.totalDistance);
+      
+      // Calculate speed
+      if (location.speed && location.speed > 0) {
+        analytics.speedSamples.push(location.speed);
+        analytics.maxSpeed = Math.max(analytics.maxSpeed, location.speed);
+        analytics.isMoving = true;
+        analytics.lastStopTime = null;
+      } else {
+        // Vehicle stopped
+        if (!analytics.lastStopTime) {
+          analytics.lastStopTime = now;
+        }
+        analytics.isMoving = false;
+      }
     }
-    return points;
-  };
-
-  const calculateDistance = (coord1, coord2) => {
-    const R = 6371; // Earth's radius in km
-    const dLat = (coord2.latitude - coord1.latitude) * Math.PI / 180;
-    const dLon = (coord2.longitude - coord1.longitude) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(coord1.latitude * Math.PI / 180) * Math.cos(coord2.latitude * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
-  const formatDistance = (km) => {
-    if (km < 1) {
-      return `${Math.round(km * 1000)}m`;
+    
+    analytics.lastLocation = location;
+    
+    // Update average speed
+    if (analytics.speedSamples.length > 0) {
+      const sum = analytics.speedSamples.reduce((a, b) => a + b, 0);
+      analytics.averageSpeed = sum / analytics.speedSamples.length;
     }
-    return `${km.toFixed(1)}km`;
+    
+    // Update state for UI
+    setRideAnalytics({
+      waitingTime: analytics.waitingTime,
+      drivingTime: analytics.drivingTime,
+      idleTime: analytics.idleTime,
+      maxSpeed: analytics.maxSpeed,
+      averageSpeed: analytics.averageSpeed,
+      stops: analytics.stops
+    });
   };
+
+  // ====================
+  // UI HELPER FUNCTIONS
+  // ====================
+
+  const showNotification = (title, message, onPress = null) => {
+    Alert.alert(title, message, [
+      { text: 'OK', onPress: onPress || (() => {}) }
+    ]);
+  };
+
+  const showOfflineWarning = () => {
+    Alert.alert(
+      'Offline Mode',
+      'You are currently offline. Some features may be limited. Ride tracking will continue locally.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const showReconnectedNotification = () => {
+    Alert.alert(
+      'Back Online',
+      'Connection restored. Syncing ride data...',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const showSafetyWarning = () => {
+    Alert.alert(
+      'Safety Check',
+      'No location updates for 5 minutes. Are you safe?',
+      [
+        { text: 'I\'m Safe', onPress: () => logRideEvent('safety_confirmed', { rideId: rideData.id }) },
+        { text: 'Need Help', onPress: handleEmergency }
+      ]
+    );
+  };
+
+  const shouldUpdateMap = () => {
+    // Only update map if significant movement or status change
+    return rideStatus === RIDE_STATUSES.ON_TRIP || 
+           rideStatus === RIDE_STATUSES.PICKING_UP;
+  };
+
+  // ====================
+  // CLEANUP
+  // ====================
 
   const cleanupRide = async () => {
     // Stop timers
@@ -695,10 +1088,19 @@ export default function ActiveRideScreen({ navigation, route }) {
     socketService.off(`${SocketEvents.CHAT_MESSAGE}_${rideData.id}`);
     socketService.off(`${SocketEvents.TYPING}_${rideData.id}`);
     
-    // Clear refs
+    // Clear intervals
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+  };
+
+  const cleanupSubscriptions = () => {
+    if (networkSubscription.current) {
+      networkSubscription.current();
+    }
+    if (appStateSubscription.current) {
+      appStateSubscription.current.remove();
     }
   };
 
@@ -707,18 +1109,18 @@ export default function ActiveRideScreen({ navigation, route }) {
   // ====================
 
   const renderStatusIndicator = () => {
-    const statuses = [
-      { key: 'accepted', label: 'Accepted' },
-      { key: 'picking_up', label: 'Pickup' },
-      { key: 'on_trip', label: 'On Trip' },
-      { key: 'completed', label: 'Complete' },
+    const statusConfigs = [
+      { key: RIDE_STATUSES.ACCEPTED, label: 'Accepted', icon: 'check-circle' },
+      { key: RIDE_STATUSES.PICKING_UP, label: 'Pickup', icon: 'person-pin-circle' },
+      { key: RIDE_STATUSES.ON_TRIP, label: 'On Trip', icon: 'directions-car' },
+      { key: RIDE_STATUSES.COMPLETED, label: 'Complete', icon: 'flag' },
     ];
     
-    const currentIndex = statuses.findIndex(s => s.key === rideStatus);
+    const currentIndex = statusConfigs.findIndex(s => s.key === rideStatus);
     
     return (
       <View style={styles.statusContainer}>
-        {statuses.map((status, index) => (
+        {statusConfigs.map((status, index) => (
           <React.Fragment key={status.key}>
             <View style={styles.statusIndicator}>
               <View style={[
@@ -726,9 +1128,11 @@ export default function ActiveRideScreen({ navigation, route }) {
                 index <= currentIndex && styles.activeDot,
                 index === currentIndex && styles.currentDot,
               ]}>
-                {index < currentIndex && (
-                  <Icon name="check" size={8} color="#fff" />
-                )}
+                <MaterialIcons 
+                  name={status.icon} 
+                  size={index === currentIndex ? 14 : 12} 
+                  color="#fff" 
+                />
               </View>
               <Text style={[
                 styles.statusText,
@@ -737,7 +1141,7 @@ export default function ActiveRideScreen({ navigation, route }) {
                 {status.label}
               </Text>
             </View>
-            {index < statuses.length - 1 && (
+            {index < statusConfigs.length - 1 && (
               <View style={[
                 styles.statusLine,
                 index < currentIndex && styles.activeLine,
@@ -750,104 +1154,63 @@ export default function ActiveRideScreen({ navigation, route }) {
   };
 
   const renderActionButtons = () => {
-    switch (rideStatus) {
-      case 'accepted':
-        return (
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={handlePassengerPickedUp}
-            disabled={isLoading}
-          >
-            <MaterialIcons name="person-pin-circle" size={24} color="#fff" />
-            <Text style={styles.primaryButtonText}>Passenger Picked Up</Text>
-            {isLoading && <ActivityIndicator color="#fff" style={{ marginLeft: 10 }} />}
-          </TouchableOpacity>
-        );
-        
-      case 'picking_up':
-        return (
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={handlePassengerPickedUp}
-            disabled={isLoading}
-          >
-            <MaterialIcons name="person-pin-circle" size={24} color="#fff" />
-            <Text style={styles.primaryButtonText}>Passenger Picked Up</Text>
-            {isLoading && <ActivityIndicator color="#fff" style={{ marginLeft: 10 }} />}
-          </TouchableOpacity>
-        );
-        
-      case 'on_trip':
-        return (
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={handleCompleteRide}
-            disabled={isLoading}
-          >
-            <MaterialIcons name="flag" size={24} color="#fff" />
-            <Text style={styles.primaryButtonText}>Complete Ride</Text>
-            {isLoading && <ActivityIndicator color="#fff" style={{ marginLeft: 10 }} />}
-          </TouchableOpacity>
-        );
-        
-      default:
-        return null;
-    }
-  };
-
-  const renderChatInterface = () => {
-    if (!isChatOpen) return null;
+    const buttonConfigs = {
+      [RIDE_STATUSES.ACCEPTED]: {
+        text: 'Passenger Picked Up',
+        icon: 'person-pin-circle',
+        onPress: handlePassengerPickedUp,
+        color: '#00B894'
+      },
+      [RIDE_STATUSES.PICKING_UP]: {
+        text: 'Passenger Picked Up',
+        icon: 'person-pin-circle',
+        onPress: handlePassengerPickedUp,
+        color: '#00B894'
+      },
+      [RIDE_STATUSES.ON_TRIP]: {
+        text: 'Complete Ride',
+        icon: 'flag',
+        onPress: handleCompleteRide,
+        color: '#00B894'
+      },
+    };
+    
+    const config = buttonConfigs[rideStatus];
+    if (!config) return null;
     
     return (
-      <Animated.View style={[
-        styles.chatContainer,
-        {
-          transform: [{ translateY: animationRef }],
-        },
-      ]}>
-        <View style={styles.chatHeader}>
-          <Text style={styles.chatTitle}>Chat with Passenger</Text>
-          <TouchableOpacity onPress={() => setIsChatOpen(false)}>
-            <Icon name="times" size={24} color="#666" />
-          </TouchableOpacity>
-        </View>
-        
-        <ScrollView style={styles.chatMessages}>
-          {chatMessages.map((msg, index) => (
-            <View
-              key={index}
-              style={[
-                styles.messageBubble,
-                msg.senderId === user?.id ? styles.sentMessage : styles.receivedMessage,
-              ]}
-            >
-              <Text style={styles.messageText}>{msg.message}</Text>
-              <Text style={styles.messageTime}>
-                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-            </View>
-          ))}
-          {isTyping && (
-            <View style={styles.typingIndicator}>
-              <Text style={styles.typingText}>Passenger is typing...</Text>
-            </View>
-          )}
-        </ScrollView>
-        
-        <View style={styles.chatInputContainer}>
-          <TextInput
-            style={styles.chatInput}
-            value={newMessage}
-            onChangeText={setNewMessage}
-            placeholder="Type a message..."
-            onFocus={() => sendTypingIndicator(true)}
-            onBlur={() => sendTypingIndicator(false)}
-          />
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-            <Icon name="send" size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
+      <TouchableOpacity
+        style={[styles.primaryButton, { backgroundColor: config.color }]}
+        onPress={config.onPress}
+        disabled={isLoading}
+      >
+        <MaterialIcons name={config.icon} size={24} color="#fff" />
+        <Text style={styles.primaryButtonText}>{config.text}</Text>
+        {isLoading && <ActivityIndicator color="#fff" style={{ marginLeft: 10 }} />}
+      </TouchableOpacity>
+    );
+  };
+
+  const renderConnectionStatus = () => (
+    <View style={[
+      styles.connectionStatus,
+      { backgroundColor: isConnected ? 'rgba(0,184,148,0.9)' : 'rgba(255,107,107,0.9)' }
+    ]}>
+      <Icon name={isConnected ? "wifi" : "wifi-off"} size={12} color="#fff" />
+      <Text style={styles.connectionStatusText}>
+        {isConnected ? 'Live' : 'Offline'}
+      </Text>
+    </View>
+  );
+
+  const renderBatteryWarning = () => {
+    if (!batteryOptimization || Platform.OS !== 'android') return null;
+    
+    return (
+      <TouchableOpacity style={styles.batteryWarning} onPress={showBatteryOptimizationInfo}>
+        <Icon name="battery-quarter" size={14} color="#FF9800" />
+        <Text style={styles.batteryWarningText}>Battery optimization may affect tracking</Text>
+      </TouchableOpacity>
     );
   };
 
@@ -880,26 +1243,31 @@ export default function ActiveRideScreen({ navigation, route }) {
         showsUserLocation={true}
         showsMyLocationButton={true}
         showsCompass={true}
+        showsTraffic={false}
+        showsBuildings={true}
+        zoomControlEnabled={true}
+        rotateEnabled={true}
+        pitchEnabled={false}
       >
         {/* Pickup Marker */}
-        <Marker coordinate={initialCoordinates[0]} title="Pickup">
+        <Marker coordinate={initialCoordinates[0]} title="Pickup" description={rideData.pickup}>
           <Animated.View style={[styles.markerContainer, { transform: [{ scale: pulseAnimation }] }]}>
             <View style={styles.pickupMarker}>
-              <Icon name="map-marker" size={30} color="#00B894" />
+              <MaterialIcons name="location-on" size={30} color="#00B894" />
             </View>
           </Animated.View>
         </Marker>
 
         {/* Destination Marker */}
-        <Marker coordinate={initialCoordinates[1]} title="Destination">
+        <Marker coordinate={initialCoordinates[1]} title="Destination" description={rideData.destination}>
           <View style={styles.destinationMarker}>
-            <Icon name="flag" size={25} color="#FF6B6B" />
+            <MaterialIcons name="flag" size={25} color="#FF6B6B" />
           </View>
         </Marker>
 
-        {/* Driver Marker (if location available) */}
+        {/* Driver Marker */}
         {driverCoordinates && (
-          <Marker coordinate={driverCoordinates} title="You" flat={true}>
+          <Marker coordinate={driverCoordinates} title="You" flat={true} anchor={{ x: 0.5, y: 0.5 }}>
             <Animated.View style={[styles.driverMarker, { transform: [{ scale: pulseAnimation }] }]}>
               <Icon name="car" size={24} color="#007AFF" />
             </Animated.View>
@@ -912,16 +1280,28 @@ export default function ActiveRideScreen({ navigation, route }) {
             coordinates={routeCoordinates}
             strokeColor="#00B894"
             strokeWidth={4}
-            lineDashPattern={[10, 10]}
+            lineDashPattern={rideStatus === RIDE_STATUSES.ON_TRIP ? [] : [10, 10]}
+            lineCap="round"
+            lineJoin="round"
           />
         )}
       </MapView>
+
+      {/* Connection Status */}
+      {renderConnectionStatus()}
+      {renderBatteryWarning()}
 
       {/* Header Overlay */}
       <View style={styles.headerOverlay}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            if (rideStatus === RIDE_STATUSES.COMPLETED || rideStatus === RIDE_STATUSES.CANCELLED) {
+              navigation.goBack();
+            } else {
+              handleBackPress();
+            }
+          }}
         >
           <Icon name="arrow-left" size={20} color="#333" />
         </TouchableOpacity>
@@ -929,8 +1309,15 @@ export default function ActiveRideScreen({ navigation, route }) {
         <View style={styles.headerInfo}>
           <Text style={styles.headerTitle}>Active Ride</Text>
           <Text style={styles.headerSubtitle}>
-            {rideStatus === 'on_trip' ? 'Trip in progress' : 'Going to pickup'}
+            {rideStatus === RIDE_STATUSES.ON_TRIP ? 'Trip in progress' : 
+             rideStatus === RIDE_STATUSES.PICKING_UP ? 'Going to pickup' : 
+             'Ride accepted'}
           </Text>
+          {lastLocationUpdate && (
+            <Text style={styles.locationUpdateTime}>
+              Updated {Math.floor((Date.now() - lastLocationUpdate) / 1000)}s ago
+            </Text>
+          )}
         </View>
         
         <TouchableOpacity
@@ -938,13 +1325,25 @@ export default function ActiveRideScreen({ navigation, route }) {
           onPress={() => setIsChatOpen(!isChatOpen)}
         >
           <Icon name="comments" size={20} color="#333" />
-          {chatMessages.length > 0 && (
+          {chatMessages.filter(m => !m.read && m.senderId !== user?.id).length > 0 && (
             <View style={styles.chatBadge}>
-              <Text style={styles.chatBadgeText}>{chatMessages.length}</Text>
+              <Text style={styles.chatBadgeText}>
+                {chatMessages.filter(m => !m.read && m.senderId !== user?.id).length}
+              </Text>
             </View>
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Emergency Button */}
+      {rideStatus === RIDE_STATUSES.ON_TRIP && (
+        <TouchableOpacity
+          style={styles.emergencyFloatingButton}
+          onPress={handleEmergency}
+        >
+          <Icon name="exclamation-triangle" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
 
       {/* Ride Info Panel */}
       <Animated.View style={[
@@ -958,12 +1357,15 @@ export default function ActiveRideScreen({ navigation, route }) {
           }],
         },
       ]}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
           {/* Passenger Info */}
           <View style={styles.passengerSection}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {rideData.passengerName?.charAt(0) || 'P'}
+                {rideData.passengerName?.charAt(0)?.toUpperCase() || 'P'}
               </Text>
             </View>
             <View style={styles.passengerDetails}>
@@ -989,7 +1391,7 @@ export default function ActiveRideScreen({ navigation, route }) {
           {/* Status Indicator */}
           {renderStatusIndicator()}
 
-          {/* ETA & Distance */}
+          {/* Stats Overview */}
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <Icon name="clock-o" size={20} color="#666" />
@@ -1014,11 +1416,32 @@ export default function ActiveRideScreen({ navigation, route }) {
             </View>
           </View>
 
+          {/* Detailed Stats */}
+          {rideStatus === RIDE_STATUSES.ON_TRIP && (
+            <View style={styles.detailedStats}>
+              <Text style={styles.detailedStatsTitle}>Trip Analytics</Text>
+              <View style={styles.detailedStatsGrid}>
+                <View style={styles.detailedStatItem}>
+                  <Text style={styles.detailedStatValue}>{rideAnalytics.maxSpeed.toFixed(0)} km/h</Text>
+                  <Text style={styles.detailedStatLabel}>Max Speed</Text>
+                </View>
+                <View style={styles.detailedStatItem}>
+                  <Text style={styles.detailedStatValue}>{rideAnalytics.averageSpeed.toFixed(0)} km/h</Text>
+                  <Text style={styles.detailedStatLabel}>Avg Speed</Text>
+                </View>
+                <View style={styles.detailedStatItem}>
+                  <Text style={styles.detailedStatValue}>{rideAnalytics.stops}</Text>
+                  <Text style={styles.detailedStatLabel}>Stops</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
           {/* Route Details */}
           <View style={styles.routeSection}>
             <View style={styles.routeItem}>
               <View style={styles.routeIcon}>
-                <Icon name="circle" size={12} color="#00B894" />
+                <View style={[styles.routeDot, { backgroundColor: '#00B894' }]} />
                 <View style={styles.routeLine} />
               </View>
               <View style={styles.routeTextContainer}>
@@ -1027,10 +1450,16 @@ export default function ActiveRideScreen({ navigation, route }) {
                   {rideData.pickup || 'Pickup location'}
                 </Text>
               </View>
+              {rideStatus === RIDE_STATUSES.ACCEPTED && (
+                <TouchableOpacity style={styles.navigateButton}>
+                  <Icon name="location-arrow" size={16} color="#007AFF" />
+                  <Text style={styles.navigateButtonText}>Navigate</Text>
+                </TouchableOpacity>
+              )}
             </View>
             <View style={styles.routeItem}>
               <View style={styles.routeIcon}>
-                <Icon name="flag" size={12} color="#FF6B6B" />
+                <View style={[styles.routeDot, { backgroundColor: '#FF6B6B' }]} />
               </View>
               <View style={styles.routeTextContainer}>
                 <Text style={styles.routeLabel}>Destination</Text>
@@ -1038,26 +1467,46 @@ export default function ActiveRideScreen({ navigation, route }) {
                   {rideData.destination || 'Destination'}
                 </Text>
               </View>
+              {rideStatus === RIDE_STATUSES.ON_TRIP && (
+                <TouchableOpacity style={styles.navigateButton}>
+                  <Icon name="location-arrow" size={16} color="#007AFF" />
+                  <Text style={styles.navigateButtonText}>Navigate</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
-          {/* Payment Method */}
-          <View style={styles.paymentSection}>
-            <Text style={styles.paymentLabel}>Payment Method</Text>
-            <View style={styles.paymentMethod}>
-              <Icon
-                name={rideData.paymentMethod === 'cash' ? 'money' : 'credit-card'}
-                size={18}
-                color="#666"
-              />
-              <Text style={styles.paymentText}>
-                {rideData.paymentMethod === 'cash' ? 'Cash' : 'Mobile Money'}
-              </Text>
+          {/* Payment & Vehicle Info */}
+          <View style={styles.infoGrid}>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Payment</Text>
+              <View style={styles.infoValueContainer}>
+                <Icon
+                  name={rideData.paymentMethod === 'cash' ? 'money' : 'credit-card'}
+                  size={16}
+                  color="#666"
+                />
+                <Text style={styles.infoValue}>
+                  {rideData.paymentMethod === 'cash' ? 'Cash' : 'Mobile Money'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Vehicle</Text>
+              <Text style={styles.infoValue}>{rideData.vehicleType || 'Kabaza'}</Text>
             </View>
           </View>
 
-          {/* Rating Slider (for completion) */}
-          {rideStatus === 'on_trip' && (
+          {/* Special Requests */}
+          {rideData.specialRequests && (
+            <View style={styles.specialRequests}>
+              <Text style={styles.specialRequestsTitle}>Special Requests</Text>
+              <Text style={styles.specialRequestsText}>{rideData.specialRequests}</Text>
+            </View>
+          )}
+
+          {/* Rating Section */}
+          {rideStatus === RIDE_STATUSES.ON_TRIP && (
             <View style={styles.ratingSection}>
               <Text style={styles.ratingLabel}>Rate Passenger (Optional)</Text>
               <Slider
@@ -1075,9 +1524,9 @@ export default function ActiveRideScreen({ navigation, route }) {
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Icon
                     key={star}
-                    name="star"
+                    name={star <= passengerRating ? "star" : "star-o"}
                     size={24}
-                    color={star <= passengerRating ? '#FFD700' : '#ddd'}
+                    color="#FFD700"
                   />
                 ))}
                 <Text style={styles.ratingValue}>{passengerRating.toFixed(1)}</Text>
@@ -1089,6 +1538,7 @@ export default function ActiveRideScreen({ navigation, route }) {
                 onChangeText={setRideReview}
                 multiline
                 numberOfLines={2}
+                placeholderTextColor="#999"
               />
             </View>
           )}
@@ -1100,55 +1550,150 @@ export default function ActiveRideScreen({ navigation, route }) {
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={handleCancelRide}
-              disabled={isLoading}
+              disabled={isLoading || rideStatus === RIDE_STATUSES.COMPLETED}
             >
               <Icon name="times" size={20} color="#666" />
               <Text style={styles.secondaryButtonText}>
-                {rideStatus === 'completed' ? 'Close' : 'Cancel Ride'}
+                {rideStatus === RIDE_STATUSES.COMPLETED ? 'Close' : 'Cancel Ride'}
               </Text>
-            </TouchableOpacity>
-            
-            {/* Emergency/SOS Button */}
-            <TouchableOpacity
-              style={styles.emergencyButton}
-              onPress={() => {
-                Alert.alert(
-                  'SOS Emergency',
-                  'Are you sure you want to trigger emergency alert?',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Call Emergency',
-                      style: 'destructive',
-                      onPress: () => {
-                        // Implement emergency call
-                        console.log('Emergency triggered');
-                      },
-                    },
-                  ]
-                );
-              }}
-            >
-              <Icon name="exclamation-triangle" size={20} color="#fff" />
-              <Text style={styles.emergencyButtonText}>SOS Emergency</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       </Animated.View>
 
       {/* Chat Interface */}
-      {renderChatInterface()}
+      {isChatOpen && (
+        <View style={styles.chatContainer}>
+          <View style={styles.chatHeader}>
+            <View style={styles.chatHeaderLeft}>
+              <View style={styles.chatAvatar}>
+                <Text style={styles.chatAvatarText}>
+                  {rideData.passengerName?.charAt(0)?.toUpperCase() || 'P'}
+                </Text>
+              </View>
+              <View>
+                <Text style={styles.chatTitle}>{rideData.passengerName || 'Passenger'}</Text>
+                <Text style={styles.chatSubtitle}>
+                  {isTyping ? 'Typing...' : 'Online'}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => setIsChatOpen(false)}>
+              <Icon name="times" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView 
+            style={styles.chatMessages}
+            ref={scrollViewRef => {
+              if (scrollViewRef) {
+                setTimeout(() => {
+                  scrollViewRef.scrollToEnd({ animated: true });
+                }, 100);
+              }
+            }}
+          >
+            {chatMessages.map((msg, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.messageBubble,
+                  msg.senderId === user?.id ? styles.sentMessage : styles.receivedMessage,
+                ]}
+              >
+                <Text style={[
+                  styles.messageText,
+                  msg.senderId === user?.id && styles.sentMessageText
+                ]}>
+                  {msg.message}
+                </Text>
+                <Text style={styles.messageTime}>
+                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </View>
+            ))}
+            {isTyping && (
+              <View style={styles.typingIndicator}>
+                <Text style={styles.typingText}>Passenger is typing...</Text>
+              </View>
+            )}
+          </ScrollView>
+          
+          <View style={styles.chatInputContainer}>
+            <TextInput
+              style={styles.chatInput}
+              value={newMessage}
+              onChangeText={setNewMessage}
+              onChange={() => sendTypingIndicator(true)}
+              onBlur={() => sendTypingIndicator(false)}
+              placeholder="Type a message..."
+              placeholderTextColor="#999"
+              multiline
+              maxLength={500}
+            />
+            <TouchableOpacity 
+              style={[
+                styles.sendButton,
+                !newMessage.trim() && styles.sendButtonDisabled
+              ]} 
+              onPress={sendMessage}
+              disabled={!newMessage.trim()}
+            >
+              <Icon name="send" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
 
 // ====================
-// STYLES
+// STYLES (Enhanced)
 // ====================
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   map: { flex: 1 },
+  
+  // Connection Status
+  connectionStatus: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 100 : 80,
+    right: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+    zIndex: 1000,
+  },
+  connectionStatusText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 5,
+  },
+  
+  // Battery Warning
+  batteryWarning: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 140 : 120,
+    right: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 152, 0, 0.9)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+    zIndex: 1000,
+  },
+  batteryWarningText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '500',
+    marginLeft: 5,
+  },
   
   // Header
   headerOverlay: {
@@ -1175,9 +1720,32 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  headerInfo: { alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
-  headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.8)', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  headerInfo: { 
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 10,
+  },
+  headerTitle: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: '#fff', 
+    textShadowColor: 'rgba(0,0,0,0.75)', 
+    textShadowOffset: { width: 0, height: 1 }, 
+    textShadowRadius: 3 
+  },
+  headerSubtitle: { 
+    fontSize: 12, 
+    color: 'rgba(255,255,255,0.8)', 
+    textShadowColor: 'rgba(0,0,0,0.75)', 
+    textShadowOffset: { width: 0, height: 1 }, 
+    textShadowRadius: 3,
+    marginTop: 2,
+  },
+  locationUpdateTime: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 2,
+  },
   chatButton: {
     width: 40,
     height: 40,
@@ -1202,18 +1770,81 @@ const styles = StyleSheet.create({
     height: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 4,
   },
-  chatBadgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
+  chatBadgeText: { 
+    color: '#fff', 
+    fontSize: 10, 
+    fontWeight: 'bold' 
+  },
+  
+  // Emergency Floating Button
+  emergencyFloatingButton: {
+    position: 'absolute',
+    bottom: height * 0.4,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FF6B6B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+  },
   
   // Loading
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
-  loadingText: { marginTop: 10, fontSize: 16, color: '#666' },
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: '#fff' 
+  },
+  loadingText: { 
+    marginTop: 10, 
+    fontSize: 16, 
+    color: '#666' 
+  },
   
   // Map Markers
-  markerContainer: { alignItems: 'center', justifyContent: 'center' },
-  pickupMarker: { backgroundColor: '#fff', borderRadius: 20, padding: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
-  destinationMarker: { backgroundColor: '#fff', borderRadius: 15, padding: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
-  driverMarker: { backgroundColor: '#fff', borderRadius: 20, padding: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 6 },
+  markerContainer: { 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  pickupMarker: { 
+    backgroundColor: '#fff', 
+    borderRadius: 20, 
+    padding: 5, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.2, 
+    shadowRadius: 4, 
+    elevation: 4 
+  },
+  destinationMarker: { 
+    backgroundColor: '#fff', 
+    borderRadius: 15, 
+    padding: 5, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.2, 
+    shadowRadius: 4, 
+    elevation: 4 
+  },
+  driverMarker: { 
+    backgroundColor: '#fff', 
+    borderRadius: 20, 
+    padding: 8, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 3 }, 
+    shadowOpacity: 0.3, 
+    shadowRadius: 6, 
+    elevation: 6 
+  },
   
   // Info Panel
   infoPanel: {
@@ -1231,6 +1862,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 10,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   
   // Passenger Section
@@ -1253,14 +1887,43 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  avatarText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-  passengerDetails: { flex: 1 },
-  passengerName: { fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 2 },
-  ratingContainer: { flexDirection: 'row', alignItems: 'center' },
-  rating: { fontSize: 14, color: '#666', marginLeft: 5, marginRight: 10 },
-  phone: { fontSize: 14, color: '#666' },
-  timerContainer: { alignItems: 'center' },
-  timer: { fontSize: 18, fontWeight: '600', color: '#00B894', marginTop: 2 },
+  avatarText: { 
+    color: '#fff', 
+    fontSize: 24, 
+    fontWeight: 'bold' 
+  },
+  passengerDetails: { 
+    flex: 1 
+  },
+  passengerName: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    color: '#333', 
+    marginBottom: 2 
+  },
+  ratingContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  rating: { 
+    fontSize: 14, 
+    color: '#666', 
+    marginLeft: 5, 
+    marginRight: 10 
+  },
+  phone: { 
+    fontSize: 14, 
+    color: '#666' 
+  },
+  timerContainer: { 
+    alignItems: 'center' 
+  },
+  timer: { 
+    fontSize: 18, 
+    fontWeight: '600', 
+    color: '#00B894', 
+    marginTop: 2 
+  },
   
   // Status Indicator
   statusContainer: { 
@@ -1270,17 +1933,22 @@ const styles = StyleSheet.create({
     marginBottom: 25,
     paddingHorizontal: 10,
   },
-  statusIndicator: { alignItems: 'center', flex: 1 },
+  statusIndicator: { 
+    alignItems: 'center', 
+    flex: 1 
+  },
   statusDot: { 
-    width: 24, 
-    height: 24, 
-    borderRadius: 12, 
+    width: 30, 
+    height: 30, 
+    borderRadius: 15, 
     backgroundColor: '#e0e0e0',
     marginBottom: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  activeDot: { backgroundColor: '#00B894' },
+  activeDot: { 
+    backgroundColor: '#00B894' 
+  },
   currentDot: { 
     backgroundColor: '#00B894',
     shadowColor: '#00B894',
@@ -1289,8 +1957,16 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  statusText: { fontSize: 12, color: '#999', fontWeight: '500' },
-  activeText: { color: '#00B894', fontWeight: '600' },
+  statusText: { 
+    fontSize: 12, 
+    color: '#999', 
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  activeText: { 
+    color: '#00B894', 
+    fontWeight: '600' 
+  },
   statusLine: { 
     flex: 1, 
     height: 3, 
@@ -1298,7 +1974,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
     marginBottom: 10,
   },
-  activeLine: { backgroundColor: '#00B894' },
+  activeLine: { 
+    backgroundColor: '#00B894' 
+  },
   
   // Stats
   statsContainer: {
@@ -1310,10 +1988,58 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 20,
   },
-  statItem: { alignItems: 'center', flex: 1 },
-  statValue: { fontSize: 18, fontWeight: 'bold', color: '#333', marginTop: 5 },
-  statLabel: { fontSize: 12, color: '#666', marginTop: 2 },
-  statDivider: { width: 1, height: 30, backgroundColor: '#e0e0e0' },
+  statItem: { 
+    alignItems: 'center', 
+    flex: 1 
+  },
+  statValue: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: '#333', 
+    marginTop: 5 
+  },
+  statLabel: { 
+    fontSize: 12, 
+    color: '#666', 
+    marginTop: 2 
+  },
+  statDivider: { 
+    width: 1, 
+    height: 30, 
+    backgroundColor: '#e0e0e0' 
+  },
+  
+  // Detailed Stats
+  detailedStats: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 20,
+  },
+  detailedStatsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 10,
+  },
+  detailedStatsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  detailedStatItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  detailedStatValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 2,
+  },
+  detailedStatLabel: {
+    fontSize: 11,
+    color: '#666',
+  },
   
   // Route Section
   routeSection: { 
@@ -1324,7 +2050,7 @@ const styles = StyleSheet.create({
   },
   routeItem: { 
     flexDirection: 'row', 
-    alignItems: 'flex-start', 
+    alignItems: 'center', 
     marginVertical: 8,
   },
   routeIcon: { 
@@ -1332,29 +2058,95 @@ const styles = StyleSheet.create({
     marginRight: 15,
     width: 12,
   },
+  routeDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
   routeLine: {
     width: 1,
     height: 25,
     backgroundColor: '#ccc',
     marginVertical: 2,
   },
-  routeTextContainer: { flex: 1 },
-  routeLabel: { fontSize: 12, color: '#999', marginBottom: 2, fontWeight: '500' },
-  routeAddress: { fontSize: 14, color: '#333', lineHeight: 20 },
-  
-  // Payment Section
-  paymentSection: {
+  routeTextContainer: { 
+    flex: 1 
+  },
+  routeLabel: { 
+    fontSize: 12, 
+    color: '#999', 
+    marginBottom: 2, 
+    fontWeight: '500' 
+  },
+  routeAddress: { 
+    fontSize: 14, 
+    color: '#333', 
+    lineHeight: 20 
+  },
+  navigateButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginLeft: 10,
+  },
+  navigateButtonText: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontWeight: '600',
+    marginLeft: 5,
+  },
+  
+  // Info Grid
+  infoGrid: {
+    flexDirection: 'row',
     backgroundColor: '#f8f9fa',
     borderRadius: 15,
     padding: 15,
     marginBottom: 20,
   },
-  paymentLabel: { fontSize: 14, color: '#666', fontWeight: '500' },
-  paymentMethod: { flexDirection: 'row', alignItems: 'center' },
-  paymentText: { fontSize: 16, color: '#333', fontWeight: '600', marginLeft: 10 },
+  infoItem: {
+    flex: 1,
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 5,
+    fontWeight: '500',
+  },
+  infoValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoValue: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  
+  // Special Requests
+  specialRequests: {
+    backgroundColor: '#FFF3E0',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#FFE0B2',
+  },
+  specialRequestsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF9800',
+    marginBottom: 5,
+  },
+  specialRequestsText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+  },
   
   // Rating Section
   ratingSection: {
@@ -1363,15 +2155,28 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 20,
   },
-  ratingLabel: { fontSize: 14, color: '#666', marginBottom: 10, fontWeight: '500' },
-  ratingSlider: { width: '100%', height: 40 },
+  ratingLabel: { 
+    fontSize: 14, 
+    color: '#666', 
+    marginBottom: 10, 
+    fontWeight: '500' 
+  },
+  ratingSlider: { 
+    width: '100%', 
+    height: 40 
+  },
   ratingStars: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'center',
     marginTop: 10,
   },
-  ratingValue: { fontSize: 16, fontWeight: 'bold', color: '#333', marginLeft: 10 },
+  ratingValue: { 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    color: '#333', 
+    marginLeft: 10 
+  },
   reviewInput: {
     backgroundColor: '#fff',
     borderRadius: 10,
@@ -1386,22 +2191,28 @@ const styles = StyleSheet.create({
   },
   
   // Actions
-  actions: { gap: 12, marginTop: 10 },
+  actions: { 
+    gap: 12, 
+    marginTop: 10 
+  },
   primaryButton: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'center',
-    backgroundColor: '#00B894', 
     padding: 18, 
     borderRadius: 12,
     gap: 12,
-    shadowColor: '#00B894',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 6,
   },
-  primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  primaryButtonText: { 
+    color: '#fff', 
+    fontSize: 16, 
+    fontWeight: 'bold' 
+  },
   secondaryButton: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -1413,18 +2224,11 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
     gap: 12,
   },
-  secondaryButtonText: { color: '#666', fontSize: 16, fontWeight: '600' },
-  emergencyButton: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    backgroundColor: '#FF6B6B', 
-    padding: 18, 
-    borderRadius: 12,
-    gap: 12,
-    marginTop: 5,
+  secondaryButtonText: { 
+    color: '#666', 
+    fontSize: 16, 
+    fontWeight: '600' 
   },
-  emergencyButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   
   // Chat
   chatContainer: {
@@ -1441,6 +2245,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 10,
+    zIndex: 2000,
   },
   chatHeader: {
     flexDirection: 'row',
@@ -1450,8 +2255,38 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  chatTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  chatMessages: { flex: 1, padding: 15 },
+  chatHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chatAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#00B894',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  chatAvatarText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  chatTitle: { 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    color: '#333' 
+  },
+  chatSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  chatMessages: { 
+    flex: 1, 
+    padding: 15 
+  },
   messageBubble: {
     maxWidth: '80%',
     padding: 12,
@@ -1468,9 +2303,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     borderBottomLeftRadius: 4,
   },
-  messageText: { fontSize: 14, color: '#333' },
-  sentMessageText: { color: '#fff' },
-  messageTime: { fontSize: 10, color: '#999', marginTop: 4, alignSelf: 'flex-end' },
+  messageText: { 
+    fontSize: 14, 
+    color: '#333',
+    lineHeight: 20,
+  },
+  sentMessageText: { 
+    color: '#fff' 
+  },
+  messageTime: { 
+    fontSize: 10, 
+    color: '#999', 
+    marginTop: 4, 
+    alignSelf: 'flex-end' 
+  },
   typingIndicator: {
     alignSelf: 'flex-start',
     padding: 10,
@@ -1478,12 +2324,17 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     marginBottom: 10,
   },
-  typingText: { fontSize: 14, color: '#666', fontStyle: 'italic' },
+  typingText: { 
+    fontSize: 14, 
+    color: '#666', 
+    fontStyle: 'italic' 
+  },
   chatInputContainer: {
     flexDirection: 'row',
     padding: 15,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+    alignItems: 'flex-end',
   },
   chatInput: {
     flex: 1,
@@ -1493,6 +2344,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     marginRight: 10,
+    maxHeight: 100,
+    minHeight: 40,
   },
   sendButton: {
     width: 44,
@@ -1501,5 +2354,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#00B894',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#ccc',
   },
 });

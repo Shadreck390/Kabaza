@@ -14,7 +14,7 @@ import {
   Easing,
   ActivityIndicator,
   PermissionsAndroid,
-  RefreshControl  // ADD THIS LINE
+  RefreshControl
 } from 'react-native';
 import { ErrorBoundary } from 'react-error-boundary';
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -22,11 +22,23 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSelector } from 'react-redux';
-
-// FIXED IMPORT:
 import socketService from '@services/socket/socketService';
 
-export default function RideRequestsScreen({ navigation }) {
+// Error Fallback Component
+function ErrorFallback({ error, resetErrorBoundary }) {
+  return (
+    <View style={styles.errorContainer}>
+      <Icon name="exclamation-triangle" size={60} color="#FF6B6B" />
+      <Text style={styles.errorTitle}>Something went wrong</Text>
+      <Text style={styles.errorText}>{error.message}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={resetErrorBoundary}>
+        <Text style={styles.retryText}>Try Again</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function RideRequestsScreen({ navigation }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,13 +81,14 @@ export default function RideRequestsScreen({ navigation }) {
     requestLocationPermission();
     
     // Listen for app state changes
-    AppState.addEventListener('change', handleAppStateChange);
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
     
     // Load saved settings
     loadSettings();
     
     return () => {
       cleanup();
+      subscription.remove();
     };
   }, []);
 
@@ -692,10 +705,6 @@ export default function RideRequestsScreen({ navigation }) {
     
     // Stop location tracking
     stopLocationTracking();
-    
-    // Remove app state listener
-    const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
-    appStateSubscription?.remove();
   };
 
   const renderConnectionStatus = () => {
@@ -922,75 +931,100 @@ export default function RideRequestsScreen({ navigation }) {
   const filteredRequests = getFilteredRequests();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>Ride Requests</Text>
-          {renderConnectionStatus()}
-        </View>
-        <Text style={styles.subtitle}>New requests from passengers</Text>
-        
-        {renderFilters()}
-        
-        <Animated.View style={[styles.newRequestIndicator, { opacity: fadeAnim }]}>
-          <Icon name="bell" size={12} color="#FFD700" />
-          <Text style={styles.newRequestText}>Listening for new requests...</Text>
-        </Animated.View>
-      </View>
-
-      <ScrollView 
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={refreshRequests}
-            colors={['#00B894']}
-            tintColor="#00B894"
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {filteredRequests.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Icon name="bell-slash" size={60} color="#ccc" />
-            <Text style={styles.emptyText}>No ride requests at the moment</Text>
-            <Text style={styles.emptySubtext}>
-              {connectionStatus === 'connected' 
-                ? 'You will be notified when new rides come in'
-                : 'Connect to internet to receive ride requests'
-              }
-            </Text>
-            {connectionStatus !== 'connected' && (
-              <TouchableOpacity 
-                style={styles.retryButton}
-                onPress={initializeRealTimeRequests}
-              >
-                <Text style={styles.retryText}>Retry Connection</Text>
-              </TouchableOpacity>
-            )}
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <Text style={styles.title}>Ride Requests</Text>
+            {renderConnectionStatus()}
           </View>
-        ) : (
-          <>
-            <Text style={styles.resultsCount}>
-              {filteredRequests.length} ride{filteredRequests.length !== 1 ? 's' : ''} available
-            </Text>
-            {filteredRequests.map(renderRequestCard)}
-          </>
-        )}
-      </ScrollView>
+          <Text style={styles.subtitle}>New requests from passengers</Text>
+          
+          {renderFilters()}
+          
+          <Animated.View style={[styles.newRequestIndicator, { opacity: fadeAnim }]}>
+            <Icon name="bell" size={12} color="#FFD700" />
+            <Text style={styles.newRequestText}>Listening for new requests...</Text>
+          </Animated.View>
+        </View>
 
-      <TouchableOpacity 
-        style={styles.floatingButton}
-        onPress={() => navigation.navigate('DriverProfile')}
-      >
-        <Icon name="user" size={20} color="#fff" />
-      </TouchableOpacity>
-    </View>
+        <ScrollView 
+          style={styles.scrollView}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={refreshRequests}
+              colors={['#00B894']}
+              tintColor="#00B894"
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {filteredRequests.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Icon name="bell-slash" size={60} color="#ccc" />
+              <Text style={styles.emptyText}>No ride requests at the moment</Text>
+              <Text style={styles.emptySubtext}>
+                {connectionStatus === 'connected' 
+                  ? 'You will be notified when new rides come in'
+                  : 'Connect to internet to receive ride requests'
+                }
+              </Text>
+              {connectionStatus !== 'connected' && (
+                <TouchableOpacity 
+                  style={styles.retryButton}
+                  onPress={initializeRealTimeRequests}
+                >
+                  <Text style={styles.retryText}>Retry Connection</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <>
+              <Text style={styles.resultsCount}>
+                {filteredRequests.length} ride{filteredRequests.length !== 1 ? 's' : ''} available
+              </Text>
+              {filteredRequests.map(renderRequestCard)}
+            </>
+          )}
+        </ScrollView>
+
+        <TouchableOpacity 
+          style={styles.floatingButton}
+          onPress={() => navigation.navigate('DriverProfile')}
+        >
+          <Icon name="user" size={20} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </ErrorBoundary>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#f8f9fa' 
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1018,8 +1052,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 5,
   },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#333' },
-  subtitle: { fontSize: 14, color: '#666', marginBottom: 15 },
+  title: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: '#333' 
+  },
+  subtitle: { 
+    fontSize: 14, 
+    color: '#666', 
+    marginBottom: 15 
+  },
   connectionStatus: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1146,7 +1188,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 15,
   },
-  passengerInfo: { flexDirection: 'row', alignItems: 'center' },
+  passengerInfo: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
   avatar: { 
     width: 40, 
     height: 40, 
@@ -1156,15 +1201,27 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     marginRight: 10 
   },
-  avatarText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  passengerName: { fontSize: 16, fontWeight: '600', color: '#333' },
+  avatarText: { 
+    color: '#fff', 
+    fontSize: 18, 
+    fontWeight: 'bold' 
+  },
+  passengerName: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#333' 
+  },
   ratingContainer: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     marginTop: 2,
     gap: 5,
   },
-  rating: { fontSize: 12, color: '#666', marginLeft: 2 },
+  rating: { 
+    fontSize: 12, 
+    color: '#666', 
+    marginLeft: 2 
+  },
   surgeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1180,7 +1237,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
-  timeAgo: { fontSize: 12, color: '#999' },
+  timeAgo: { 
+    fontSize: 12, 
+    color: '#999' 
+  },
   timeRemaining: {
     fontSize: 11,
     color: '#F44336',
@@ -1194,11 +1254,29 @@ const styles = StyleSheet.create({
     overflow: 'hidden', 
     marginBottom: 15 
   },
-  map: { flex: 1 },
-  routeInfo: { marginBottom: 10 },
-  routeItem: { flexDirection: 'row', alignItems: 'center', marginVertical: 5 },
-  routeText: { fontSize: 14, color: '#333', marginLeft: 10, flex: 1 },
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 5, marginLeft: 26 },
+  map: { 
+    flex: 1 
+  },
+  routeInfo: { 
+    marginBottom: 10 
+  },
+  routeItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginVertical: 5 
+  },
+  routeText: { 
+    fontSize: 14, 
+    color: '#333', 
+    marginLeft: 10, 
+    flex: 1 
+  },
+  divider: { 
+    height: 1, 
+    backgroundColor: '#eee', 
+    marginVertical: 5, 
+    marginLeft: 26 
+  },
   specialRequest: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1219,14 +1297,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 5,
   },
-  fareInfo: { flex: 1 },
-  distance: { fontSize: 14, color: '#666', marginBottom: 5 },
+  fareInfo: { 
+    flex: 1 
+  },
+  distance: { 
+    fontSize: 14, 
+    color: '#666', 
+    marginBottom: 5 
+  },
   fareContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  fare: { fontSize: 18, fontWeight: 'bold', color: '#00B894' },
+  fare: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: '#00B894' 
+  },
   paymentMethod: {
     fontSize: 12,
     color: '#666',
@@ -1235,7 +1323,10 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 4,
   },
-  actions: { flexDirection: 'row', gap: 10 },
+  actions: { 
+    flexDirection: 'row', 
+    gap: 10 
+  },
   rejectButton: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -1245,7 +1336,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FF6B6B',
   },
-  rejectText: { color: '#FF6B6B', marginLeft: 5, fontWeight: '600' },
+  rejectText: { 
+    color: '#FF6B6B', 
+    marginLeft: 5, 
+    fontWeight: '600' 
+  },
   acceptButton: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -1254,7 +1349,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#00B894',
   },
-  acceptText: { color: '#fff', marginLeft: 5, fontWeight: '600' },
+  acceptText: { 
+    color: '#fff', 
+    marginLeft: 5, 
+    fontWeight: '600' 
+  },
   floatingButton: {
     position: 'absolute',
     bottom: 20,
@@ -1272,3 +1371,5 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
 });
+
+export default RideRequestsScreen;

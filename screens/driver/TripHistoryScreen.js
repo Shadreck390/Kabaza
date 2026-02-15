@@ -17,17 +17,30 @@ import {
   Modal,
   TextInput
 } from 'react-native';
+import { ErrorBoundary } from 'react-error-boundary';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSelector } from 'react-redux';
-import RNFS from 'react-native-fs';           // Changed from expo-file-system
-import { Share} from 'react-native';      // This one can stay as is
+import RNFS from 'react-native-fs';
+import Share from 'react-native-share';
 import { captureRef } from 'react-native-view-shot';
-
-// FIXED IMPORT:
 import socketService from '@services/socket/socketService';
 
-export default function TripHistoryScreen({ navigation }) {
+// Error Fallback Component
+function ErrorFallback({ error, resetErrorBoundary }) {
+  return (
+    <View style={styles.errorContainer}>
+      <Icon name="exclamation-triangle" size={60} color="#FF6B6B" />
+      <Text style={styles.errorTitle}>Something went wrong</Text>
+      <Text style={styles.errorText}>{error.message}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={resetErrorBoundary}>
+        <Text style={styles.retryText}>Try Again</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function TripHistoryScreen({ navigation }) {
   const [selectedFilter, setSelectedFilter] = useState('week');
   const [tripData, setTripData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -245,6 +258,7 @@ export default function TripHistoryScreen({ navigation }) {
       const cachedHistory = await AsyncStorage.getItem('cached_trip_history');
       const cachedStats = await AsyncStorage.getItem('cached_trip_stats');
       const cachedAnalytics = await AsyncStorage.getItem('cached_trip_analytics');
+      const cachedLiveUpdates = await AsyncStorage.getItem('trip_history_live_updates');
       
       if (cachedHistory) {
         const parsedHistory = JSON.parse(cachedHistory);
@@ -267,6 +281,10 @@ export default function TripHistoryScreen({ navigation }) {
       
       if (cachedAnalytics) {
         setAnalytics(JSON.parse(cachedAnalytics));
+      }
+      
+      if (cachedLiveUpdates) {
+        setLiveUpdates(JSON.parse(cachedLiveUpdates));
       }
       
     } catch (error) {
@@ -734,45 +752,53 @@ export default function TripHistoryScreen({ navigation }) {
   };
 
   const exportToCSV = async (trips) => {
-  try {
-    // Create CSV Content
-    const headers = ['Trip ID,Date,Passenger,Pickup,Destination,Fare,Tip,Total,Distance,Duration,Rating,Payment Method,Status'];
-    const rows = trips.map(trip =>
-      `"${trip.id}","${trip.date}","${trip.passengerName}","${trip.pickup}","${trip.destination}",${trip.originalFare},${trip.tip || 0},${(trip.originalFare || 0) + (trip.tip || 0)},"${trip.distance}","${trip.duration}",${trip.rating},"${trip.paymentMethod}","${trip.status}"`
-    );
+    try {
+      // Create CSV Content
+      const headers = ['Trip ID,Date,Passenger,Pickup,Destination,Fare,Tip,Total,Distance,Duration,Rating,Payment Method,Status'];
+      const rows = trips.map(trip =>
+        `"${trip.id}","${trip.date}","${trip.passengerName}","${trip.pickup}","${trip.destination}",${trip.originalFare},${trip.tip || 0},${(trip.originalFare || 0) + (trip.tip || 0)},"${trip.distance}","${trip.duration}",${trip.rating},"${trip.paymentMethod}","${trip.status}"`
+      );
 
-    const csvContent = [...headers, ...rows].join('\n');
-    const fileName = `Kabaza_TripHistory_${new Date().toISOString().split('T')[0]}.csv`;
+      const csvContent = [...headers, ...rows].join('\n');
+      const fileName = `Kabaza_TripHistory_${new Date().toISOString().split('T')[0]}.csv`;
 
-    // Use react-native-fs instead of expo-file-system
-    const fileUri = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+      // Use react-native-fs
+      const fileUri = `${RNFS.DocumentDirectoryPath}/${fileName}`;
 
-    // Write file with react-native-fs
-    await RNFS.writeFile(fileUri, csvContent, 'utf8');
-    console.log('CSV file saved to:', fileUri);
+      // Write file with react-native-fs
+      await RNFS.writeFile(fileUri, csvContent, 'utf8');
+      console.log('CSV file saved to:', fileUri);
 
-    // Check if file exists
-    const fileExists = await RNFS.exists(fileUri);
-    if (fileExists) {
-      try {
-        // Use React Native's Share API instead of expo-sharing
-        await Share.share({
-          url: Platform.OS === 'ios' ? fileUri : `file://${fileUri}`,
-          title: 'Share Trip History',
-          message: Platform.OS === 'android' ? 'Here is my trip history export' : undefined,
-        });
-      } catch (shareError) {
-        console.error('Share failed:', shareError);
-        Alert.alert('Share Failed', 'Could not share the file', [{ text: 'OK' }]);
+      // Check if file exists
+      const fileExists = await RNFS.exists(fileUri);
+      if (fileExists) {
+        try {
+          // Use react-native-share
+          const shareOptions = {
+            title: 'Share Trip History',
+            url: `file://${fileUri}`,
+            type: 'text/csv',
+            subject: 'Kabaza Trip History Export',
+          };
+
+          if (Platform.OS === 'android') {
+            shareOptions.message = 'Here is my trip history export';
+          }
+
+          await Share.open(shareOptions);
+        } catch (shareError) {
+          console.error('Share failed:', shareError);
+          Alert.alert('Export Complete', `File saved to: ${fileUri}`, [{ text: 'OK' }]);
+        }
+      } else {
+        Alert.alert('Export Failed', 'Could not save CSV file', [{ text: 'OK' }]);
       }
-    } else {
-      Alert.alert('Export Failed', 'Could not save CSV file', [{ text: 'OK' }]);
+    } catch (error) {
+      console.error('CSV export error:', error);
+      Alert.alert('Export Failed', error.message, [{ text: 'OK' }]);
     }
-  } catch (error) {
-    console.error('CSV export error:', error);
-    Alert.alert('Export Failed', error.message, [{ text: 'OK' }]);
-  }
-};
+  };
+
   const exportToPDF = async () => {
     try {
       // Capture view as image
@@ -781,7 +807,6 @@ export default function TripHistoryScreen({ navigation }) {
         quality: 0.8,
       });
       
-      // In a real app, you would convert this to PDF
       Alert.alert(
         'PDF Export',
         'PDF export would be implemented with a PDF generation library',
@@ -837,9 +862,6 @@ export default function TripHistoryScreen({ navigation }) {
     
     // Save filters
     saveFilters();
-    
-    // Remove app state listener
-    AppState.removeEventListener?.('change', handleAppStateChange);
   };
 
   const renderConnectionStatus = () => {
@@ -958,267 +980,303 @@ export default function TripHistoryScreen({ navigation }) {
   }
 
   return (
-    <Animated.View ref={viewRef} style={{ flex: 1, opacity: fadeAnim }}>
-      <ScrollView 
-        ref={scrollViewRef}
-        style={styles.container}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={refreshHistory}
-            colors={['#00B894']}
-            tintColor="#00B894"
-          />
-        }
-      >
-        {/* Header with Connection Status */}
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <Text style={styles.headerTitle}>Trip History</Text>
-            {renderConnectionStatus()}
-          </View>
-          
-          <View style={styles.headerActions}>
-            <TouchableOpacity 
-              style={styles.searchButton}
-              onPress={() => setShowSearch(!showSearch)}
-            >
-              <Icon name="search" size={16} color="#666" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.filterButton}
-              onPress={() => navigation.navigate('TripHistoryFilters', { filters, setFilters })}
-            >
-              <Icon name="filter" size={16} color="#666" />
-              {Object.values(filters).some(filter => 
-                filter !== 'week' && filter !== 0 && filter !== 'all' && filter !== 10000
-              ) && (
-                <View style={styles.filterIndicator} />
-              )}
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.liveButton}
-              onPress={toggleLiveUpdates}
-            >
-              <Icon 
-                name="wifi" 
-                size={16} 
-                color={liveUpdates ? "#00B894" : "#ccc"} 
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Search Bar */}
-        {showSearch && (
-          <View style={styles.searchContainer}>
-            <Icon name="search" size={16} color="#999" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search trips by passenger, location, or ID..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor="#999"
-              autoFocus
-            />
-            {searchQuery ? (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Icon name="times" size={16} color="#999" />
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        )}
-
-        {/* New Trips Indicator */}
-        {newTripsCount > 0 && (
-          <TouchableOpacity 
-            style={styles.newTripsBanner}
-            onPress={clearNewTripsCount}
-          >
-            <Icon name="bell" size={14} color="#fff" />
-            <Text style={styles.newTripsText}>
-              {newTripsCount} new trip{newTripsCount !== 1 ? 's' : ''} completed
-            </Text>
-            <Icon name="times" size={12} color="#fff" />
-          </TouchableOpacity>
-        )}
-
-        {/* Earnings Summary */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryHeader}>
-            <Text style={styles.summaryTitle}>
-              Earnings ({selectedFilter.charAt(0).toUpperCase() + selectedFilter.slice(1)})
-            </Text>
-            {lastSync && (
-              <Text style={styles.syncText}>
-                Synced: {new Date(lastSync).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-              </Text>
-            )}
-          </View>
-          
-          <Text style={styles.summaryAmount}>
-            MWK {currentStats.earnings.toLocaleString()}
-          </Text>
-          
-          <View style={styles.summarySubtitle}>
-            <Text style={styles.tripCount}>
-              {currentStats.trips} trip{currentStats.trips !== 1 ? 's' : ''}
-            </Text>
-            <Text style={styles.averageFare}>
-              Avg: MWK {analytics.averageFare.toLocaleString()}
-            </Text>
-          </View>
-          
-          <View style={styles.filterContainer}>
-            {['today', 'week', 'month', 'total'].map((filter) => (
-              <TouchableOpacity
-                key={filter}
-                style={[
-                  styles.filterButtonSmall,
-                  selectedFilter === filter && styles.filterButtonActive
-                ]}
-                onPress={() => setSelectedFilter(filter)}
-              >
-                <Text style={[
-                  styles.filterText,
-                  selectedFilter === filter && styles.filterTextActive
-                ]}>
-                  {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Analytics Cards */}
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <Animated.View ref={viewRef} style={{ flex: 1, opacity: fadeAnim }}>
         <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          style={styles.analyticsContainer}
+          ref={scrollViewRef}
+          style={styles.container}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={refreshHistory}
+              colors={['#00B894']}
+              tintColor="#00B894"
+            />
+          }
         >
-          <View style={styles.analyticsCard}>
-            <Icon name="star" size={20} color="#FFD700" />
-            <Text style={styles.analyticsValue}>{analytics.averageRating}</Text>
-            <Text style={styles.analyticsLabel}>Avg Rating</Text>
+          {/* Header with Connection Status */}
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <Text style={styles.headerTitle}>Trip History</Text>
+              {renderConnectionStatus()}
+            </View>
+            
+            <View style={styles.headerActions}>
+              <TouchableOpacity 
+                style={styles.searchButton}
+                onPress={() => setShowSearch(!showSearch)}
+              >
+                <Icon name="search" size={16} color="#666" />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.filterButton}
+                onPress={() => navigation.navigate('TripHistoryFilters', { filters, setFilters })}
+              >
+                <Icon name="filter" size={16} color="#666" />
+                {Object.values(filters).some(filter => 
+                  filter !== 'week' && filter !== 0 && filter !== 'all' && filter !== 10000
+                ) && (
+                  <View style={styles.filterIndicator} />
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.liveButton}
+                onPress={toggleLiveUpdates}
+              >
+                <Icon 
+                  name="wifi" 
+                  size={16} 
+                  color={liveUpdates ? "#00B894" : "#ccc"} 
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-          
-          <View style={styles.analyticsCard}>
-            <Icon name="chart-line" size={20} color="#00B894" />
-            <Text style={styles.analyticsValue}>{analytics.monthlyGrowth}%</Text>
-            <Text style={styles.analyticsLabel}>Growth</Text>
-          </View>
-          
-          <View style={styles.analyticsCard}>
-            <Icon name="clock-o" size={20} color="#2196F3" />
-            <Text style={styles.analyticsValue}>
-              {analytics.peakHours[0]?.hour || '--:--'}
-            </Text>
-            <Text style={styles.analyticsLabel}>Peak Hour</Text>
-          </View>
-          
-          <View style={styles.analyticsCard}>
-            <Icon name="map-marker" size={20} color="#FF6B6B" />
-            <Text style={styles.analyticsValue}>
-              {analytics.popularDestinations[0]?.count || 0}
-            </Text>
-            <Text style={styles.analyticsLabel}>Top Destination</Text>
-          </View>
-        </ScrollView>
 
-        {/* Trip Count and Export */}
-        <View style={styles.tripCountContainer}>
-          <View>
-            <Text style={styles.tripCountText}>
-              {filteredTrips.length} trip{filteredTrips.length !== 1 ? 's' : ''} found
-            </Text>
-            {searchQuery && (
-              <Text style={styles.searchQueryText}>
-                Searching: "{searchQuery}"
+          {/* Search Bar */}
+          {showSearch && (
+            <View style={styles.searchContainer}>
+              <Icon name="search" size={16} color="#999" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search trips by passenger, location, or ID..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor="#999"
+                autoFocus
+              />
+              {searchQuery ? (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Icon name="times" size={16} color="#999" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          )}
+
+          {/* New Trips Indicator */}
+          {newTripsCount > 0 && (
+            <TouchableOpacity 
+              style={styles.newTripsBanner}
+              onPress={clearNewTripsCount}
+            >
+              <Icon name="bell" size={14} color="#fff" />
+              <Text style={styles.newTripsText}>
+                {newTripsCount} new trip{newTripsCount !== 1 ? 's' : ''} completed
               </Text>
-            )}
-          </View>
-          
-          <View style={styles.exportContainer}>
-            {exporting ? (
-              <ActivityIndicator size="small" color="#00B894" />
-            ) : (
-              <TouchableOpacity 
-                style={styles.exportButton}
-                onPress={handleExportData}
-                disabled={filteredTrips.length === 0}
-              >
-                <Icon name="download" size={16} color="#00B894" />
-                <Text style={styles.exportText}>Export CSV</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
+              <Icon name="times" size={12} color="#fff" />
+            </TouchableOpacity>
+          )}
 
-        {/* Trip List */}
-        {filteredTrips.length > 0 ? (
-          <FlatList
-            data={filteredTrips}
-            renderItem={renderTripItem}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            contentContainerStyle={styles.tripList}
-            initialNumToRender={10}
-            maxToRenderPerBatch={20}
-            windowSize={5}
-          />
-        ) : (
-          <View style={styles.emptyState}>
-            <Icon name="history" size={60} color="#ccc" />
-            <Text style={styles.emptyText}>
-              {searchQuery ? 'No matching trips found' : 'No trip history yet'}
+          {/* Earnings Summary */}
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryHeader}>
+              <Text style={styles.summaryTitle}>
+                Earnings ({selectedFilter.charAt(0).toUpperCase() + selectedFilter.slice(1)})
+              </Text>
+              {lastSync && (
+                <Text style={styles.syncText}>
+                  Synced: {new Date(lastSync).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </Text>
+              )}
+            </View>
+            
+            <Text style={styles.summaryAmount}>
+              MWK {currentStats.earnings.toLocaleString()}
             </Text>
-            <Text style={styles.emptySubtext}>
-              {searchQuery ? 'Try a different search term' : 'Your completed trips will appear here'}
-            </Text>
-            {searchQuery && (
-              <TouchableOpacity 
-                style={styles.clearSearchButton}
-                onPress={() => setSearchQuery('')}
-              >
-                <Text style={styles.clearSearchText}>Clear Search</Text>
-              </TouchableOpacity>
-            )}
+            
+            <View style={styles.summarySubtitle}>
+              <Text style={styles.tripCount}>
+                {currentStats.trips} trip{currentStats.trips !== 1 ? 's' : ''}
+              </Text>
+              <Text style={styles.averageFare}>
+                Avg: MWK {analytics.averageFare.toLocaleString()}
+              </Text>
+            </View>
+            
+            <View style={styles.filterContainer}>
+              {['today', 'week', 'month', 'total'].map((filter) => (
+                <TouchableOpacity
+                  key={filter}
+                  style={[
+                    styles.filterButtonSmall,
+                    selectedFilter === filter && styles.filterButtonActive
+                  ]}
+                  onPress={() => setSelectedFilter(filter)}
+                >
+                  <Text style={[
+                    styles.filterText,
+                    selectedFilter === filter && styles.filterTextActive
+                  ]}>
+                    {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        )}
 
-        {/* Sync Button */}
-        <TouchableOpacity 
-          style={styles.syncButton}
-          onPress={syncHistory}
-          disabled={connectionStatus !== 'connected'}
-        >
-          <Icon 
-            name="sync" 
-            size={16} 
-            color={connectionStatus === 'connected' ? "#fff" : "#ccc"} 
-          />
-          <Text style={[
-            styles.syncButtonText,
-            { color: connectionStatus === 'connected' ? "#fff" : "#ccc" }
-          ]}>
-            {connectionStatus === 'connected' ? 'Sync Now' : 'Offline'}
+          {/* Analytics Cards */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.analyticsContainer}
+          >
+            <View style={styles.analyticsCard}>
+              <Icon name="star" size={20} color="#FFD700" />
+              <Text style={styles.analyticsValue}>{analytics.averageRating}</Text>
+              <Text style={styles.analyticsLabel}>Avg Rating</Text>
+            </View>
+            
+            <View style={styles.analyticsCard}>
+              <Icon name="chart-line" size={20} color="#00B894" />
+              <Text style={styles.analyticsValue}>{analytics.monthlyGrowth}%</Text>
+              <Text style={styles.analyticsLabel}>Growth</Text>
+            </View>
+            
+            <View style={styles.analyticsCard}>
+              <Icon name="clock-o" size={20} color="#2196F3" />
+              <Text style={styles.analyticsValue}>
+                {analytics.peakHours[0]?.hour || '--:--'}
+              </Text>
+              <Text style={styles.analyticsLabel}>Peak Hour</Text>
+            </View>
+            
+            <View style={styles.analyticsCard}>
+              <Icon name="map-marker" size={20} color="#FF6B6B" />
+              <Text style={styles.analyticsValue}>
+                {analytics.popularDestinations[0]?.count || 0}
+              </Text>
+              <Text style={styles.analyticsLabel}>Top Destination</Text>
+            </View>
+          </ScrollView>
+
+          {/* Trip Count and Export */}
+          <View style={styles.tripCountContainer}>
+            <View>
+              <Text style={styles.tripCountText}>
+                {filteredTrips.length} trip{filteredTrips.length !== 1 ? 's' : ''} found
+              </Text>
+              {searchQuery && (
+                <Text style={styles.searchQueryText}>
+                  Searching: "{searchQuery}"
+                </Text>
+              )}
+            </View>
+            
+            <View style={styles.exportContainer}>
+              {exporting ? (
+                <ActivityIndicator size="small" color="#00B894" />
+              ) : (
+                <TouchableOpacity 
+                  style={styles.exportButton}
+                  onPress={handleExportData}
+                  disabled={filteredTrips.length === 0}
+                >
+                  <Icon name="download" size={16} color="#00B894" />
+                  <Text style={styles.exportText}>Export CSV</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Trip List */}
+          {filteredTrips.length > 0 ? (
+            <FlatList
+              data={filteredTrips}
+              renderItem={renderTripItem}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              contentContainerStyle={styles.tripList}
+              initialNumToRender={10}
+              maxToRenderPerBatch={20}
+              windowSize={5}
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <Icon name="history" size={60} color="#ccc" />
+              <Text style={styles.emptyText}>
+                {searchQuery ? 'No matching trips found' : 'No trip history yet'}
+              </Text>
+              <Text style={styles.emptySubtext}>
+                {searchQuery ? 'Try a different search term' : 'Your completed trips will appear here'}
+              </Text>
+              {searchQuery && (
+                <TouchableOpacity 
+                  style={styles.clearSearchButton}
+                  onPress={() => setSearchQuery('')}
+                >
+                  <Text style={styles.clearSearchText}>Clear Search</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* Sync Button */}
+          <TouchableOpacity 
+            style={styles.syncButton}
+            onPress={syncHistory}
+            disabled={connectionStatus !== 'connected'}
+          >
+            <Icon 
+              name="sync" 
+              size={16} 
+              color={connectionStatus === 'connected' ? "#fff" : "#ccc"} 
+            />
+            <Text style={[
+              styles.syncButtonText,
+              { color: connectionStatus === 'connected' ? "#fff" : "#ccc" }
+            ]}>
+              {connectionStatus === 'connected' ? 'Sync Now' : 'Offline'}
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={styles.footerText}>
+            {liveUpdates 
+              ? 'History updates in real-time. Pull to refresh manually.'
+              : 'Real-time updates disabled. Pull to refresh for latest trips.'}
           </Text>
-        </TouchableOpacity>
-
-        <Text style={styles.footerText}>
-          {liveUpdates 
-            ? 'History updates in real-time. Pull to refresh manually.'
-            : 'Real-time updates disabled. Pull to refresh for latest trips.'}
-        </Text>
-      </ScrollView>
-    </Animated.View>
+        </ScrollView>
+      </Animated.View>
+    </ErrorBoundary>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#f8f9fa' 
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#00B894',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1619,3 +1677,5 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 });
+
+export default TripHistoryScreen;

@@ -15,26 +15,60 @@ import {
   Platform,
   Linking
 } from 'react-native';
+import { ErrorBoundary } from 'react-error-boundary';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// FIXED IMPORTS:
 import { getUserData, saveUserData } from '@src/utils/userStorage';
 import socketService from '@services/socket/socketService';
 
-export default function VerificationPendingScreen({ navigation, route }) {
+// Error Fallback Component
+function ErrorFallback({ error, resetErrorBoundary }) {
+  return (
+    <View style={styles.errorContainer}>
+      <Icon name="exclamation-triangle" size={60} color="#FF6B6B" />
+      <Text style={styles.errorTitle}>Something went wrong</Text>
+      <Text style={styles.errorText}>{error.message}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={resetErrorBoundary}>
+        <Text style={styles.retryText}>Try Again</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function VerificationPendingScreen({ navigation, route }) {
   // 🚀 SIMPLE BYPASS - KEEP THIS AT THE TOP
   useEffect(() => {
     console.log('🚀 Bypassing verification screen...');
-    setTimeout(() => {
+    
+    // Set user as verified in storage
+    const setUserVerified = async () => {
+      try {
+        const userData = await getUserData();
+        if (userData) {
+          userData.verification_status = 'approved';
+          userData.is_verified = true;
+          await saveUserData(userData);
+          console.log('✅ User verification status updated to approved');
+        }
+      } catch (error) {
+        console.error('Error updating verification status:', error);
+      }
+    };
+    
+    setUserVerified();
+    
+    // Navigate to driver stack after a short delay
+    const timer = setTimeout(() => {
       navigation.replace('DriverStack');
     }, 100);
+    
+    return () => clearTimeout(timer);
   }, [navigation]);
 
   // ========== STATE DECLARATIONS ==========
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState('approved');
+  const [verificationStatus, setVerificationStatus] = useState('pending');
   const [statusDetails, setStatusDetails] = useState({
     submittedAt: new Date().toISOString(),
     estimatedCompletion: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
@@ -62,7 +96,7 @@ export default function VerificationPendingScreen({ navigation, route }) {
   const verificationId = route.params?.verificationId || `VER${Date.now()}`;
   const submittedAt = route.params?.submittedAt || new Date().toISOString();
 
-  // ========== ALL YOUR FUNCTIONS HERE ==========
+  // ========== FUNCTIONS ==========
   
   const initializeVerificationTracking = async () => {
     try {
@@ -177,140 +211,607 @@ export default function VerificationPendingScreen({ navigation, route }) {
     }, 1000);
   };
 
-  // ... ALL OTHER FUNCTIONS CONTINUE HERE ...
+  const handleVerificationRejected = (data) => {
+    console.log('Verification rejected:', data);
+    
+    Alert.alert(
+      'Verification Rejected',
+      data.message || 'Your verification has been rejected. Please check the reason and resubmit.',
+      [
+        { text: 'View Details', onPress: () => showRejectionDetails(data) },
+        { text: 'Contact Support', onPress: () => contactSupport() }
+      ]
+    );
+  };
 
-  // ========== JSX RENDER ==========
-  const statusIcon = { name: 'check-circle', color: '#4CAF50' };
-  const statusText = 'Approved';
+  const handleVerificationReviewing = (data) => {
+    console.log('Verification under review');
+    setStatusDetails(prev => ({
+      ...prev,
+      currentStep: 'background_check',
+      stepProgress: 50
+    }));
+  };
+
+  const handleRequiresAction = (data) => {
+    console.log('Action required:', data);
+    
+    Alert.alert(
+      'Action Required',
+      data.message || 'Additional information is required to complete your verification.',
+      [
+        { text: 'Provide Info', onPress: () => handleActionRequired(data) },
+        { text: 'Later', style: 'cancel' }
+      ]
+    );
+  };
+
+  const handleAdminMessage = (messageData) => {
+    console.log('Admin message received:', messageData);
+    
+    setStatusDetails(prev => ({
+      ...prev,
+      adminMessage: messageData.message,
+      contactSupport: messageData.contactSupport || false,
+      lastUpdated: new Date().toISOString()
+    }));
+    
+    // Show notification if important
+    if (messageData.priority === 'high') {
+      Alert.alert(
+        'Message from Verification Team',
+        messageData.message,
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleDocumentValidationUpdate = (validationData) => {
+    console.log('Document validation update:', validationData);
+    
+    setDocumentsStatus(prev => ({
+      ...prev,
+      [validationData.documentType]: validationData.status,
+      ...(validationData.feedback && { feedback: validationData.feedback })
+    }));
+  };
+
+  const handleSupportAvailability = (availabilityData) => {
+    console.log('Support availability update:', availabilityData);
+    setSupportOnline(availabilityData.isOnline);
+  };
+
+  const handleConnectionChange = (data) => {
+    console.log('Connection status:', data.status);
+    setSocketConnected(data.status === 'connected');
+    
+    if (data.status === 'connected') {
+      // Rejoin verification room
+      joinVerificationRoom();
+    } else if (data.status === 'disconnected') {
+      // Schedule reconnect
+      scheduleReconnect();
+    }
+  };
+
+  const handleVerificationProgressUpdate = (progressData) => {
+    console.log('Progress update:', progressData);
+    
+    setStatusDetails(prev => ({
+      ...prev,
+      currentStep: progressData.step,
+      stepProgress: progressData.progress,
+      lastUpdated: new Date().toISOString()
+    }));
+    
+    // Animate progress
+    Animated.timing(progressAnim, {
+      toValue: progressData.progress / 100,
+      duration: 1000,
+      easing: Easing.ease,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleAppStateChange = (nextAppState) => {
+    if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+      // App came to foreground, refresh verification status
+      refreshVerificationStatus();
+    }
+    appState.current = nextAppState;
+  };
+
+  const joinVerificationRoom = async () => {
+    try {
+      if (socketService.isConnected) {
+        socketService.emit('join_verification_room', {
+          verificationId,
+          timestamp: new Date().toISOString()
+        });
+        
+        console.log('Joined verification room:', verificationId);
+      }
+    } catch (error) {
+      console.error('Error joining verification room:', error);
+    }
+  };
+
+  const requestVerificationStatus = async () => {
+    try {
+      socketService.emit('request_verification_status', {
+        verificationId,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error requesting verification status:', error);
+    }
+  };
+
+  const refreshVerificationStatus = () => {
+    setRefreshing(true);
+    requestVerificationStatus();
+    setTimeout(() => setRefreshing(false), 1000);
+  };
+
+  const scheduleReconnect = () => {
+    if (reconnectTimeout.current) {
+      clearTimeout(reconnectTimeout.current);
+    }
+    
+    reconnectTimeout.current = setTimeout(() => {
+      if (!socketConnected) {
+        initializeVerificationTracking();
+      }
+    }, 5000);
+  };
+
+  const startRealTimeUpdates = () => {
+    // Start pulse animation for connection
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1000,
+          easing: Easing.ease,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.ease,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+    
+    // Start countdown timer
+    startCountdownTimer();
+  };
+
+  const startCountdownTimer = () => {
+    if (countdownInterval.current) {
+      clearInterval(countdownInterval.current);
+    }
+    
+    const endTime = new Date(statusDetails.estimatedCompletion).getTime();
+    
+    countdownInterval.current = setInterval(() => {
+      const now = new Date().getTime();
+      const timeLeft = endTime - now;
+      
+      if (timeLeft <= 0) {
+        clearInterval(countdownInterval.current);
+        setCountdown('00:00:00');
+      } else {
+        const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+        
+        setCountdown(
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+        );
+      }
+    }, 1000);
+  };
+
+  const loadDocumentsStatus = async () => {
+    try {
+      const cachedStatus = await AsyncStorage.getItem('verification_documents_status');
+      if (cachedStatus) {
+        setDocumentsStatus(JSON.parse(cachedStatus));
+      }
+    } catch (error) {
+      console.error('Error loading documents status:', error);
+    }
+  };
+
+  const saveVerificationStatus = async (statusData) => {
+    try {
+      await AsyncStorage.setItem('verification_status', JSON.stringify(statusData));
+    } catch (error) {
+      console.error('Error saving verification status:', error);
+    }
+  };
+
+  const updateUserVerificationStatus = async (isVerified, status) => {
+    try {
+      const userData = await getUserData();
+      if (userData) {
+        userData.is_verified = isVerified;
+        userData.verification_status = status;
+        userData.verification_completed_at = new Date().toISOString();
+        await saveUserData(userData);
+      }
+    } catch (error) {
+      console.error('Error updating user verification status:', error);
+    }
+  };
+
+  const animateStatusChange = () => {
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 0.5,
+        duration: 200,
+        easing: Easing.ease,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        easing: Easing.ease,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const showRejectionDetails = (data) => {
+    Alert.alert(
+      'Rejection Details',
+      `Reason: ${data.reason || 'Not specified'}\n\n${data.message || 'No additional details'}`,
+      [
+        { text: 'OK' },
+        { text: 'Contact Support', onPress: () => contactSupport() }
+      ]
+    );
+  };
+
+  const contactSupport = () => {
+    const phoneNumber = '+265123456789';
+    const message = 'Hello, I need help with my driver verification.';
+    
+    Alert.alert(
+      'Contact Support',
+      'Choose how you would like to contact our support team:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Call Support', onPress: () => Linking.openURL(`tel:${phoneNumber}`) },
+        { text: 'WhatsApp', onPress: () => Linking.openURL(`whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`) },
+        { text: 'Email Support', onPress: () => Linking.openURL('mailto:support@kabaza.com') }
+      ]
+    );
+  };
+
+  const handleActionRequired = (data) => {
+    // Navigate to the appropriate screen based on action required
+    if (data.actionType === 'upload_document') {
+      navigation.navigate('DocumentUpload', { 
+        documentType: data.documentType,
+        verificationId 
+      });
+    } else if (data.actionType === 'provide_info') {
+      navigation.navigate('AdditionalInfo', { 
+        fields: data.requiredFields,
+        verificationId 
+      });
+    }
+  };
+
+  const toggleLiveUpdates = () => {
+    setLiveUpdates(!liveUpdates);
+  };
+
+  const handleGoHome = () => {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'DriverStack' }]
+    });
+  };
+
+  const handleCheckAgain = () => {
+    refreshVerificationStatus();
+  };
+
+  // Cleanup
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    
+    return () => {
+      if (countdownInterval.current) {
+        clearInterval(countdownInterval.current);
+      }
+      
+      if (reconnectTimeout.current) {
+        clearTimeout(reconnectTimeout.current);
+      }
+      
+      // Remove socket listeners
+      socketService.off('verification_status_changed', handleVerificationStatusChange);
+      socketService.off('admin_message', handleAdminMessage);
+      socketService.off('document_validation_update', handleDocumentValidationUpdate);
+      socketService.off('support_availability', handleSupportAvailability);
+      socketService.off('connection_change', handleConnectionChange);
+      socketService.off('verification_progress_update', handleVerificationProgressUpdate);
+      
+      subscription.remove();
+    };
+  }, []);
+
+  // ========== RENDER ==========
+  const getStatusConfig = () => {
+    switch(verificationStatus) {
+      case 'pending':
+        return { name: 'clock-o', color: '#FFA726', text: 'Pending Review' };
+      case 'reviewing':
+        return { name: 'search', color: '#2196F3', text: 'Under Review' };
+      case 'approved':
+        return { name: 'check-circle', color: '#4CAF50', text: 'Approved' };
+      case 'rejected':
+        return { name: 'times-circle', color: '#F44336', text: 'Rejected' };
+      case 'requires_action':
+        return { name: 'exclamation-circle', color: '#FF9800', text: 'Action Required' };
+      default:
+        return { name: 'question-circle', color: '#666', text: 'Unknown' };
+    }
+  };
+
+  const statusConfig = getStatusConfig();
 
   return (
-    <ScrollView 
-      style={styles.container}
-      refreshControl={
-        <RefreshControl 
-          refreshing={refreshing} 
-          onRefresh={() => {}} // Empty function since we're bypassing
-          colors={['#00B894']}
-          tintColor="#00B894"
-        />
-      }
-    >
-      {/* Connection Status Bar */}
-      <View style={[
-        styles.statusBar,
-        socketConnected ? styles.statusConnected : styles.statusDisconnected
-      ]}>
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <View style={[
-            styles.statusDot,
-            socketConnected ? styles.statusDotConnected : styles.statusDotDisconnected
-          ]} />
-        </Animated.View>
-        <Text style={styles.statusBarText}>
-          {socketConnected ? 'Live updates connected' : 'Offline - updates may be delayed'}
-        </Text>
-        <TouchableOpacity onPress={() => {}}>
-          <Text style={styles.toggleText}>
-            {liveUpdates ? 'Live: ON' : 'Live: OFF'}
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <ScrollView 
+        style={styles.container}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={refreshVerificationStatus}
+            colors={['#00B894']}
+            tintColor="#00B894"
+          />
+        }
+      >
+        {/* Connection Status Bar */}
+        <View style={[
+          styles.statusBar,
+          socketConnected ? styles.statusConnected : styles.statusDisconnected
+        ]}>
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <View style={[
+              styles.statusDot,
+              socketConnected ? styles.statusDotConnected : styles.statusDotDisconnected
+            ]} />
+          </Animated.View>
+          <Text style={styles.statusBarText}>
+            {socketConnected ? 'Live updates connected' : 'Offline - updates may be delayed'}
           </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.content}>
-        <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
-          <Icon name={statusIcon.name} size={80} color={statusIcon.color} />
-          <Text style={[styles.title, { color: statusIcon.color }]}>{statusText}</Text>
-        </Animated.View>
-
-        <Text style={styles.message}>
-          Your driver verification is being processed. You'll receive real-time updates here.
-        </Text>
-
-        {/* Verification ID */}
-        <View style={styles.idCard}>
-          <Text style={styles.idLabel}>Verification ID</Text>
-          <Text style={styles.idValue}>{verificationId}</Text>
-          <Text style={styles.idSubtext}>Submitted: {new Date(submittedAt).toLocaleDateString()}</Text>
+          <TouchableOpacity onPress={toggleLiveUpdates}>
+            <Text style={styles.toggleText}>
+              {liveUpdates ? 'Live: ON' : 'Live: OFF'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Progress Bar */}
-        <View style={styles.progressSection}>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>Verification Progress</Text>
-            <Text style={styles.progressPercentage}>{statusDetails.stepProgress}%</Text>
-          </View>
-          
-          <View style={styles.progressBar}>
-            <Animated.View 
-              style={[
-                styles.progressFill,
-                { 
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%']
-                  })
-                }
-              ]} 
-            />
-          </View>
-          
-          <Text style={styles.stepDescription}>
-            Document verification in progress
-          </Text>
-        </View>
+        <View style={styles.content}>
+          <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
+            <Icon name={statusConfig.name} size={80} color={statusConfig.color} />
+            <Text style={[styles.title, { color: statusConfig.color }]}>{statusConfig.text}</Text>
+          </Animated.View>
 
-        {/* Countdown Timer */}
-        <View style={styles.timerCard}>
-          <Icon name="clock-o" size={24} color="#FFA500" />
-          <View style={styles.timerContent}>
-            <Text style={styles.timerLabel}>Estimated completion in</Text>
-            <Text style={styles.timerValue}>00:00:00</Text>
-            <Text style={styles.timerSubtext}>
-              Usually takes 24-48 hours
+          <Text style={styles.message}>
+            {verificationStatus === 'pending' 
+              ? 'Your driver verification is being processed. You\'ll receive real-time updates here.'
+              : verificationStatus === 'reviewing'
+              ? 'Your documents are being reviewed by our verification team.'
+              : verificationStatus === 'requires_action'
+              ? 'Additional information is required to complete your verification.'
+              : 'Verification status update'}
+          </Text>
+
+          {/* Verification ID */}
+          <View style={styles.idCard}>
+            <Text style={styles.idLabel}>Verification ID</Text>
+            <Text style={styles.idValue}>{verificationId}</Text>
+            <Text style={styles.idSubtext}>Submitted: {new Date(submittedAt).toLocaleDateString()}</Text>
+          </View>
+
+          {/* Progress Bar */}
+          <View style={styles.progressSection}>
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressTitle}>Verification Progress</Text>
+              <Text style={styles.progressPercentage}>{statusDetails.stepProgress}%</Text>
+            </View>
+            
+            <View style={styles.progressBar}>
+              <Animated.View 
+                style={[
+                  styles.progressFill,
+                  { 
+                    width: progressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0%', '100%']
+                    })
+                  }
+                ]} 
+              />
+            </View>
+            
+            <Text style={styles.stepDescription}>
+              {statusDetails.currentStep.split('_').map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1)
+              ).join(' ')}
+            </Text>
+          </View>
+
+          {/* Countdown Timer */}
+          <View style={styles.timerCard}>
+            <Icon name="clock-o" size={24} color="#FFA500" />
+            <View style={styles.timerContent}>
+              <Text style={styles.timerLabel}>Estimated completion in</Text>
+              <Text style={styles.timerValue}>{countdown}</Text>
+              <Text style={styles.timerSubtext}>
+                Usually takes 24-48 hours
+              </Text>
+            </View>
+          </View>
+
+          {/* Status Details */}
+          <View style={styles.detailsCard}>
+            <Text style={styles.detailsTitle}>Status Details</Text>
+            
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Last Updated</Text>
+              <Text style={styles.detailValue}>
+                {new Date(statusDetails.lastUpdated).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              </Text>
+            </View>
+            
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Current Step</Text>
+              <Text style={styles.detailValue}>
+                {statusDetails.currentStep.split('_').map(word => 
+                  word.toUpperCase()
+                ).join(' ')}
+              </Text>
+            </View>
+          </View>
+
+          {/* Admin Message */}
+          {statusDetails.adminMessage && (
+            <View style={styles.messageCard}>
+              <Icon name="comment" size={16} color="#1565C0" />
+              <Text style={styles.messageText}>
+                {statusDetails.adminMessage}
+                {statusDetails.contactSupport && '\n\nContact support if you have questions.'}
+              </Text>
+            </View>
+          )}
+
+          {/* Required Actions */}
+          {statusDetails.requiredActions.length > 0 && (
+            <View style={styles.documentsCard}>
+              <Text style={styles.documentsTitle}>Required Actions</Text>
+              {statusDetails.requiredActions.map((action, index) => (
+                <View key={index} style={styles.documentRow}>
+                  <Text style={styles.documentType}>{action.description}</Text>
+                  <TouchableOpacity 
+                    style={styles.actionButtonSmall}
+                    onPress={() => handleActionRequired({ actionType: action.type })}
+                  >
+                    <Text style={styles.actionButtonText}>Take Action</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Action Buttons */}
+          <View style={styles.actionsContainer}>
+            {loading ? (
+              <ActivityIndicator size="large" color="#00B894" style={styles.spinner} />
+            ) : (
+              <>
+                <TouchableOpacity 
+                  style={styles.primaryButton}
+                  onPress={handleCheckAgain}
+                  disabled={refreshing}
+                >
+                  <Icon name="refresh" size={18} color="#fff" />
+                  <Text style={styles.primaryButtonText}>
+                    {refreshing ? 'Checking...' : 'Check Again'}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.secondaryButton}
+                  onPress={contactSupport}
+                >
+                  <Icon name="life-ring" size={18} color="#00B894" />
+                  <Text style={[styles.secondaryButtonText, { color: '#00B894' }]}>
+                    Contact Support
+                  </Text>
+                </TouchableOpacity>
+                
+                {verificationStatus === 'approved' && (
+                  <TouchableOpacity 
+                    style={styles.primaryButton}
+                    onPress={handleGoHome}
+                  >
+                    <Icon name="home" size={18} color="#fff" />
+                    <Text style={styles.primaryButtonText}>Go to Dashboard</Text>
+                  </TouchableOpacity>
+                )}
+                
+                <TouchableOpacity 
+                  style={styles.tertiaryButton}
+                  onPress={() => navigation.goBack()}
+                >
+                  <Icon name="arrow-left" size={16} color="#666" />
+                  <Text style={styles.tertiaryButtonText}>Go Back</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+
+          {/* Real-time Info */}
+          <View style={styles.infoCard}>
+            <Icon name="info-circle" size={16} color="#666" />
+            <Text style={styles.infoText}>
+              {socketConnected 
+                ? 'You are receiving live updates. You can continue using the app while waiting.'
+                : 'Connect to internet for live updates. Status will refresh when online.'}
             </Text>
           </View>
         </View>
-
-        {/* Status Details */}
-        <View style={styles.detailsCard}>
-          <Text style={styles.detailsTitle}>Status Details</Text>
-          
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Last Updated</Text>
-            <Text style={styles.detailValue}>{new Date().toLocaleDateString()}</Text>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Current Step</Text>
-            <Text style={styles.detailValue}>
-              DOCUMENT REVIEW
-            </Text>
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionsContainer}>
-          <ActivityIndicator size="large" color="#00B894" style={styles.spinner} />
-        </View>
-
-        {/* Real-time Info */}
-        <View style={styles.infoCard}>
-          <Icon name="info-circle" size={16} color="#666" />
-          <Text style={styles.infoText}>
-            Connect to internet for live updates. Status will refresh when online.
-          </Text>
-        </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </ErrorBoundary>
   );
 }
 
 // ========== STYLES ==========
 const styles = StyleSheet.create({
-  // ... keep all your style definitions ...
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#00B894',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   statusBar: {
     flexDirection: 'row',
@@ -505,6 +1006,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     marginTop: 15,
+    width: '100%',
     gap: 10,
   },
   messageText: {
@@ -542,9 +1044,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
   },
-  documentStatus: {
+  actionButtonSmall: {
+    backgroundColor: '#FF9800',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  actionButtonText: {
+    color: '#fff',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   actionsContainer: {
     width: '100%',
@@ -597,14 +1106,6 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '500',
   },
-  backButton: {
-    padding: 15,
-    alignItems: 'center',
-  },
-  backButtonText: {
-    color: '#666',
-    fontSize: 14,
-  },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -626,3 +1127,5 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 });
+
+export default VerificationPendingScreen;
