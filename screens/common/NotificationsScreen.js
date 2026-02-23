@@ -13,7 +13,7 @@ import {
   Alert,
   FlatList,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';

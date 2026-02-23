@@ -46,8 +46,7 @@ import {
   BackHandler,
   AppState,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
-import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialIconFallback as Icon } from '@src/utils/iconUtils';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'react-native-document-picker';
 import * as ImagePicker from 'react-native-image-picker';
@@ -72,7 +71,7 @@ const DOCUMENT_TYPES = {
     id: 'license',
     title: 'Driver\'s License',
     description: 'Valid driver\'s license',
-    icon: 'card-account-details',
+    icon: 'license',
     required: true,
     maxSize: 5, // MB
     allowedTypes: ['image/jpeg', 'image/png', 'application/pdf'],
@@ -102,7 +101,7 @@ const DOCUMENT_TYPES = {
     id: 'insurance',
     title: 'Insurance Certificate',
     description: 'Vehicle insurance certificate',
-    icon: 'shield-check',
+    icon: 'security',
     required: true,
     maxSize: 5,
     allowedTypes: ['image/jpeg', 'image/png', 'application/pdf'],
@@ -143,7 +142,7 @@ const DOCUMENT_TYPES = {
     id: 'background_check',
     title: 'Background Check',
     description: 'Police clearance certificate',
-    icon: 'badge-account',
+    icon: 'nrc',
     required: false,
     maxSize: 5,
     allowedTypes: ['image/jpeg', 'image/png', 'application/pdf'],
@@ -165,7 +164,7 @@ const DOCUMENT_TYPES = {
     id: 'medical_certificate',
     title: 'Medical Certificate',
     description: 'Medical fitness certificate',
-    icon: 'medical-bag',
+    icon: 'document',
     required: false,
     maxSize: 5,
     allowedTypes: ['image/jpeg', 'image/png', 'application/pdf'],
@@ -1168,7 +1167,7 @@ export default function DriverDocumentsScreen() {
         >
           <View style={styles.documentHeader}>
             <View style={[styles.documentIcon, { backgroundColor: `${statusColor}15` }]}>
-              <MaterialCommunityIcon 
+              <Icon 
                 name={docType.icon} 
                 size={24} 
                 color={statusColor} 
@@ -1323,7 +1322,7 @@ export default function DriverDocumentsScreen() {
             
             {expiringDocuments.map((doc, index) => (
               <View key={index} style={styles.expiryItem}>
-                <MaterialCommunityIcon 
+                <Icon 
                   name={doc.icon} 
                   size={20} 
                   color="#F59E0B" 

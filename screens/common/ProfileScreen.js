@@ -13,7 +13,7 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -109,12 +109,15 @@ export default function ProfileScreen() {
       } else {
         setUploadingPhoto(true);
         
-        // Simulate upload
-        setTimeout(() => {
+        // Simulate upload with cleanup
+        const uploadTimeout = setTimeout(() => {
           handleChange('profilePhoto', response.assets[0].uri);
           setUploadingPhoto(false);
           Alert.alert('Success', 'Profile photo updated');
         }, 1500);
+        
+        // Optional: Store timeout ID for cleanup if needed
+        // return () => clearTimeout(uploadTimeout);
       }
     });
   };

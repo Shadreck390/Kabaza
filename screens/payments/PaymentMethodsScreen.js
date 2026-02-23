@@ -11,8 +11,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
-import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialIconFallback as MaterialIcon, MaterialCommunityIconFallback as MaterialCommunityIcon } from '@src/utils/iconUtils';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -167,7 +166,6 @@ export default function PaymentMethodsScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -197,7 +195,6 @@ export default function PaymentMethodsScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Default Payment Method */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Default Payment Method</Text>
           {paymentMethods.find(m => m.isDefault) ? (
@@ -213,7 +210,6 @@ export default function PaymentMethodsScreen() {
           )}
         </View>
         
-        {/* Other Payment Methods */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Other Methods</Text>
@@ -239,7 +235,6 @@ export default function PaymentMethodsScreen() {
           )}
         </View>
         
-        {/* Security Info */}
         <View style={styles.securitySection}>
           <MaterialIcon name="security" size={20} color="#6B7280" />
           <Text style={styles.securityText}>
@@ -247,7 +242,6 @@ export default function PaymentMethodsScreen() {
           </Text>
         </View>
         
-        {/* Add New Method CTA */}
         {paymentMethods.length === 0 && (
           <TouchableOpacity
             style={styles.addNewCard}

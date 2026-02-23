@@ -11,7 +11,7 @@ import {
   FlatList,
   Alert,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function BookAheadScreen({ navigation }) {
@@ -442,7 +442,7 @@ export default function BookAheadScreen({ navigation }) {
           <Text style={styles.summaryTitle}>Trip Details</Text>
           
           <View style={styles.summaryRow}>
-            <MaterialIcon name="location-on" size={16} color="#00a82d" />
+            <Icon name="location-on" size={16} color="#00a82d" />
             <View style={styles.summaryTextContainer}>
               <Text style={styles.summaryLabel}>FROM</Text>
               <Text style={styles.summaryValue}>{bookingDetails.pickupLocation}</Text>
@@ -450,7 +450,7 @@ export default function BookAheadScreen({ navigation }) {
           </View>
 
           <View style={styles.summaryRow}>
-            <MaterialIcon name="location-on" size={16} color="#ff4444" />
+            <Icon name="location-on" size={16} color="#ff4444" />
             <View style={styles.summaryTextContainer}>
               <Text style={styles.summaryLabel}>TO</Text>
               <Text style={styles.summaryValue}>{bookingDetails.dropoffLocation}</Text>
@@ -460,7 +460,7 @@ export default function BookAheadScreen({ navigation }) {
           <View style={styles.divider} />
 
           <View style={styles.summaryRow}>
-            <MaterialIcon name="calendar-today" size={16} color="#666" />
+            <Icon name="calendar-today" size={16} color="#666" />
             <Text style={styles.summaryDetail}>
               {formatDate(bookingDetails.date)} at {formatTime(bookingDetails.time)}
             </Text>
@@ -468,7 +468,7 @@ export default function BookAheadScreen({ navigation }) {
 
           {bookingDetails.returnTrip && (
             <View style={styles.summaryRow}>
-              <MaterialIcon name="repeat" size={16} color="#666" />
+              <Icon name="repeat" size={16} color="#666" />
               <Text style={styles.summaryDetail}>
                 Return: {formatDate(bookingDetails.returnDate)} at {formatTime(bookingDetails.returnTime)}
               </Text>
@@ -481,7 +481,7 @@ export default function BookAheadScreen({ navigation }) {
           <Text style={styles.summaryTitle}>Ride Details</Text>
           
           <View style={styles.rideSummary}>
-            <MaterialIcon name={selectedRide?.icon} size={24} color="#00a82d" />
+            <Icon name={selectedRide?.icon} size={24} color="#00a82d" />
             <View style={styles.rideSummaryInfo}>
               <Text style={styles.rideSummaryName}>{selectedRide?.name}</Text>
               <Text style={styles.rideSummaryCapacity}>
@@ -562,7 +562,7 @@ export default function BookAheadScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcon name="arrow-back" size={24} color="#000" />
+          <Icon name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Book Ahead</Text>
         <View style={{ width: 24 }} />

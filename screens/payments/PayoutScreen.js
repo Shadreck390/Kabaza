@@ -13,7 +13,7 @@ import {
   Switch,
   Dimensions,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -446,7 +446,7 @@ export default function PayoutScreen() {
       
       {transactionHistory.length === 0 ? (
         <View style={styles.emptyHistory}>
-          <MaterialIcon name="account-balance-wallet" size={60} color="#E5E7EB" />
+          <Icon name="account-balance-wallet" size={60} color="#E5E7EB" type="material" />
           <Text style={styles.emptyHistoryText}>No payout history</Text>
           <Text style={styles.emptyHistorySubtext}>
             Your payout history will appear here
@@ -457,11 +457,7 @@ export default function PayoutScreen() {
           {transactionHistory.slice(0, 3).map((payout) => (
             <View key={payout.id} style={styles.historyItem}>
               <View style={styles.historyIcon}>
-                <MaterialIcon
-                  name={getStatusIcon(payout.status)}
-                  size={24}
-                  color={getStatusColor(payout.status)}
-                />
+                <MaterialIcon name={getStatusIcon(payout.status)} size={24} color={getStatusColor(payout.status)} />
               </View>
               <View style={styles.historyDetails}>
                 <Text style={styles.historyAmount}>
@@ -566,7 +562,7 @@ export default function PayoutScreen() {
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <>
-              <MaterialIcon name="account-balance-wallet" size={20} color="#FFFFFF" />
+              <Icon name="account-balance-wallet" size={20} color="#FFFFFF" type="material" />
               <Text style={styles.withdrawButtonText}>
                 Withdraw {withdrawAmount ? formatCurrency(parseFloat(withdrawAmount)) : ''}
               </Text>

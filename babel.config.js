@@ -13,7 +13,6 @@ module.exports = {
           '.js',
           '.jsx',
           '.ts',
-          '.tsx',
           '.json',
           '.native.js'
         ],
@@ -28,6 +27,8 @@ module.exports = {
           '@store': './src/store',
           '@utils': './src/utils',
           '@config': './src/config',
+          // Crypto polyfill for React Native
+          crypto: 'react-native-crypto',
           '@context': './src/context',
           
           // Root level folders

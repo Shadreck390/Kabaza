@@ -11,7 +11,7 @@ import {
   FlatList,
   Alert,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function ScheduleScreen({ navigation }) {

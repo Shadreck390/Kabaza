@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
   Switch,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,12 +23,10 @@ export default function AddPaymentScreen() {
   const [paymentMethod, setPaymentMethod] = useState('mobile_money');
   const [loading, setLoading] = useState(false);
   
-  // Mobile Money fields
   const [mobileNumber, setMobileNumber] = useState('');
   const [networkProvider, setNetworkProvider] = useState('tnsm');
   const [isDefault, setIsDefault] = useState(false);
   
-  // Card fields
   const [cardNumber, setCardNumber] = useState('');
   const [cardHolder, setCardHolder] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
@@ -97,7 +95,6 @@ export default function AddPaymentScreen() {
     setLoading(true);
     
     try {
-      // Get existing payment methods
       const existingMethods = await AsyncStorage.getItem('payment_methods');
       const methods = existingMethods ? JSON.parse(existingMethods) : [];
       
@@ -132,18 +129,14 @@ export default function AddPaymentScreen() {
         newMethod.title = `Card ••••${cardNumber.slice(-4)}`;
       }
       
-      // If setting as default, update all other methods to not default
       if (isDefault) {
         methods.forEach(method => method.isDefault = false);
       }
       
-      // Add new method
       methods.push(newMethod);
       
-      // Save to AsyncStorage
       await AsyncStorage.setItem('payment_methods', JSON.stringify(methods));
       
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       Alert.alert(
@@ -223,7 +216,6 @@ export default function AddPaymentScreen() {
           keyboardType="numeric"
           value={cardNumber}
           onChangeText={(text) => {
-            // Format card number with spaces
             const formatted = text.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
             setCardNumber(formatted);
           }}
@@ -252,7 +244,6 @@ export default function AddPaymentScreen() {
               placeholder="MM/YY"
               value={expiryDate}
               onChangeText={(text) => {
-                // Format expiry date
                 let formatted = text.replace(/\D/g, '');
                 if (formatted.length >= 2) {
                   formatted = formatted.slice(0, 2) + '/' + formatted.slice(2, 4);
@@ -286,7 +277,6 @@ export default function AddPaymentScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -303,7 +293,6 @@ export default function AddPaymentScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Payment Method Selection */}
         <View style={styles.methodSection}>
           <Text style={styles.sectionTitle}>Select Method</Text>
           <View style={styles.methodButtons}>
@@ -334,11 +323,7 @@ export default function AddPaymentScreen() {
               ]}
               onPress={() => setPaymentMethod('card')}
             >
-              <MaterialIcon
-                name="credit-card"
-                size={28}
-                color={paymentMethod === 'card' ? '#4F46E5' : '#6B7280'}
-              />
+              <MaterialIcon name="credit-card" size={28} color={paymentMethod === 'card' ? '#4F46E5' : '#6B7280'} />
               <Text style={[
                 styles.methodButtonText,
                 paymentMethod === 'card' && styles.methodButtonTextSelected,
@@ -349,10 +334,8 @@ export default function AddPaymentScreen() {
           </View>
         </View>
         
-        {/* Dynamic Form */}
         {paymentMethod === 'mobile_money' ? renderMobileMoneyForm() : renderCardForm()}
         
-        {/* Default Payment Method */}
         <View style={styles.defaultSection}>
           <View style={styles.defaultInfo}>
             <MaterialIcon name="star" size={20} color="#F59E0B" />
@@ -366,7 +349,6 @@ export default function AddPaymentScreen() {
           />
         </View>
         
-        {/* Security Info */}
         <View style={styles.securitySection}>
           <MaterialIcon name="security" size={20} color="#10B981" />
           <Text style={styles.securityText}>
@@ -375,7 +357,6 @@ export default function AddPaymentScreen() {
         </View>
       </ScrollView>
       
-      {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.addButton, loading && styles.addButtonDisabled]}

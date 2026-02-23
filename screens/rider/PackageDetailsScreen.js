@@ -11,7 +11,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 
 export default function PackageDetailsScreen({ navigation, route }) {
   const { packageId, packageData } = route.params || {};
@@ -101,7 +101,7 @@ export default function PackageDetailsScreen({ navigation, route }) {
     <>
       {/* Status Banner */}
       <View style={[styles.statusBanner, { backgroundColor: getStatusColor(packageDetails.status) + '20' }]}>
-        <MaterialIcon name={getStatusIcon(packageDetails.status)} size={32} color={getStatusColor(packageDetails.status)} />
+        <Icon name={getStatusIcon(packageDetails.status)} size={32} color={getStatusColor(packageDetails.status)} type="material" />
         <View style={styles.statusInfo}>
           <Text style={styles.statusLabel}>Current Status</Text>
           <Text style={[styles.statusValue, { color: getStatusColor(packageDetails.status) }]}>
@@ -110,7 +110,7 @@ export default function PackageDetailsScreen({ navigation, route }) {
         </View>
         <TouchableOpacity style={styles.trackButton} onPress={handleTrackPackage}>
           <Text style={styles.trackButtonText}>Track</Text>
-          <MaterialIcon name="chevron-right" size={20} color="#00a82d" />
+          <Icon name="chevron-right" size={20} color="#00a82d" type="material" />
         </TouchableOpacity>
       </View>
 
@@ -119,14 +119,14 @@ export default function PackageDetailsScreen({ navigation, route }) {
         <Text style={styles.idLabel}>Package ID</Text>
         <Text style={styles.idValue}>{packageDetails.id}</Text>
         <TouchableOpacity>
-          <MaterialIcon name="content-copy" size={20} color="#666" />
+          <Icon name="content-copy" size={20} color="#666" type="material" />
         </TouchableOpacity>
       </View>
 
       {/* Sender Info */}
       <View style={styles.infoCard}>
         <View style={styles.cardHeader}>
-          <MaterialIcon name="person" size={20} color="#00a82d" />
+          <Icon name="person" size={20} color="#00a82d" type="material" />
           <Text style={styles.cardTitle}>Sender</Text>
         </View>
         <Text style={styles.infoName}>{packageDetails.sender.name}</Text>
@@ -338,11 +338,7 @@ export default function PackageDetailsScreen({ navigation, route }) {
                 package: { ...editedDetails.package, type: type.id }
               })}
             >
-              <MaterialIcon 
-                name={type.icon} 
-                size={20} 
-                color={editedDetails.package.type === type.id ? '#fff' : '#666'} 
-              />
+              <MaterialIcon name={type.icon} size={20} color={editedDetails.package.type === type.id ? '#fff' : '#666'} />
               <Text style={[
                 styles.typeChipText,
                 editedDetails.package.type === type.id && styles.typeChipTextSelected

@@ -1,5 +1,5 @@
 // screens/rider/RideRatingScreen.js
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,39 +10,298 @@ import {
   Dimensions,
   TextInput,
   Alert,
+  Animated,
+  Easing,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import LinearGradient from 'react-native-linear-gradient';
+import ConfettiCannon from 'react-native-confetti-cannon';
 
 const { width, height } = Dimensions.get('window');
 
+// Enhanced rating tags with colors and icons
 const RATING_TAGS = [
-  { id: 'safe_driver', label: 'Safe Driver', icon: 'shield-check' },
-  { id: 'good_conversation', label: 'Good Conversation', icon: 'chat' },
-  { id: 'clean_vehicle', label: 'Clean Vehicle', icon: 'car-wash' },
-  { id: 'fast_arrival', label: 'Fast Arrival', icon: 'timer' },
-  { id: 'helpful', label: 'Helpful', icon: 'handshake' },
-  { id: 'good_navigation', label: 'Good Navigation', icon: 'map-marker-path' },
+  { 
+    id: 'safe_driver', 
+    label: 'Safe Driver', 
+    icon: 'shield-check',
+    color: '#22C55E',
+    gradient: ['#22C55E', '#10B981']
+  },
+  { 
+    id: 'good_conversation', 
+    label: 'Good Conversation', 
+    icon: 'chat',
+    color: '#3B82F6',
+    gradient: ['#3B82F6', '#2563EB']
+  },
+  { 
+    id: 'clean_vehicle', 
+    label: 'Clean Vehicle', 
+    icon: 'car-wash',
+    color: '#8B5CF6',
+    gradient: ['#8B5CF6', '#7C3AED']
+  },
+  { 
+    id: 'fast_arrival', 
+    label: 'Fast Arrival', 
+    icon: 'timer',
+    color: '#F59E0B',
+    gradient: ['#F59E0B', '#D97706']
+  },
+  { 
+    id: 'helpful', 
+    label: 'Helpful', 
+    icon: 'handshake',
+    color: '#EC4899',
+    gradient: ['#EC4899', '#DB2777']
+  },
+  { 
+    id: 'good_navigation', 
+    label: 'Good Navigation', 
+    icon: 'map-marker-path',
+    color: '#06B6D4',
+    gradient: ['#06B6D4', '#0891B2']
+  },
 ];
+
+// Negative tags for lower ratings
+const NEGATIVE_TAGS = [
+  { 
+    id: 'unsafe_driving', 
+    label: 'Unsafe Driving', 
+    icon: 'car-cog',
+    color: '#EF4444',
+    gradient: ['#EF4444', '#DC2626']
+  },
+  { 
+    id: 'late_arrival', 
+    label: 'Late Arrival', 
+    icon: 'timer-off',
+    color: '#F59E0B',
+    gradient: ['#F59E0B', '#D97706']
+  },
+  { 
+    id: 'dirty_vehicle', 
+    label: 'Dirty Vehicle', 
+    icon: 'delete',
+    color: '#6B7280',
+    gradient: ['#6B7280', '#4B5563']
+  },
+  { 
+    id: 'rude_driver', 
+    label: 'Rude Driver', 
+    icon: 'account-off',
+    color: '#DC2626',
+    gradient: ['#DC2626', '#B91C1C']
+  },
+  { 
+    id: 'poor_navigation', 
+    label: 'Poor Navigation', 
+    icon: 'map-marker-off',
+    color: '#7C3AED',
+    gradient: ['#7C3AED', '#6D28D9']
+  },
+  { 
+    id: 'overcharged', 
+    label: 'Overcharged', 
+    icon: 'cash-remove',
+    color: '#F59E0B',
+    gradient: ['#F59E0B', '#D97706']
+  },
+];
+
+// Animated components
+const AnimatedView = Animated.createAnimatedComponent(View);
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+const AnimatedText = Animated.createAnimatedComponent(Text);
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
 export default function RideRatingScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { rideId, driver } = route.params || {};
+  const { rideId, driver, rideData } = route.params || {};
   
+  // States
   const [rating, setRating] = useState(5);
   const [selectedTags, setSelectedTags] = useState([]);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [selectedEmotion, setSelectedEmotion] = useState(null);
+  
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideUpAnim = useRef(new Animated.Value(30)).current;
+  const starScale = useRef(new Animated.Value(0)).current;
+  const starRotation = useRef(new Animated.Value(0)).current;
+  const cardScale = useRef(new Animated.Value(0.95)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+  const tagScale = useRef(new Animated.Value(0.9)).current;
+  const tagOpacity = useRef(new Animated.Value(0)).current;
+  const commentScale = useRef(new Animated.Value(0.95)).current;
+  const submitButtonScale = useRef(new Animated.Value(1)).current;
+  const successScale = useRef(new Animated.Value(0)).current;
+  const successOpacity = useRef(new Animated.Value(0)).current;
+
+  // Emotions for rating
+  const emotions = [
+    { id: 1, emoji: '😡', label: 'Terrible', min: 1, max: 1 },
+    { id: 2, emoji: '😟', label: 'Poor', min: 2, max: 2 },
+    { id: 3, emoji: '😐', label: 'Average', min: 3, max: 3 },
+    { id: 4, emoji: '🙂', label: 'Good', min: 4, max: 4 },
+    { id: 5, emoji: '😄', label: 'Excellent', min: 5, max: 5 },
+  ];
+
+  // Animation on mount
+  useEffect(() => {
+    animateIn();
+  }, []);
+
+  const animateIn = () => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.timing(slideUpAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.sequence([
+        Animated.delay(200),
+        Animated.spring(starScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 60,
+          friction: 7,
+        }),
+        Animated.spring(starRotation, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 50,
+          friction: 5,
+        }),
+      ]),
+      Animated.spring(cardScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 8,
+        delay: 100,
+      }),
+      Animated.spring(tagScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+        delay: 300,
+      }),
+      Animated.timing(tagOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+        delay: 300,
+      }),
+      Animated.spring(commentScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+        delay: 400,
+      }),
+    ]).start();
+  };
+
+  const handleRatingSelect = (newRating) => {
+    // Star animation
+    Animated.sequence([
+      Animated.spring(starScale, {
+        toValue: 1.2,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+      Animated.spring(starScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+    ]).start();
+
+    setRating(newRating);
+    
+    // Update emotion based on rating
+    const emotion = emotions.find(e => newRating >= e.min && newRating <= e.max);
+    setSelectedEmotion(emotion?.id || null);
+    
+    // Clear tags if rating changes dramatically
+    if (Math.abs(newRating - rating) >= 2) {
+      setSelectedTags([]);
+    }
+  };
 
   const handleTagToggle = (tagId) => {
+    Animated.sequence([
+      Animated.spring(tagScale, {
+        toValue: 0.95,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+      Animated.spring(tagScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+    ]).start();
+
     if (selectedTags.includes(tagId)) {
       setSelectedTags(selectedTags.filter(id => id !== tagId));
     } else {
       setSelectedTags([...selectedTags, tagId]);
     }
+  };
+
+  const handleEmotionSelect = (emotionId) => {
+    const emotion = emotions.find(e => e.id === emotionId);
+    if (emotion) {
+      handleRatingSelect(emotion.min);
+    }
+  };
+
+  const showSuccessAnimation = () => {
+    setShowConfetti(true);
+    
+    Animated.parallel([
+      Animated.spring(successScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }),
+      Animated.timing(successOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
+    // Hide confetti after 3 seconds
+    setTimeout(() => setShowConfetti(false), 3000);
   };
 
   const handleSubmit = async () => {
@@ -53,14 +312,35 @@ export default function RideRatingScreen() {
 
     setIsSubmitting(true);
 
+    // Button press animation
+    Animated.sequence([
+      Animated.spring(submitButtonScale, {
+        toValue: 0.95,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+      Animated.spring(submitButtonScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+    ]).start();
+
     try {
-      // In production, this would be an API call
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Save rating data
       const ratingData = {
         rideId: rideId || `ride-${Date.now()}`,
         driverId: driver?.id || 'driver-001',
+        driverName: driver?.name || 'John Banda',
         rating,
         tags: selectedTags,
         comment: comment.trim(),
+        emotion: selectedEmotion,
         timestamp: new Date().toISOString(),
       };
 
@@ -70,29 +350,28 @@ export default function RideRatingScreen() {
       ratings.push(ratingData);
       await AsyncStorage.setItem('user_ratings', JSON.stringify(ratings));
 
-      // Update driver stats (simulated)
-      const driverStats = await AsyncStorage.getItem(`driver_stats_${driver?.id}`);
-      const stats = driverStats ? JSON.parse(driverStats) : { totalRatings: 0, sumRatings: 0, tags: {} };
-      
-      stats.totalRatings += 1;
-      stats.sumRatings += rating;
-      selectedTags.forEach(tag => {
-        stats.tags[tag] = (stats.tags[tag] || 0) + 1;
-      });
-      
-      await AsyncStorage.setItem(`driver_stats_${driver?.id}`, JSON.stringify(stats));
+      // Show success animation
+      showSuccessAnimation();
 
-      // Show success
-      Alert.alert(
-        'Rating Submitted',
-        'Thank you for your feedback!',
-        [
-          {
-            text: 'Done',
-            onPress: () => navigation.navigate('RideHistory'),
-          },
-        ]
-      );
+      // Success message with delay
+      setTimeout(() => {
+        Alert.alert(
+          '🎉 Thank You!',
+          'Your feedback helps drivers improve and keeps our community safe.',
+          [
+            {
+              text: 'View Ride History',
+              onPress: () => navigation.navigate('RideHistory'),
+              style: 'default',
+            },
+            {
+              text: 'Book Another Ride',
+              onPress: () => navigation.navigate('RiderHome'),
+              style: 'cancel',
+            },
+          ]
+        );
+      }, 800);
 
     } catch (error) {
       console.error('Error submitting rating:', error);
@@ -104,20 +383,33 @@ export default function RideRatingScreen() {
 
   const renderStars = () => {
     const stars = [];
+    const starRotationInterpolate = starRotation.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['0deg', '360deg'],
+    });
+
     for (let i = 1; i <= 5; i++) {
       stars.push(
-        <TouchableOpacity
+        <AnimatedTouchable
           key={i}
-          style={styles.starButton}
-          onPress={() => setRating(i)}
+          style={[
+            styles.starButton,
+            {
+              transform: [
+                { scale: starScale },
+                { rotate: i === 5 ? starRotationInterpolate : '0deg' },
+              ],
+            },
+          ]}
+          onPress={() => handleRatingSelect(i)}
           activeOpacity={0.7}
         >
           <MaterialIcon
             name={i <= rating ? "star" : "star-border"}
-            size={48}
+            size={56}
             color="#F59E0B"
           />
-        </TouchableOpacity>
+        </AnimatedTouchable>
       );
     }
     return stars;
@@ -127,146 +419,408 @@ export default function RideRatingScreen() {
     const isSelected = selectedTags.includes(tag.id);
     
     return (
-      <TouchableOpacity
+      <AnimatedView
         key={tag.id}
         style={[
-          styles.tagButton,
-          isSelected && styles.tagButtonSelected,
+          styles.tagContainer,
+          {
+            opacity: tagOpacity,
+            transform: [{ scale: tagScale }],
+          },
         ]}
-        onPress={() => handleTagToggle(tag.id)}
       >
-        <MaterialCommunityIcon
-          name={tag.icon}
-          size={16}
-          color={isSelected ? '#FFFFFF' : '#666'}
-        />
+        <TouchableOpacity
+          style={[
+            styles.tagButton,
+            isSelected && styles.tagButtonSelected,
+          ]}
+          onPress={() => handleTagToggle(tag.id)}
+          activeOpacity={0.7}
+        >
+          {isSelected ? (
+            <LinearGradient
+              colors={tag.gradient}
+              style={styles.tagGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <MaterialCommunityIcon
+                name={tag.icon}
+                size={18}
+                color="#FFFFFF"
+              />
+            </LinearGradient>
+          ) : (
+            <MaterialCommunityIcon
+              name={tag.icon}
+              size={18}
+              color={tag.color}
+            />
+          )}
+          <Text style={[
+            styles.tagText,
+            isSelected && styles.tagTextSelected,
+          ]}>
+            {tag.label}
+          </Text>
+        </TouchableOpacity>
+      </AnimatedView>
+    );
+  };
+
+  const renderEmotion = (emotion) => {
+    const isActive = selectedEmotion === emotion.id;
+    
+    return (
+      <TouchableOpacity
+        key={emotion.id}
+        style={[
+          styles.emotionButton,
+          isActive && styles.emotionButtonActive,
+        ]}
+        onPress={() => handleEmotionSelect(emotion.id)}
+        activeOpacity={0.7}
+      >
         <Text style={[
-          styles.tagText,
-          isSelected && styles.tagTextSelected,
+          styles.emotionEmoji,
+          isActive && styles.emotionEmojiActive,
         ]}>
-          {tag.label}
+          {emotion.emoji}
+        </Text>
+        <Text style={[
+          styles.emotionLabel,
+          isActive && styles.emotionLabelActive,
+        ]}>
+          {emotion.label}
         </Text>
       </TouchableOpacity>
     );
   };
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+  const getRatingText = () => {
+    switch(rating) {
+      case 5: return 'Excellent!';
+      case 4: return 'Good';
+      case 3: return 'Average';
+      case 2: return 'Poor';
+      case 1: return 'Terrible';
+      default: return 'Select Rating';
+    }
+  };
 
-      {/* Header */}
-      <View style={styles.header}>
+  const getRatingDescription = () => {
+    switch(rating) {
+      case 5: return 'Everything was perfect!';
+      case 4: return 'Good overall experience';
+      case 3: return 'It was okay';
+      case 2: return 'Needs improvement';
+      case 1: return 'Very disappointing';
+      default: return 'How was your ride?';
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      
+      {/* Confetti Cannon */}
+      {showConfetti && (
+        <ConfettiCannon
+          count={200}
+          origin={{ x: width / 2, y: -10 }}
+          autoStart={true}
+          fadeOut={true}
+        />
+      )}
+
+      {/* HEADER */}
+      <AnimatedView style={[styles.header, { opacity: headerOpacity }]}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <MaterialIcon name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Rate Your Ride</Text>
+        
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Rate Your Ride</Text>
+          <Text style={styles.headerSubtitle}>Help us improve</Text>
+        </View>
+        
         <View style={styles.headerPlaceholder} />
-      </View>
+      </AnimatedView>
 
       <ScrollView 
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
-        {/* Driver Info */}
-        <View style={styles.driverCard}>
-          <View style={styles.driverAvatar}>
-            <Text style={styles.driverInitials}>
-              {driver?.name?.split(' ').map(n => n[0]).join('') || 'JB'}
-            </Text>
-          </View>
-          <View style={styles.driverInfo}>
-            <Text style={styles.driverName}>{driver?.name || 'John Banda'}</Text>
-            <Text style={styles.driverVehicle}>
-              {driver?.vehicle || 'Toyota Corolla'} • {driver?.plate || 'LL 2345 A'}
-            </Text>
-          </View>
-        </View>
+        {/* DRIVER INFO CARD */}
+        <AnimatedView 
+          style={[
+            styles.driverCard,
+            {
+              opacity: fadeAnim,
+              transform: [
+                { scale: cardScale },
+                { translateY: slideUpAnim },
+              ],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={['#22C55E', '#10B981']}
+            style={styles.driverCardGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.driverCardContent}>
+              <View style={styles.driverAvatar}>
+                <MaterialIcon name="person" size={28} color="#FFFFFF" />
+              </View>
+              
+              <View style={styles.driverInfo}>
+                <Text style={styles.driverName}>
+                  {driver?.name || 'John Banda'}
+                </Text>
+                <Text style={styles.driverVehicle}>
+                  {rideData?.vehicle || 'Toyota Corolla'} • {rideData?.plate || 'LL 2345 A'}
+                </Text>
+                
+                <View style={styles.rideInfo}>
+                  <View style={styles.infoBadge}>
+                    <MaterialIcon name="location-pin" size={12} color="#FFFFFF" />
+                    <Text style={styles.infoText}>
+                      {rideData?.distance || '2.5 km'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.infoBadge}>
+                    <MaterialIcon name="timer" size={12} color="#FFFFFF" />
+                    <Text style={styles.infoText}>
+                      {rideData?.duration || '8 min'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.infoBadge}>
+                    <MaterialIcon name="attach-money" size={12} color="#FFFFFF" />
+                    <Text style={styles.infoText}>
+                      {rideData?.fare ? `MK ${rideData.fare}` : 'MK 850'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </LinearGradient>
+        </AnimatedView>
 
-        {/* Rating Question */}
-        <View style={styles.section}>
+        {/* RATING QUESTION */}
+        <AnimatedView 
+          style={[
+            styles.section,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideUpAnim }],
+            },
+          ]}
+        >
           <Text style={styles.sectionTitle}>How was your ride?</Text>
           <Text style={styles.sectionSubtitle}>
-            Your feedback helps drivers improve
+            Your honest feedback helps drivers improve their service
           </Text>
-        </View>
+        </AnimatedView>
 
-        {/* Star Rating */}
-        <View style={styles.starsContainer}>
+        {/* EMOTION SELECTOR */}
+        <AnimatedView 
+          style={[
+            styles.emotionsContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideUpAnim }],
+            },
+          ]}
+        >
+          {emotions.map(renderEmotion)}
+        </AnimatedView>
+
+        {/* STAR RATING */}
+        <AnimatedView 
+          style={[
+            styles.starsContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideUpAnim }],
+            },
+          ]}
+        >
           <View style={styles.starsRow}>{renderStars()}</View>
-          <Text style={styles.ratingText}>
-            {rating === 5 ? 'Excellent' : 
-             rating === 4 ? 'Good' : 
-             rating === 3 ? 'Average' : 
-             rating === 2 ? 'Poor' : 'Very Poor'}
-          </Text>
-        </View>
+          
+          <AnimatedView style={styles.ratingTextContainer}>
+            <Text style={styles.ratingText}>{getRatingText()}</Text>
+            <Text style={styles.ratingDescription}>{getRatingDescription()}</Text>
+          </AnimatedView>
+        </AnimatedView>
 
-        {/* Rating Tags */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>What was great?</Text>
+        {/* RATING TAGS */}
+        <AnimatedView 
+          style={[
+            styles.section,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideUpAnim }],
+            },
+          ]}
+        >
+          <Text style={styles.sectionTitle}>
+            {rating >= 3 ? 'What was great?' : 'What went wrong?'}
+          </Text>
           <Text style={styles.sectionSubtitle}>
             Select all that apply (optional)
           </Text>
+          
           <View style={styles.tagsContainer}>
-            {RATING_TAGS.map(renderRatingTag)}
+            {(rating >= 3 ? RATING_TAGS : NEGATIVE_TAGS).map(renderRatingTag)}
           </View>
-        </View>
+        </AnimatedView>
 
-        {/* Additional Comments */}
-        <View style={styles.section}>
+        {/* ADDITIONAL COMMENTS */}
+        <AnimatedView 
+          style={[
+            styles.section,
+            {
+              opacity: fadeAnim,
+              transform: [
+                { scale: commentScale },
+                { translateY: slideUpAnim },
+              ],
+            },
+          ]}
+        >
           <Text style={styles.sectionTitle}>Additional feedback</Text>
           <Text style={styles.sectionSubtitle}>
             Share more details about your experience
           </Text>
-          <TextInput
-            style={styles.commentInput}
-            placeholder="Tell us about your ride..."
-            value={comment}
-            onChangeText={setComment}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-            maxLength={500}
-          />
-          <Text style={styles.charCount}>
-            {comment.length}/500 characters
-          </Text>
-        </View>
+          
+          <View style={styles.commentContainer}>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Tell us more about your ride experience..."
+              placeholderTextColor="#999"
+              value={comment}
+              onChangeText={setComment}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              maxLength={500}
+            />
+            
+            <View style={styles.commentFooter}>
+              <View style={styles.commentInfo}>
+                <MaterialIcon name="info" size={14} color="#666" />
+                <Text style={styles.commentInfoText}>
+                  Your comments help improve service quality
+                </Text>
+              </View>
+              
+              <Text style={styles.charCount}>
+                {comment.length}/500
+              </Text>
+            </View>
+          </View>
+        </AnimatedView>
 
-        {/* Privacy Note */}
-        <View style={styles.privacyNote}>
-          <MaterialIcon name="privacy-tip" size={16} color="#666" />
-          <Text style={styles.privacyText}>
-            Your rating is anonymous. Drivers can see feedback but not who left it.
-          </Text>
-        </View>
+        {/* PRIVACY NOTE */}
+        <AnimatedView 
+          style={[
+            styles.privacyNote,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideUpAnim }],
+            },
+          ]}
+        >
+          <View style={styles.privacyIcon}>
+            <MaterialIcon name="privacy-tip" size={20} color="#22C55E" />
+          </View>
+          <View style={styles.privacyContent}>
+            <Text style={styles.privacyTitle}>Your privacy is protected</Text>
+            <Text style={styles.privacyText}>
+              Your rating is anonymous. Drivers can see feedback but not who left it.
+              We never share your personal information.
+            </Text>
+          </View>
+        </AnimatedView>
       </ScrollView>
 
-      {/* Submit Button */}
-      <View style={styles.footer}>
-        <TouchableOpacity 
+      {/* SUBMIT BUTTON */}
+      <AnimatedView 
+        style={[
+          styles.footer,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideUpAnim }],
+          },
+        ]}
+      >
+        <AnimatedTouchable 
           style={[
             styles.submitButton,
+            {
+              transform: [{ scale: submitButtonScale }],
+            },
             isSubmitting && styles.submitButtonDisabled,
           ]}
           onPress={handleSubmit}
           disabled={isSubmitting}
+          activeOpacity={0.8}
         >
-          {isSubmitting ? (
-            <Text style={styles.submitButtonText}>Submitting...</Text>
-          ) : (
-            <>
-              <MaterialIcon name="send" size={20} color="#FFFFFF" />
-              <Text style={styles.submitButtonText}>Submit Rating</Text>
-            </>
-          )}
+          <LinearGradient
+            colors={['#22C55E', '#10B981']}
+            style={styles.submitButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <MaterialIcon name="stars" size={20} color="#FFFFFF" />
+                <Text style={styles.submitButtonText}>Submit Rating</Text>
+              </>
+            )}
+          </LinearGradient>
+        </AnimatedTouchable>
+        
+        <TouchableOpacity 
+          style={styles.skipButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.skipText}>Skip Rating</Text>
         </TouchableOpacity>
-      </View>
-    </View>
+      </AnimatedView>
+
+      {/* SUCCESS OVERLAY */}
+      <AnimatedView 
+        style={[
+          styles.successOverlay,
+          {
+            opacity: successOpacity,
+            transform: [{ scale: successScale }],
+            display: successOpacity.__getValue() > 0 ? 'flex' : 'none',
+          },
+        ]}
+        pointerEvents="none"
+      >
+        <View style={styles.successContent}>
+          <MaterialIcon name="check-circle" size={80} color="#22C55E" />
+          <Text style={styles.successTitle}>Rating Submitted!</Text>
+          <Text style={styles.successSubtitle}>Thank you for your feedback</Text>
+        </View>
+      </AnimatedView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -275,16 +829,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  
+  // HEADER
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 40,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    zIndex: 100,
   },
   backButton: {
     width: 40,
@@ -292,77 +849,151 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  headerCenter: {
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#000000',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
   },
   headerPlaceholder: {
     width: 40,
   },
+  
+  // CONTENT
   content: {
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: 100,
+    paddingBottom: 140,
   },
+  
+  // DRIVER CARD
   driverCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 24,
+    overflow: 'hidden',
     marginBottom: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  driverCardGradient: {
+    padding: 20,
+  },
+  driverCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   driverAvatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#22C55E',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-  },
-  driverInitials: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
   },
   driverInfo: {
     flex: 1,
   },
   driverName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000000',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   driverVehicle: {
     fontSize: 14,
-    color: '#666',
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 12,
   },
+  rideInfo: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  infoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  infoText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 4,
+  },
+  
+  // SECTIONS
   section: {
     marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#000000',
     marginBottom: 8,
   },
   sectionSubtitle: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 16,
+    marginBottom: 20,
+    lineHeight: 20,
   },
+  
+  // EMOTIONS
+  emotionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 32,
+  },
+  emotionButton: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 20,
+    width: (width - 60) / 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  emotionButtonActive: {
+    backgroundColor: '#22C55E',
+    transform: [{ scale: 1.05 }],
+  },
+  emotionEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  emotionEmojiActive: {
+    color: '#FFFFFF',
+  },
+  emotionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
+  emotionLabelActive: {
+    color: '#FFFFFF',
+  },
+  
+  // STARS
   starsContainer: {
     alignItems: 'center',
     marginBottom: 32,
@@ -370,108 +1001,214 @@ const styles = StyleSheet.create({
   starsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   starButton: {
     padding: 8,
   },
-  ratingText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#F59E0B',
+  ratingTextContainer: {
+    alignItems: 'center',
   },
+  ratingText: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#F59E0B',
+    marginBottom: 4,
+  },
+  ratingDescription: {
+    fontSize: 16,
+    color: '#666',
+  },
+  
+  // TAGS
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginHorizontal: -4,
-    marginTop: 8,
+  },
+  tagContainer: {
+    width: '50%',
+    padding: 4,
   },
   tagButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    margin: 4,
-    borderWidth: 1,
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 2,
     borderColor: '#E5E7EB',
-    gap: 6,
   },
   tagButtonSelected: {
-    backgroundColor: '#22C55E',
-    borderColor: '#22C55E',
+    borderWidth: 0,
+  },
+  tagGradient: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
   tagText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
+    fontWeight: '600',
+    color: '#000000',
+    flex: 1,
   },
   tagTextSelected: {
     color: '#FFFFFF',
   },
-  commentInput: {
+  
+  // COMMENTS
+  commentContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  commentInput: {
+    padding: 20,
     fontSize: 16,
     color: '#000000',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    minHeight: 120,
+    minHeight: 140,
     textAlignVertical: 'top',
+  },
+  commentFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#F9FAFB',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  commentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  commentInfoText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 6,
+    flex: 1,
   },
   charCount: {
     fontSize: 12,
+    fontWeight: '600',
     color: '#666',
-    textAlign: 'right',
-    marginTop: 8,
   },
+  
+  // PRIVACY NOTE
   privacyNote: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#FEFCE8',
-    borderRadius: 12,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 16,
     padding: 16,
     marginTop: 8,
-    gap: 12,
+  },
+  privacyIcon: {
+    marginRight: 12,
+  },
+  privacyContent: {
+    flex: 1,
+  },
+  privacyTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
   },
   privacyText: {
-    flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    lineHeight: 20,
+    lineHeight: 18,
   },
+  
+  // FOOTER
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
-    padding: 16,
+    padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowRadius: 8,
+    elevation: 10,
   },
   submitButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  submitButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#22C55E',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 16,
     gap: 8,
   },
   submitButtonDisabled: {
-    backgroundColor: '#9CA3AF',
+    opacity: 0.7,
   },
   submitButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#FFFFFF',
+  },
+  skipButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  skipText: {
+    fontSize: 15,
+    color: '#666',
+    fontWeight: '500',
+  },
+  
+  // SUCCESS OVERLAY
+  successOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  successContent: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  successTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#000000',
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  successSubtitle: {
+    fontSize: 18,
+    color: '#666',
+    textAlign: 'center',
   },
 });

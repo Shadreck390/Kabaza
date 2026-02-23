@@ -4,7 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as Icon } from '@src/utils/iconUtils';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 // ✅ UPDATED: Import correct storage functions
@@ -111,7 +111,7 @@ const CommonDrawer = ({ userRole }) => (
       initialParams={{ userRole }}
       options={{
         drawerIcon: ({ color, size }) => (
-          <MaterialIcon name="person" size={size} color={color} />
+          <Icon name="person" size={size} color={color} />
         ),
       }}
     />
@@ -120,7 +120,7 @@ const CommonDrawer = ({ userRole }) => (
       component={WalletScreen}
       options={{
         drawerIcon: ({ color, size }) => (
-          <MaterialIcon name="account-balance-wallet" size={size} color={color} />
+          <Icon name="account-balance-wallet" size={size} color={color} />
         ),
       }}
     />
@@ -129,7 +129,7 @@ const CommonDrawer = ({ userRole }) => (
       component={userRole === 'driver' ? TripHistoryScreen : RideHistoryScreen}
       options={{
         drawerIcon: ({ color, size }) => (
-          <MaterialIcon name="history" size={size} color={color} />
+          <Icon name="history" size={size} color={color} />
         ),
         drawerLabel: userRole === 'driver' ? 'Trip History' : 'Ride History',
       }}
@@ -139,7 +139,7 @@ const CommonDrawer = ({ userRole }) => (
       component={NotificationsScreen}
       options={{
         drawerIcon: ({ color, size }) => (
-          <MaterialIcon name="notifications" size={size} color={color} />
+          <Icon name="notifications" size={size} color={color} />
         ),
       }}
     />
@@ -149,7 +149,7 @@ const CommonDrawer = ({ userRole }) => (
         component={FavoritesScreen}
         options={{
           drawerIcon: ({ color, size }) => (
-            <MaterialIcon name="favorite" size={size} color={color} />
+            <Icon name="favorite" size={size} color={color} />
           ),
         }}
       />
@@ -159,7 +159,7 @@ const CommonDrawer = ({ userRole }) => (
       component={SettingsScreen}
       options={{
         drawerIcon: ({ color, size }) => (
-          <MaterialIcon name="settings" size={size} color={color} />
+          <Icon name="settings" size={size} color={color} />
         ),
       }}
     />
@@ -168,7 +168,7 @@ const CommonDrawer = ({ userRole }) => (
       component={HelpSupportScreen}
       options={{
         drawerIcon: ({ color, size }) => (
-          <MaterialIcon name="help" size={size} color={color} />
+          <Icon name="help" size={size} color={color} />
         ),
       }}
     />
@@ -177,7 +177,7 @@ const CommonDrawer = ({ userRole }) => (
       component={AboutScreen}
       options={{
         drawerIcon: ({ color, size }) => (
-          <MaterialIcon name="info" size={size} color={color} />
+          <Icon name="info" size={size} color={color} />
         ),
       }}
     />
@@ -186,7 +186,7 @@ const CommonDrawer = ({ userRole }) => (
       component={PrivacyScreen}
       options={{
         drawerIcon: ({ color, size }) => (
-          <MaterialIcon name="privacy-tip" size={size} color={color} />
+          <Icon name="privacy-tip" size={size} color={color} />
         ),
       }}
     />
@@ -195,11 +195,52 @@ const CommonDrawer = ({ userRole }) => (
       component={TermsScreen}
       options={{
         drawerIcon: ({ color, size }) => (
-          <MaterialIcon name="description" size={size} color={color} />
+          <Icon name="description" size={size} color={color} />
         ),
       }}
     />
   </Drawer.Navigator>
+);
+
+// ===================== RIDER STACK NAVIGATORS =====================
+
+const RidesStackNavigator = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="RidesList" component={RidesScreen} />
+    <Stack.Screen name="RideActive" component={RideActiveScreen} />
+    <Stack.Screen name="RideWaiting" component={RideWaitingScreen} />
+    <Stack.Screen name="RideDetails" component={RideDetailsScreen} />
+    <Stack.Screen name="RideConfirmation" component={RideConfirmationScreen} />
+    <Stack.Screen name="RideRating" component={RideRatingScreen} />
+    <Stack.Screen name="PackageDelivery" component={PackageDeliveryScreen} />
+    <Stack.Screen name="PackageDetails" component={PackageDetailsScreen} />
+    <Stack.Screen name="PackageTracking" component={PackageTrackingScreen} />
+    <Stack.Screen name="Chat" component={ChatScreen} />
+  </Stack.Navigator>
+);
+
+const ScheduleStackNavigator = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="BookAhead" component={BookAheadScreen} />
+    <Stack.Screen name="PackageDelivery" component={PackageDeliveryScreen} />
+    <Stack.Screen name="PackageDetails" component={PackageDetailsScreen} />
+    <Stack.Screen name="PackageTracking" component={PackageTrackingScreen} />
+  </Stack.Navigator>
+);
+
+const FavoritesStackNavigator = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="FavoritesList" component={FavoritesScreen} />
+    <Stack.Screen name="SearchLocation" component={SearchLocationScreen} />
+  </Stack.Navigator>
+);
+
+const HistoryStackNavigator = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="RideHistory" component={RideHistoryScreen} />
+    <Stack.Screen name="RideDetails" component={RideDetailsScreen} />
+    <Stack.Screen name="RideRating" component={RideRatingScreen} />
+  </Stack.Navigator>
 );
 
 // ===================== RIDER BOTTOM TABS =====================
@@ -215,13 +256,15 @@ const RiderTabs = () => {
             iconName = 'home';
           } else if (route.name === 'Rides') {
             iconName = 'directions-car';
-          } else if (route.name === 'Map') {
-            iconName = 'map';
-          } else if (route.name === 'Menu') {
-            iconName = 'menu';
+          } else if (route.name === 'Schedule') {
+            iconName = 'event';
+          } else if (route.name === 'Favorites') {
+            iconName = 'star';
+          } else if (route.name === 'History') {
+            iconName = 'history';
           }
 
-          return <MaterialIcon name={iconName} size={size} color={color} />;
+          return <Icon name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#00a82d', // ✅ UPDATED: Match your green theme
         tabBarInactiveTintColor: '#666666',
@@ -234,7 +277,7 @@ const RiderTabs = () => {
           paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '500',
         },
         headerShown: false,
@@ -247,18 +290,23 @@ const RiderTabs = () => {
       />
       <Tab.Screen 
         name="Rides" 
-        component={RidesScreen}
+        component={RidesStackNavigator}
         options={{ tabBarLabel: 'Rides' }}
       />
       <Tab.Screen 
-        name="Map" 
-        component={MapScreen}
-        options={{ tabBarLabel: 'Map' }}
+        name="Schedule" 
+        component={ScheduleStackNavigator}
+        options={{ tabBarLabel: 'Schedule' }}
       />
       <Tab.Screen 
-        name="Menu" 
-        component={() => <CommonDrawer userRole="rider" />}
-        options={{ tabBarLabel: 'Menu' }}
+        name="Favorites" 
+        component={FavoritesStackNavigator}
+        options={{ tabBarLabel: 'Favorites' }}
+      />
+      <Tab.Screen 
+        name="History" 
+        component={HistoryStackNavigator}
+        options={{ tabBarLabel: 'History' }}
       />
     </Tab.Navigator>
   );
@@ -283,7 +331,7 @@ const DriverTabs = () => {
             iconName = 'menu';
           }
 
-          return <MaterialIcon name={iconName} size={size} color={color} />;
+          return <Icon name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#00a82d', // ✅ UPDATED: Match your green theme
         tabBarInactiveTintColor: '#666666',
@@ -338,26 +386,20 @@ const RiderStack = () => (
   >
     <Stack.Screen name="RiderTabs" component={RiderTabs} />
     <Stack.Screen name="RideSelection" component={RideSelectionScreen} />
-    <Stack.Screen name="RideConfirmation" component={RideConfirmationScreen} />
-    <Stack.Screen name="RideWaiting" component={RideWaitingScreen} />
-    <Stack.Screen name="RideActive" component={RideActiveScreen} />
-    <Stack.Screen name="RideDetails" component={RideDetailsScreen} />
-    <Stack.Screen name="RideRating" component={RideRatingScreen} />
     <Stack.Screen name="SearchLocation" component={SearchLocationScreen} />
+    <Stack.Screen name="Profile" component={ProfileScreen} />
+    <Stack.Screen name="Settings" component={SettingsScreen} />
+    <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    <Stack.Screen name="SOS" component={SOSScreen} />
+    <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+    <Stack.Screen name="About" component={AboutScreen} />
+    <Stack.Screen name="Privacy" component={PrivacyScreen} />
+    <Stack.Screen name="Terms" component={TermsScreen} />
     <Stack.Screen name="Payment" component={PaymentScreen} />
     <Stack.Screen name="Wallet" component={WalletScreen} />
     <Stack.Screen name="PaymentMethods" component={PaymentMethodsScreen} />
     <Stack.Screen name="AddPayment" component={AddPaymentScreen} />
     <Stack.Screen name="TransactionHistory" component={TransactionHistory} />
-    <Stack.Screen name="Chat" component={ChatScreen} />
-    <Stack.Screen name="SOS" component={SOSScreen} />
-
-     <Stack.Screen name="Schedule" component={ScheduleScreen} />
-     <Stack.Screen name="BookAhead" component={BookAheadScreen} />
-     <Stack.Screen name="PackageDelivery" component={PackageDeliveryScreen} />
-     <Stack.Screen name="PackageDetails" component={PackageDetailsScreen} />
-     <Stack.Screen name="PackageTracking" component={PackageTrackingScreen} />
-     <Stack.Screen name="Profile" component={ProfileScreen} />
   </Stack.Navigator>
 );
 
@@ -448,10 +490,12 @@ export default function AppNavigator() {
           return;
         }
 
-        // Get user data and role
-        const user = await getUserData();
-        const userRole = await getUserRole();
-        const profile = await getUserProfile();
+        // Get user data and role in parallel
+        const [user, userRole, profile] = await Promise.all([
+          getUserData(),
+          getUserRole(),
+          getUserProfile()
+        ]);
         
         console.log('👤 User data loaded:', {
           hasData: !!user,

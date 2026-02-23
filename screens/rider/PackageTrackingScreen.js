@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 
 const { width, height } = Dimensions.get('window');
 
@@ -91,7 +91,7 @@ export default function PackageTrackingScreen({ navigation, route }) {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Track Package</Text>
         <TouchableOpacity onPress={handleShareLocation}>
-          <MaterialIcon name="share" size={24} color="#00a82d" />
+          <MaterialIcon name="refresh" size={20} color="#00a82d" />
         </TouchableOpacity>
       </View>
 
@@ -111,7 +111,7 @@ export default function PackageTrackingScreen({ navigation, route }) {
             description={trackingInfo.pickup.address}
           >
             <View style={[styles.marker, { backgroundColor: '#00a82d' }]}>
-              <MaterialIcon name="check" size={16} color="#fff" />
+              <MaterialIcon name="phone" size={16} color="#666" />
             </View>
           </Marker>
 
@@ -122,7 +122,7 @@ export default function PackageTrackingScreen({ navigation, route }) {
             description={trackingInfo.dropoff.address}
           >
             <View style={[styles.marker, { backgroundColor: '#ff4444' }]}>
-              <MaterialIcon name="location-on" size={16} color="#fff" />
+              <MaterialIcon name="location-on" size={16} color="#00a82d" />
             </View>
           </Marker>
 
@@ -172,11 +172,11 @@ export default function PackageTrackingScreen({ navigation, route }) {
           </View>
           <View style={styles.driverActions}>
             <TouchableOpacity style={styles.driverAction} onPress={handleContactDriver}>
-              <MaterialIcon name="phone" size={20} color="#00a82d" />
+              <MaterialIcon name="person" size={20} color="#2196f3" />
               <Text style={styles.driverActionText}>Call</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.driverAction}>
-              <MaterialIcon name="chat" size={20} color="#00a82d" />
+              <MaterialIcon name="call" size={20} color="#00a82d" />
               <Text style={styles.driverActionText}>Chat</Text>
             </TouchableOpacity>
           </View>
@@ -185,7 +185,7 @@ export default function PackageTrackingScreen({ navigation, route }) {
         {/* ETA Card - Overlay */}
         <View style={styles.etaCard}>
           <View style={styles.etaLeft}>
-            <MaterialIcon name="access-time" size={20} color="#00a82d" />
+            <MaterialIcon name="access-time" size={16} color="#666" />
             <View style={styles.etaInfo}>
               <Text style={styles.etaLabel}>Estimated arrival</Text>
               <Text style={styles.etaValue}>{trackingInfo.estimatedArrival}</Text>
@@ -286,7 +286,7 @@ export default function PackageTrackingScreen({ navigation, route }) {
               style={styles.detailsButton}
               onPress={() => navigation.navigate('PackageDetails', { packageId })}
             >
-              <MaterialIcon name="info" size={20} color="#666" />
+              <MaterialIcon name="inventory" size={20} color="#ff9800" />
               <Text style={styles.detailsButtonText}>Package Details</Text>
             </TouchableOpacity>
           </View>

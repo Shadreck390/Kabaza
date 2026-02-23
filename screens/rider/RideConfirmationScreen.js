@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,40 +7,37 @@ import {
   StatusBar,
   Alert,
   ActivityIndicator,
-  Platform
+  Platform,
+  Animated,
+  ScrollView,
+  SafeAreaView,
+  Easing,
+  Dimensions,
+  Image,
 } from 'react-native';
 
-// ✅ CONSISTENT: All icons from same library pattern
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import LinearGradient from 'react-native-linear-gradient';
 
-// ✅ CONSISTENT: Using @ alias for services and utils
 import realTimeService from '@services/socket/realtimeUpdates';
 import { getUserData } from '@src/utils/userStorage';
-
-// ===================== ADD MISSING IMPORTS (IF NEEDED) =====================
-
-// Check if you need these common imports:
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { RideService } from '@services/api/rideAPI'; // If you use rideAPI
 
-// If you use maps/location:
-import MapView, { Marker, Polyline } from 'react-native-maps';
-import Geolocation from 'react-native-geolocation-service';
-
-// If you have custom components:
-import Header from '@components/Header';
-import Button from '@components/Button';
-import Loading from '@components/Loading';
-import DriverCard from '@components/DriverCard';
+const { width, height } = Dimensions.get('window');
 
 // Helper function to format Malawi Kwacha
 const formatMK = (amount) => {
   const rounded = Math.round(amount);
-  return `MK${rounded.toLocaleString()}`;
+  return `MK ${rounded.toLocaleString()}`;
 };
 
-export default function RideConfirmationScreen({ route, navigation }) {
+const AnimatedView = Animated.createAnimatedComponent(View);
+
+export default function RideConfirmationScreen() {
+  const navigation = useNavigation();
+  const route = useRoute();
+  
   const { 
     ride, 
     destination, 
@@ -49,7 +46,7 @@ export default function RideConfirmationScreen({ route, navigation }) {
     riderInfo, 
     pickupCoords, 
     destinationCoords,
-    socketRequestId // This should come from RideSelectionScreen
+    socketRequestId
   } = route.params || {};
   
   const { paymentMethod, usePromo, userId, userName } = riderInfo || {};
@@ -58,14 +55,53 @@ export default function RideConfirmationScreen({ route, navigation }) {
   const [connectionStatus, setConnectionStatus] = useState('checking');
   const [estimatedArrival, setEstimatedArrival] = useState(ride?.estimatedTime || '5-10 min');
 
+  // Animation refs
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const confirmButtonScale = useRef(new Animated.Value(1)).current;
+  const connectionPulse = useRef(new Animated.Value(1)).current;
+
   // Calculate prices
-  const basePrice = ride?.basePrice * ride?.multiplier;
+  const basePrice = ride?.basePrice || 0;
   const surgeMultiplier = ride?.surgeMultiplier || 1.0;
   const surgePrice = basePrice * surgeMultiplier;
   const discountedPrice = usePromo ? Math.round(surgePrice * 0.8) : Math.round(surgePrice);
   const finalPrice = discountedPrice;
 
   useEffect(() => {
+    // Initial animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Connection pulse animation
+    if (connectionStatus === 'connected') {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(connectionPulse, {
+            toValue: 1.1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(connectionPulse, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+
     // Load user data
     const loadUser = async () => {
       try {
@@ -88,17 +124,33 @@ export default function RideConfirmationScreen({ route, navigation }) {
     loadUser();
     
     return () => {
-      // Cleanup connection listener
       realTimeService.removeConnectionListener();
+      connectionPulse.stopAnimation();
     };
-  }, []);
+  }, [connectionStatus]);
 
   const handleConfirmRide = async () => {
+    // Button press animation
+    Animated.sequence([
+      Animated.spring(confirmButtonScale, {
+        toValue: 0.95,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+      Animated.spring(confirmButtonScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+    ]).start();
+
     // Check connection first
     if (connectionStatus !== 'connected') {
       Alert.alert(
         'Connection Required',
-        'Real-time connection is required to request a ride. Please check your internet connection.',
+        'Please check your internet connection to request a ride.',
         [
           { 
             text: 'Try Again', 
@@ -107,9 +159,6 @@ export default function RideConfirmationScreen({ route, navigation }) {
               setTimeout(() => {
                 const status = realTimeService.getConnectionStatus();
                 setConnectionStatus(status.isConnected ? 'connected' : 'disconnected');
-                if (status.isConnected) {
-                  handleConfirmRide();
-                }
               }, 2000);
             }
           },
@@ -163,7 +212,7 @@ export default function RideConfirmationScreen({ route, navigation }) {
       if (requestSent) {
         console.log('Ride request sent successfully:', rideData.requestId);
         
-        // Navigate to waiting screen with subscription
+        // Navigate to waiting screen
         navigation.navigate('RideWaiting', {
           rideId: rideData.requestId,
           rideData: {
@@ -177,14 +226,7 @@ export default function RideConfirmationScreen({ route, navigation }) {
           },
           pickup: pickupLocation,
           destination: destination || destinationAddress,
-          destinationCoords: destinationCoords,
-          pickupCoords: pickupCoords,
           paymentMethod: paymentMethod,
-          riderInfo: {
-            userId: userId || user.id,
-            userName: userName || user.name,
-            userPhone: user.phone
-          }
         });
       } else {
         Alert.alert('Request Failed', 'Failed to send ride request. Please try again.');
@@ -198,36 +240,7 @@ export default function RideConfirmationScreen({ route, navigation }) {
   };
 
   const handleBack = () => {
-    if (loading) {
-      Alert.alert(
-        'Cancel Request?',
-        'You have a ride request in progress. Are you sure you want to go back?',
-        [
-          { text: 'No', style: 'cancel' },
-          { 
-            text: 'Yes', 
-            onPress: () => {
-              // Cancel any pending request if possible
-              if (socketRequestId) {
-                realTimeService.cancelRideRequest(socketRequestId, 'User cancelled');
-              }
-              navigation.goBack();
-            }
-          }
-        ]
-      );
-    } else {
-      navigation.goBack();
-    }
-  };
-
-  const getConnectionStatusText = () => {
-    switch (connectionStatus) {
-      case 'connected': return 'Live';
-      case 'disconnected': return 'Offline';
-      case 'checking': return 'Checking...';
-      default: return 'Unknown';
-    }
+    navigation.goBack();
   };
 
   const getConnectionStatusColor = () => {
@@ -239,20 +252,38 @@ export default function RideConfirmationScreen({ route, navigation }) {
     }
   };
 
+  const getPaymentIcon = () => {
+    switch (paymentMethod) {
+      case 'cash': return 'money';
+      case 'card': return 'credit-card';
+      case 'mobile': return 'mobile';
+      default: return 'money';
+    }
+  };
+
+  const getPaymentText = () => {
+    switch (paymentMethod) {
+      case 'cash': return 'Cash';
+      case 'card': return 'Card';
+      case 'mobile': return 'Mobile Money';
+      default: return 'Cash';
+    }
+  };
+
   // Don't render if ride data is missing
   if (!ride) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcon name="arrow-back" size={24} color="#000" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Error</Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 44 }} />
         </View>
+        
         <View style={styles.errorContainer}>
-          <MaterialIcon name="error-outline" size={64} color="#EA4335" />
           <Text style={styles.errorText}>Ride information missing</Text>
           <Text style={styles.errorSubtext}>Please go back and select a ride again</Text>
           <TouchableOpacity 
@@ -262,109 +293,153 @@ export default function RideConfirmationScreen({ route, navigation }) {
             <Text style={styles.errorButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} disabled={loading}>
+      <Animated.View 
+        style={[
+          styles.header,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <MaterialIcon name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
+        
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Confirm Your Ride</Text>
-          <View style={styles.connectionStatusContainer}>
-            <View style={[
-              styles.connectionStatusDot, 
-              { backgroundColor: getConnectionStatusColor() }
-            ]} />
+          <View style={[styles.connectionStatus, { backgroundColor: getConnectionStatusColor() }]}>
             <Text style={styles.connectionStatusText}>
-              {getConnectionStatusText()}
+              {connectionStatus === 'connected' ? 'ONLINE' : 'OFFLINE'}
             </Text>
           </View>
         </View>
-        <View style={{ width: 40 }} />
-      </View>
+        
+        <View style={{ width: 44 }} />
+      </Animated.View>
 
-      {/* Ride Details Card */}
-      <View style={styles.rideDetails}>
-        {/* Ride Type Header */}
-        <View style={styles.rideHeader}>
-          <View style={[styles.rideIconContainer, { backgroundColor: `${ride.color}20` }]}>
-            <FontAwesome5 name={ride.icon} size={28} color={ride.color} />
+      <ScrollView 
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Ride Type Badge */}
+        <Animated.View 
+          style={[
+            styles.rideTypeContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <View style={styles.rideTypeBadge}>
+            <Text style={styles.rideTypeName}>{ride.name}</Text>
+            {surgeMultiplier > 1.0 && (
+              <View style={styles.surgeBadge}>
+                <MaterialIcon name="flash-on" size={12} color="#FFF" />
+                <Text style={styles.surgeBadgeText}>{surgeMultiplier.toFixed(1)}x</Text>
+              </View>
+            )}
           </View>
-          <View style={styles.rideHeaderInfo}>
-            <Text style={styles.rideName}>{ride.name}</Text>
-            <Text style={styles.rideDescription}>{ride.description || 'Standard ride service'}</Text>
-          </View>
-          {ride.isSurge && (
-            <View style={styles.surgeBadge}>
-              <MaterialIcon name="flash-on" size={14} color="#FFF" />
-              <Text style={styles.surgeBadgeText}>{surgeMultiplier.toFixed(1)}x</Text>
+          <Text style={styles.rideDescription}>{ride.vehicleType || 'Standard vehicle'}</Text>
+        </Animated.View>
+
+        {/* Pickup and Destination */}
+        <Animated.View 
+          style={[
+            styles.locationsContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          {/* Pickup */}
+          <View style={styles.locationCard}>
+            <View style={styles.locationHeader}>
+              <View style={styles.locationIconContainer}>
+                <MaterialIcon name="my-location" size={16} color="#06C167" />
+              </View>
+              <Text style={styles.locationLabel}>PICKUP</Text>
             </View>
-          )}
-        </View>
-
-        {/* Pickup Location */}
-        <View style={styles.locationSection}>
-          <View style={styles.locationHeader}>
-            <MaterialIcon name="my-location" size={18} color="#4285F4" />
-            <Text style={styles.locationTitle}>PICKUP</Text>
-          </View>
-          <Text style={styles.locationText} numberOfLines={2}>
-            {pickupLocation || 'Your current location'}
-          </Text>
-          {pickupCoords && (
-            <Text style={styles.coordinatesText}>
-              {pickupCoords.latitude?.toFixed(4)}, {pickupCoords.longitude?.toFixed(4)}
+            <Text style={styles.locationText} numberOfLines={2}>
+              {pickupLocation || 'Your Location'}
             </Text>
-          )}
-        </View>
-
-        {/* Divider */}
-        <View style={styles.divider} />
-
-        {/* Destination Location */}
-        <View style={styles.locationSection}>
-          <View style={styles.locationHeader}>
-            <MaterialIcon name="place" size={18} color="#EA4335" />
-            <Text style={styles.locationTitle}>DESTINATION</Text>
+            {pickupCoords && (
+              <Text style={styles.coordinates}>
+                {pickupCoords.latitude?.toFixed(4)}, {pickupCoords.longitude?.toFixed(4)}
+              </Text>
+            )}
           </View>
-          <Text style={styles.locationText} numberOfLines={2}>
-            {destinationAddress || destination || 'Selected destination'}
-          </Text>
-          {destinationCoords && (
-            <Text style={styles.coordinatesText}>
-              {destinationCoords.latitude?.toFixed(4)}, {destinationCoords.longitude?.toFixed(4)}
-            </Text>
-          )}
-        </View>
 
-        {/* Trip Information */}
-        <View style={styles.tripInfo}>
+          {/* Destination */}
+          <View style={styles.locationCard}>
+            <View style={styles.locationHeader}>
+              <View style={[styles.locationIconContainer, { backgroundColor: '#FFE5E5' }]}>
+                <MaterialIcon name="place" size={16} color="#EA4335" />
+              </View>
+              <Text style={styles.locationLabel}>DESTINATION</Text>
+            </View>
+            <Text style={styles.locationText} numberOfLines={2}>
+              {destinationAddress || destination || 'Lilongwe Police Station'}
+            </Text>
+            {destinationCoords && (
+              <Text style={styles.coordinates}>
+                {destinationCoords.latitude?.toFixed(4)}, {destinationCoords.longitude?.toFixed(4)}
+              </Text>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* Trip Info */}
+        <Animated.View 
+          style={[
+            styles.tripInfoContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
           <View style={styles.tripInfoItem}>
-            <MaterialIcon name="directions" size={16} color="#666" />
-            <Text style={styles.tripInfoLabel}>Distance:</Text>
+            <MaterialIcon name="directions" size={20} color="#666" />
+            <Text style={styles.tripInfoLabel}>Distance</Text>
             <Text style={styles.tripInfoValue}>{ride.distance || '0'} km</Text>
           </View>
+          <View style={styles.tripInfoDivider} />
           <View style={styles.tripInfoItem}>
-            <MaterialIcon name="access-time" size={16} color="#666" />
-            <Text style={styles.tripInfoLabel}>Est. time:</Text>
+            <MaterialIcon name="access-time" size={20} color="#666" />
+            <Text style={styles.tripInfoLabel}>Est. Time</Text>
             <Text style={styles.tripInfoValue}>{estimatedArrival}</Text>
           </View>
+          <View style={styles.tripInfoDivider} />
           <View style={styles.tripInfoItem}>
-            <MaterialIcon name="local-taxi" size={16} color="#666" />
-            <Text style={styles.tripInfoLabel}>Vehicle:</Text>
-            <Text style={styles.tripInfoValue}>{ride.vehicleType || 'Standard'}</Text>
+            <MaterialIcon name="local-taxi" size={20} color="#666" />
+            <Text style={styles.tripInfoLabel}>Vehicle</Text>
+            <Text style={styles.tripInfoValue}>{ride.vehicleType || 'Car'}</Text>
           </View>
-        </View>
+        </Animated.View>
 
-        {/* Price Breakdown */}
-        <View style={styles.priceBreakdown}>
+        {/* Price Breakdown - Simplified */}
+        <Animated.View 
+          style={[
+            styles.priceContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
           <Text style={styles.priceSectionTitle}>Price Breakdown</Text>
           
           <View style={styles.priceRow}>
@@ -374,111 +449,114 @@ export default function RideConfirmationScreen({ route, navigation }) {
           
           {surgeMultiplier > 1.0 && (
             <View style={styles.priceRow}>
-              <View style={styles.surgeRow}>
+              <View style={styles.priceLabelContainer}>
                 <Text style={styles.priceLabel}>Surge pricing</Text>
-                <View style={styles.surgeMultiplier}>
+                <View style={styles.surgeMultiplierBadge}>
                   <Text style={styles.surgeMultiplierText}>{surgeMultiplier.toFixed(1)}x</Text>
                 </View>
               </View>
-              <Text style={[styles.priceValue, styles.surgePriceValue]}>
-                {formatMK(basePrice * (surgeMultiplier - 1))}
+              <Text style={[styles.priceValue, styles.surgePrice]}>
+                +{formatMK(basePrice * (surgeMultiplier - 1))}
               </Text>
-            </View>
-          )}
-          
-          {ride.distance > 0 && (
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Distance ({ride.distance} km)</Text>
-              <Text style={styles.priceValue}>{formatMK(Math.round(ride.distance * 100))}</Text>
             </View>
           )}
           
           {usePromo && (
             <View style={styles.priceRow}>
-              <View style={styles.promoRow}>
-                <Text style={styles.priceLabel}>Promo (20% off)</Text>
-                <Text style={styles.promoCode}>PROMO20</Text>
-              </View>
-              <Text style={[styles.priceValue, styles.promoPriceValue]}>
+              <Text style={styles.priceLabel}>Promo discount (20%)</Text>
+              <Text style={[styles.priceValue, styles.promoPrice]}>
                 -{formatMK(Math.round(surgePrice * 0.2))}
               </Text>
             </View>
           )}
           
           <View style={styles.totalPriceRow}>
-            <Text style={styles.totalPriceLabel}>Total</Text>
-            <Text style={styles.totalPriceValue}>{formatMK(finalPrice)}</Text>
+            <Text style={styles.totalLabel}>Total Amount</Text>
+            <Text style={styles.totalPrice}>{formatMK(finalPrice)}</Text>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Payment Method */}
-        <View style={styles.paymentSection}>
+        <Animated.View 
+          style={[
+            styles.paymentContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
           <Text style={styles.paymentTitle}>Payment Method</Text>
-          <View style={styles.paymentMethodContainer}>
-            <MaterialIcon 
-              name={
-                paymentMethod === 'cash' ? 'attach-money' : 
-                paymentMethod === 'card' ? 'credit-card' : 
-                paymentMethod === 'mobile' ? 'smartphone' : 'payment'
-              } 
-              size={24} 
-              color="#06C167" 
-            />
-            <Text style={styles.paymentMethodText}>
-              {paymentMethod === 'cash' ? 'Cash' : 
-               paymentMethod === 'card' ? 'Credit/Debit Card' : 
-               paymentMethod === 'mobile' ? 'Mobile Money' : 
-               paymentMethod || 'Cash'}
-            </Text>
+          <View style={styles.paymentMethodCard}>
+            <View style={styles.paymentIconContainer}>
+              <MaterialIcon name={getPaymentIcon()} size={24} color="#06C167" />
+            </View>
+            <View style={styles.paymentDetails}>
+              <Text style={styles.paymentMethodName}>{getPaymentText()}</Text>
+              <Text style={styles.paymentStatus}>Selected for this ride</Text>
+            </View>
           </View>
-        </View>
+        </Animated.View>
 
-        {/* Real-time Note */}
-        {connectionStatus === 'connected' && (
-          <View style={styles.realTimeNote}>
-            <MaterialIcon name="bolt" size={16} color="#06C167" />
-            <Text style={styles.realTimeNoteText}>
-              Real-time driver matching enabled
+        {/* Connection Status */}
+        {connectionStatus !== 'connected' && (
+          <Animated.View 
+            style={[
+              styles.connectionWarning,
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: connectionPulse }],
+              },
+            ]}
+          >
+            <MaterialIcon name="wifi-off" size={16} color="#EA4335" />
+            <Text style={styles.connectionWarningText}>
+              Please check your internet connection to request a ride
             </Text>
-          </View>
+          </Animated.View>
         )}
-      </View>
+      </ScrollView>
 
       {/* Confirm Button */}
-      <View style={styles.confirmContainer}>
-        <TouchableOpacity 
-          style={[
-            styles.confirmButton, 
-            (loading || connectionStatus !== 'connected') && styles.confirmButtonDisabled
-          ]} 
-          onPress={handleConfirmRide}
-          disabled={loading || connectionStatus !== 'connected'}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <>
-              <Text style={styles.confirmButtonText}>
-                {connectionStatus === 'connected' ? 'Confirm Ride' : 'Connecting...'}
-              </Text>
-              <Text style={styles.confirmButtonSubtext}>
-                {formatMK(finalPrice)} • Real-time matching
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
+      <Animated.View 
+        style={[
+          styles.footer,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <Animated.View style={{ transform: [{ scale: confirmButtonScale }] }}>
+          <TouchableOpacity 
+            style={[
+              styles.confirmButton, 
+              (loading || connectionStatus !== 'connected') && styles.confirmButtonDisabled
+            ]} 
+            onPress={handleConfirmRide}
+            disabled={loading || connectionStatus !== 'connected'}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <View style={styles.confirmButtonContent}>
+                <Text style={styles.confirmButtonText}>
+                  {connectionStatus === 'connected' ? 'Confirm Ride' : 'Connect to Request'}
+                </Text>
+                <View style={styles.confirmButtonDetails}>
+                  <Text style={styles.confirmButtonPrice}>{formatMK(finalPrice)}</Text>
+                  <Text style={styles.confirmButtonNote}>• Real-time matching</Text>
+                </View>
+              </View>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
         
-        {connectionStatus !== 'connected' && (
-          <Text style={styles.connectionWarning}>
-            Please check your internet connection to request a ride
-          </Text>
-        )}
-        
-        <Text style={styles.note}>
+        <Text style={styles.termsText}>
           By confirming, you agree to our Terms of Service
         </Text>
-      </View>
-    </View>
+      </Animated.View>
+    </SafeAreaView>
   );
 }
 
@@ -487,16 +565,30 @@ const styles = StyleSheet.create({
     flex: 1, 
     backgroundColor: '#F7F6F3' 
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 140,
+  },
   header: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between', 
     paddingHorizontal: 16, 
-    paddingTop: Platform.OS === 'ios' ? 60 : 40, 
+    paddingTop: Platform.OS === 'ios' ? 20 : 40, 
     paddingBottom: 16, 
     backgroundColor: '#FFFFFF', 
     borderBottomWidth: 1, 
-    borderBottomColor: '#F0F0F0' 
+    borderBottomColor: '#F0F0F0',
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitleContainer: {
     flex: 1,
@@ -504,80 +596,71 @@ const styles = StyleSheet.create({
   },
   headerTitle: { 
     fontSize: 18, 
-    fontWeight: '600', 
+    fontWeight: '700', 
     color: '#000',
     marginBottom: 4,
   },
-  connectionStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  connectionStatusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
+  connectionStatus: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   connectionStatusText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
+    fontSize: 11,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
-  rideDetails: { 
-    margin: 16, 
-    backgroundColor: '#FFFFFF', 
-    borderRadius: 16, 
-    padding: 20, 
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+  rideTypeContainer: {
+    marginBottom: 16,
   },
-  rideHeader: {
+  rideTypeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    alignSelf: 'flex-start',
+    backgroundColor: '#06C167',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 8,
   },
-  rideIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  rideHeaderInfo: {
-    flex: 1,
-  },
-  rideName: { 
-    fontSize: 20, 
-    fontWeight: 'bold', 
-    color: '#000',
-    marginBottom: 4,
-  },
-  rideDescription: {
-    fontSize: 14,
-    color: '#666',
+  rideTypeName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginRight: 8,
   },
   surgeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FBBC05',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
   surgeBadgeText: {
     fontSize: 12,
-    color: '#FFF',
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontWeight: '700',
     marginLeft: 4,
   },
-  locationSection: {
+  rideDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 4,
+  },
+  locationsContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  locationCard: {
     marginBottom: 16,
   },
   locationHeader: {
@@ -585,63 +668,83 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  locationTitle: {
+  locationIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#E8F7F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  locationLabel: {
     fontSize: 12,
     color: '#666',
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'uppercase',
-    marginLeft: 8,
+    letterSpacing: 0.5,
   },
   locationText: {
     fontSize: 16,
     color: '#000',
-    fontWeight: '500',
+    fontWeight: '600',
+    marginBottom: 4,
     lineHeight: 22,
   },
-  coordinatesText: {
+  coordinates: {
     fontSize: 12,
     color: '#999',
-    marginTop: 4,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginVertical: 20,
-  },
-  tripInfo: {
+  tripInfoContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   tripInfoItem: {
+    flex: 1,
     alignItems: 'center',
+  },
+  tripInfoDivider: {
+    width: 1,
+    height: '100%',
+    backgroundColor: '#E5E7EB',
   },
   tripInfoLabel: {
     fontSize: 12,
     color: '#666',
-    marginTop: 4,
+    marginTop: 8,
+    fontWeight: '600',
   },
   tripInfoValue: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#000',
-    marginTop: 2,
+    marginTop: 4,
   },
-  priceBreakdown: {
-    marginBottom: 24,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+  priceContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   priceSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#000',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   priceRow: {
     flexDirection: 'row',
@@ -649,52 +752,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  priceLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   priceLabel: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#666',
+    fontWeight: '500',
   },
   priceValue: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     color: '#000',
   },
-  surgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  surgeMultiplier: {
-    backgroundColor: '#FFF5E6',
+  surgeMultiplierBadge: {
+    backgroundColor: '#FBBC05',
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginLeft: 8,
-  },
-  surgeMultiplierText: {
-    fontSize: 10,
-    color: '#FBBC05',
-    fontWeight: 'bold',
-  },
-  surgePriceValue: {
-    color: '#FBBC05',
-    fontWeight: 'bold',
-  },
-  promoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  promoCode: {
-    fontSize: 10,
-    color: '#06C167',
-    backgroundColor: '#F0F9F0',
-    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
     marginLeft: 8,
-    fontStyle: 'italic',
   },
-  promoPriceValue: {
+  surgeMultiplierText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  surgePrice: {
+    color: '#FBBC05',
+    fontWeight: '700',
+  },
+  promoPrice: {
     color: '#06C167',
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   totalPriceRow: {
     flexDirection: 'row',
@@ -702,59 +792,81 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 16,
     paddingTop: 16,
-    borderTopWidth: 1,
+    borderTopWidth: 2,
     borderTopColor: '#F0F0F0',
   },
-  totalPriceLabel: {
+  totalLabel: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: '#000',
   },
-  totalPriceValue: {
+  totalPrice: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: '#EA4335',
   },
-  paymentSection: {
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+  paymentContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   paymentTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#000',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  paymentMethodContainer: {
+  paymentMethodCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F8F9FA',
     padding: 16,
     borderRadius: 12,
   },
-  paymentMethodText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000',
-    marginLeft: 12,
+  paymentIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#E8F7F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
   },
-  realTimeNote: {
+  paymentDetails: {
+    flex: 1,
+  },
+  paymentMethodName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 4,
+  },
+  paymentStatus: {
+    fontSize: 14,
+    color: '#666',
+  },
+  connectionWarning: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    padding: 12,
-    backgroundColor: '#F0F9F0',
-    borderRadius: 10,
+    backgroundColor: '#FFE5E5',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
   },
-  realTimeNoteText: {
+  connectionWarningText: {
     fontSize: 14,
-    color: '#06C167',
+    color: '#EA4335',
     fontWeight: '500',
-    marginLeft: 8,
+    marginLeft: 12,
+    flex: 1,
   },
-  confirmContainer: {
+  footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -767,42 +879,43 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
-    shadowRadius: 12,
-  },
-  confirmButton: { 
-    backgroundColor: '#06C167', 
-    paddingVertical: 18, 
-    borderRadius: 14, 
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#06C167',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  confirmButtonDisabled: { 
-    backgroundColor: '#CCC',
-    shadowColor: '#CCC',
+  confirmButton: {
+    backgroundColor: '#06C167',
+    borderRadius: 14,
+    paddingVertical: 18,
+    alignItems: 'center',
   },
-  confirmButtonText: { 
-    fontSize: 20, 
-    color: '#FFF', 
-    fontWeight: 'bold',
+  confirmButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
+  confirmButtonContent: {
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    fontWeight: '700',
     marginBottom: 4,
   },
-  confirmButtonSubtext: {
+  confirmButtonDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  confirmButtonPrice: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  confirmButtonNote: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.9)',
-  },
-  connectionWarning: {
-    fontSize: 12,
-    color: '#EA4335',
-    textAlign: 'center',
-    marginTop: 8,
     fontWeight: '500',
+    marginLeft: 4,
   },
-  note: {
-    fontSize: 10,
+  termsText: {
+    fontSize: 12,
     color: '#999',
     textAlign: 'center',
     marginTop: 12,
@@ -812,30 +925,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 32,
   },
   errorText: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#000',
-    marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 12,
+    textAlign: 'center',
   },
   errorSubtext: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
   },
   errorButton: {
     backgroundColor: '#06C167',
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingHorizontal: 40,
+    paddingVertical: 16,
+    borderRadius: 12,
   },
   errorButtonText: {
     fontSize: 16,
     color: '#FFF',
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

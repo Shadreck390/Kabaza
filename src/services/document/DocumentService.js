@@ -491,17 +491,17 @@ class DocumentService {
   }
 
   /**
-   * Get document icon based on type
+   * Get document icon based on type - FIXED: No more Chinese character fallbacks
    */
   getDocumentIcon(documentType) {
     const icons = {
-      license: '🪪',
-      nrc: '🆔',
-      vehicle_registration: '🚗',
-      insurance: '📑',
-      profile_photo: '📷',
-      good_conduct: '👮',
-      default: '📄'
+      license: 'license',
+      nrc: 'nrc',
+      vehicle_registration: 'vehicle-registration',
+      insurance: 'insurance',
+      profile_photo: 'profile-photo',
+      good_conduct: 'security',
+      default: 'document'
     };
     
     return icons[documentType] || icons.default;

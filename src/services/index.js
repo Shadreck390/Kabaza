@@ -1,4 +1,4 @@
-// src/services/index.js - Master barrel export for ALL services
+// Update your src/services/index.js:
 export { default as LocationService } from './location';
 export { default as DocumentService } from './document';
 export { default as SocketService } from './socket';
@@ -6,6 +6,9 @@ export { default as RealTimeService } from './realtime';
 export { default as RideService } from './ride';
 export { default as PaymentService } from './payment';
 export { default as NotificationService } from './notification';
+
+// Add driver service export
+export { default as DriverService } from './driver/driverService';
 
 // API exports
 export { default as authAPI } from './api/authAPI';
@@ -33,6 +36,7 @@ const Services = {
   RideService,
   PaymentService,
   NotificationService,
+  DriverService, // Add this
   authAPI,
   rideAPI,
   tripAPI,

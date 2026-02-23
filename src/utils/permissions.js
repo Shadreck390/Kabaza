@@ -263,37 +263,37 @@ export const getBlockedPermissions = async () => {
   return blocked;
 };
 
-// Permission descriptions for UI
+// Permission descriptions for UI - FIXED: No more Chinese character fallbacks
 export const PERMISSION_DESCRIPTIONS = {
   LOCATION: {
     title: 'Location Access',
     description: 'Required to find nearby drivers, track your ride, and provide accurate ETAs.',
     required: true,
-    icon: '📍',
+    icon: 'location',
   },
   CAMERA: {
     title: 'Camera Access',
     description: 'Required to take profile photos and upload vehicle/driver documents.',
     required: true,
-    icon: '📷',
+    icon: 'camera',
   },
   PHOTO_LIBRARY: {
     title: 'Photo Library Access',
     description: 'Required to select photos for your profile and documents.',
     required: true,
-    icon: '🖼️',
+    icon: 'photo',
   },
   NOTIFICATIONS: {
     title: 'Notifications',
     description: 'Get ride updates, driver alerts, and important announcements.',
     required: true,
-    icon: '🔔',
+    icon: 'notifications',
   },
   CONTACTS: {
     title: 'Contacts Access',
     description: 'Optional: Share ride details with friends or add emergency contacts.',
     required: false,
-    icon: '👥',
+    icon: 'people',
   },
 };
 

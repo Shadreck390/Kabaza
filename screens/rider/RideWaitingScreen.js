@@ -1,4 +1,4 @@
-// screens/rider/RideWaitingScreen.js
+// screens/rider/RideWaitingScreen.js - ENHANCED VERSION
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -11,15 +11,29 @@ import {
   Platform,
   Dimensions,
   Animated,
-  Easing
+  Easing,
+  PanResponder,
+  SafeAreaView,
+  TextInput,
+  Modal,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import realTimeService from '@services/socket/realtimeUpdates';
+import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Circle } from 'react-native-maps';
+import LinearGradient from 'react-native-linear-gradient';
+import { BlurView } from '@react-native-community/blur';
+
+import realTimeService from '@src/services/socket/realtimeUpdates';
 
 const { width, height } = Dimensions.get('window');
 
+// Animated Components
+const AnimatedView = Animated.createAnimatedComponent(View);
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+const AnimatedText = Animated.createAnimatedComponent(Text);
+const AnimatedMap = Animated.createAnimatedComponent(MapView);
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
 export default function RideWaitingScreen({ route, navigation }) {
   const { 
@@ -30,61 +44,114 @@ export default function RideWaitingScreen({ route, navigation }) {
     paymentMethod,
     pickupCoords,
     destinationCoords,
-    riderInfo 
+    riderInfo,
+    selectedDriver,
+    isMock,
+    socketRequestId,
   } = route.params || {};
   
+  // States
   const [status, setStatus] = useState('searching'); // searching, matched, accepted, enroute, arrived
-  const [driver, setDriver] = useState(null);
+  const [driver, setDriver] = useState(selectedDriver || null);
   const [driverLocation, setDriverLocation] = useState(null);
   const [estimatedArrival, setEstimatedArrival] = useState(rideData?.estimatedTime || '5-10 min');
   const [timer, setTimer] = useState(0);
   const [connectionStatus, setConnectionStatus] = useState('connected');
   const [driverPath, setDriverPath] = useState([]);
   const [showDriverInfo, setShowDriverInfo] = useState(false);
-  const [searchingAnimation] = useState(new Animated.Value(0));
-  const [mapRegion, setMapRegion] = useState({
-    latitude: -13.9626,
-    longitude: 33.7741,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  });
-
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showSOSModal, setShowSOSModal] = useState(false);
+  const [showDriverDetails, setShowDriverDetails] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [searchRadius, setSearchRadius] = useState(500); // meters
+  const [showSearchAnimation, setShowSearchAnimation] = useState(true);
+  const [driverETA, setDriverETA] = useState(null);
+  const [driverBearing, setDriverBearing] = useState(0);
+  
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideUpAnim = useRef(new Animated.Value(30)).current;
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+  const mapScale = useRef(new Animated.Value(1)).current;
+  const mapOpacity = useRef(new Animated.Value(1)).current;
+  const driverScale = useRef(new Animated.Value(0.9)).current;
+  const driverOpacity = useRef(new Animated.Value(0)).current;
+  const statusCardScale = useRef(new Animated.Value(0.95)).current;
+  const statusCardOpacity = useRef(new Animated.Value(0)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const searchPulseAnim = useRef(new Animated.Value(1)).current;
+  const driverMarkerScale = useRef(new Animated.Value(0)).current;
+  const driverMarkerOpacity = useRef(new Animated.Value(0)).current;
+  const routeLineAnim = useRef(new Animated.Value(0)).current;
+  const modalScale = useRef(new Animated.Value(0.8)).current;
+  const modalOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Map reference
   const mapRef = useRef(null);
+  
+  // Status colors
+  const STATUS_COLORS = {
+    searching: '#FBBC05',
+    matched: '#4285F4',
+    accepted: '#34A853',
+    enroute: '#06C167',
+    arrived: '#EA4335',
+    cancelled: '#EF4444',
+    no_drivers: '#9CA3AF',
+  };
+  
+  // Status icons
+  const STATUS_ICONS = {
+    searching: 'search',
+    matched: 'person-search',
+    accepted: 'check-circle',
+    enroute: 'directions-car',
+    arrived: 'location-on',
+    cancelled: 'cancel',
+    no_drivers: 'error-outline',
+  };
+  
+  // Status messages
+  const STATUS_MESSAGES = {
+    searching: 'Finding nearby drivers...',
+    matched: 'Driver has been assigned',
+    accepted: 'Driver accepted your ride',
+    enroute: 'Driver is on the way',
+    arrived: 'Driver has arrived!',
+    cancelled: 'Ride was cancelled',
+    no_drivers: 'No drivers available',
+  };
+  
+  // Status descriptions
+  const STATUS_DESCRIPTIONS = {
+    searching: 'We\'re searching for available drivers near you',
+    matched: 'Your ride has been matched with a driver',
+    accepted: 'Driver confirmed and is preparing to pick you up',
+    enroute: 'Driver is heading to your pickup location',
+    arrived: 'Your driver is waiting for you at the pickup point',
+    cancelled: 'The ride has been cancelled',
+    no_drivers: 'No drivers are currently available in your area',
+  };
 
-  // Animation for searching state
+  // Animation on mount
   useEffect(() => {
-    if (status === 'searching') {
-      const pulseAnimation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(searchingAnimation, {
-            toValue: 1,
-            duration: 1000,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(searchingAnimation, {
-            toValue: 0,
-            duration: 1000,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      pulseAnimation.start();
-      return () => pulseAnimation.stop();
-    }
-  }, [status, searchingAnimation]);
-
-  useEffect(() => {
+    animateIn();
+    
     // Check initial connection status
     const status = realTimeService.getConnectionStatus();
     setConnectionStatus(status.isConnected ? 'connected' : 'disconnected');
+    
+    // If in mock mode, simulate driver matching
+    if (isMock) {
+      simulateMockDriver();
+    }
     
     // Listen for connection changes
     realTimeService.addConnectionListener((connected) => {
       setConnectionStatus(connected ? 'connected' : 'disconnected');
       
-      if (connected && status === 'disconnected') {
+      if (connected && connectionStatus === 'disconnected') {
         // Reconnected - resubscribe to updates
         setupSubscriptions();
       }
@@ -98,48 +165,346 @@ export default function RideWaitingScreen({ route, navigation }) {
       setTimer(prev => prev + 1);
     }, 1000);
 
-    // Update map region based on pickup coordinates
-    if (pickupCoords) {
-      setMapRegion({
-        ...pickupCoords,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      });
-    }
+    // Search radius animation
+    const radiusInterval = setInterval(() => {
+      if (status === 'searching') {
+        setSearchRadius(prev => (prev % 1000) + 100);
+      }
+    }, 500);
+
+    // Start pulse animation
+    startPulseAnimation();
 
     return () => {
       // Cleanup all subscriptions
       cleanupFunctions.forEach(cleanup => cleanup && cleanup());
       clearInterval(timerInterval);
+      clearInterval(radiusInterval);
       realTimeService.removeConnectionListener();
     };
   }, []);
 
+  // Update animations based on status
+  useEffect(() => {
+    if (status === 'enroute' && driverLocation) {
+      animateDriverMarker();
+      startRouteAnimation();
+    }
+    
+    if (status === 'arrived') {
+      animateArrival();
+    }
+  }, [status, driverLocation]);
+
+  const animateIn = () => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.timing(slideUpAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.spring(statusCardScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 60,
+        friction: 8,
+        delay: 200,
+      }),
+      Animated.timing(statusCardOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+        delay: 200,
+      }),
+      Animated.spring(driverScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+        delay: 300,
+      }),
+      Animated.timing(driverOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+        delay: 300,
+      }),
+    ]).start();
+  };
+
+  const startPulseAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.2,
+          duration: 800,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease),
+        }),
+      ])
+    ).start();
+  };
+
+  const startSearchPulseAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(searchPulseAnim, {
+          toValue: 1.5,
+          duration: 1500,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        Animated.timing(searchPulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease),
+        }),
+      ])
+    ).start();
+  };
+
+  const animateDriverMarker = () => {
+    driverMarkerScale.setValue(0);
+    driverMarkerOpacity.setValue(0);
+    
+    Animated.parallel([
+      Animated.spring(driverMarkerScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 60,
+        friction: 7,
+      }),
+      Animated.timing(driverMarkerOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const animateArrival = () => {
+    Animated.sequence([
+      Animated.timing(mapOpacity, {
+        toValue: 0.7,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(mapOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(mapScale, {
+        toValue: 1.1,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+      Animated.spring(mapScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+    ]).start();
+  };
+
+  const startRouteAnimation = () => {
+    routeLineAnim.setValue(0);
+    
+    Animated.timing(routeLineAnim, {
+      toValue: 1,
+      duration: 2000,
+      useNativeDriver: true,
+      easing: Easing.out(Easing.quad),
+    }).start();
+  };
+
+  const animateModalIn = (modalType) => {
+    if (modalType === 'cancel') {
+      setShowCancelModal(true);
+    } else if (modalType === 'sos') {
+      setShowSOSModal(true);
+    }
+    
+    modalScale.setValue(0.8);
+    modalOpacity.setValue(0);
+    
+    Animated.parallel([
+      Animated.spring(modalScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }),
+      Animated.timing(modalOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const animateModalOut = (modalType) => {
+    Animated.parallel([
+      Animated.spring(modalScale, {
+        toValue: 0.8,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }),
+      Animated.timing(modalOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      if (modalType === 'cancel') {
+        setShowCancelModal(false);
+        setCancelReason('');
+      } else if (modalType === 'sos') {
+        setShowSOSModal(false);
+      }
+    });
+  };
+
+  const simulateMockDriver = () => {
+    // Simulate driver matching after 3 seconds
+    setTimeout(() => {
+      setStatus('matched');
+      setDriver({
+        id: 'mock_driver_1',
+        name: 'John Banda',
+        rating: 4.8,
+        totalRides: 245,
+        vehicleType: rideData?.vehicleType?.includes('bike') ? 'bike' : 'car',
+        vehicleModel: rideData?.vehicleType?.includes('bike') ? 'Honda CG 125' : 'Toyota Corolla',
+        vehiclePlate: 'LL 1234 A',
+        phone: '0999999999',
+        color: rideData?.vehicleType?.includes('bike') ? '#FBBC05' : '#34A853',
+      });
+      setShowDriverInfo(true);
+      
+      // Simulate driver acceptance after 2 seconds
+      setTimeout(() => {
+        setStatus('accepted');
+        
+        // Simulate driver location
+        const driverStartLocation = {
+          latitude: pickupCoords.latitude + 0.01,
+          longitude: pickupCoords.longitude + 0.01,
+        };
+        setDriverLocation(driverStartLocation);
+        setDriverETA('5 min');
+        
+        // Simulate enroute after 3 seconds
+        setTimeout(() => {
+          setStatus('enroute');
+          
+          // Start simulated driver movement
+          simulateDriverMovement(driverStartLocation);
+        }, 3000);
+      }, 2000);
+    }, 3000);
+  };
+
+  const simulateDriverMovement = (startLocation) => {
+    let currentLocation = { ...startLocation };
+    const targetLocation = pickupCoords;
+    const steps = 20;
+    let step = 0;
+    
+    const moveDriver = () => {
+      if (step >= steps || status !== 'enroute') return;
+      
+      step++;
+      const progress = step / steps;
+      
+      // Calculate intermediate position
+      const newLocation = {
+        latitude: startLocation.latitude + (targetLocation.latitude - startLocation.latitude) * progress,
+        longitude: startLocation.longitude + (targetLocation.longitude - startLocation.longitude) * progress,
+      };
+      
+      // Calculate bearing (direction)
+      const y = Math.sin(targetLocation.longitude - startLocation.longitude) * Math.cos(targetLocation.latitude);
+      const x = Math.cos(startLocation.latitude) * Math.sin(targetLocation.latitude) -
+                Math.sin(startLocation.latitude) * Math.cos(targetLocation.latitude) * 
+                Math.cos(targetLocation.longitude - startLocation.longitude);
+      const bearing = Math.atan2(y, x) * (180 / Math.PI);
+      
+      setDriverLocation(newLocation);
+      setDriverBearing(bearing);
+      setDriverETA(`${Math.round((1 - progress) * 5)} min`);
+      
+      // Update driver path
+      setDriverPath(prev => [...prev.slice(-9), newLocation]);
+      
+      // Update map view
+      if (mapRef.current && step % 5 === 0) {
+        mapRef.current.animateToCoordinate(newLocation, 1000);
+      }
+      
+      if (progress < 1) {
+        setTimeout(moveDriver, 1000);
+      } else {
+        // Arrived
+        setStatus('arrived');
+        setDriverETA('Arrived');
+        
+        // Navigate to active ride after delay
+        setTimeout(() => {
+          navigation.navigate('ActiveRide', {
+            rideId,
+            driver: driver,
+            pickup,
+            destination,
+            pickupCoords,
+            destinationCoords,
+            paymentMethod,
+            rideData,
+            riderInfo,
+            isMock: true,
+          });
+        }, 2000);
+      }
+    };
+    
+    moveDriver();
+  };
+
   const setupSubscriptions = () => {
     const cleanupFunctions = [];
 
-    // 1. Subscribe to ride updates
-    const unsubscribeRide = realTimeService.subscribeToRideUpdates(
-      rideId,
-      handleRideUpdate
-    );
-    cleanupFunctions.push(unsubscribeRide);
-
-    // 2. Subscribe to SOS responses
-    const unsubscribeSOS = realTimeService.subscribeToSOSResponse(
-      rideId,
-      handleSOSResponse
-    );
-    cleanupFunctions.push(unsubscribeSOS);
-
-    // 3. Subscribe to driver location updates (if we already have driver info)
-    if (driver?.id) {
-      const unsubscribeDriverLocation = realTimeService.subscribeToDriverLocation(
-        driver.id,
-        rideId,
-        handleDriverLocationUpdate
+    // Only setup real subscriptions if not in mock mode
+    if (!isMock) {
+      // 1. Subscribe to ride updates
+      const unsubscribeRide = realTimeService.subscribeToRideUpdates(
+        rideId || socketRequestId,
+        handleRideUpdate
       );
-      cleanupFunctions.push(unsubscribeDriverLocation);
+      cleanupFunctions.push(unsubscribeRide);
+
+      // 2. Subscribe to SOS responses
+      const unsubscribeSOS = realTimeService.subscribeToSOSResponse(
+        rideId || socketRequestId,
+        handleSOSResponse
+      );
+      cleanupFunctions.push(unsubscribeSOS);
     }
 
     return cleanupFunctions;
@@ -155,21 +520,12 @@ export default function RideWaitingScreen({ route, navigation }) {
       setDriver(driverData);
       setShowDriverInfo(true);
       
+      // Animate driver card
+      animateDriverCard();
+      
       // Update estimated arrival
       if (update.estimatedArrival) {
         setEstimatedArrival(update.estimatedArrival);
-      }
-      
-      // Subscribe to driver location updates
-      if (driverData?.id) {
-        const unsubscribe = realTimeService.subscribeToDriverLocation(
-          driverData.id,
-          rideId,
-          handleDriverLocationUpdate
-        );
-        
-        // Request initial driver location
-        realTimeService.updateLocation(driverData.id, pickupCoords || mapRegion, true, rideId);
       }
     }
     
@@ -193,7 +549,8 @@ export default function RideWaitingScreen({ route, navigation }) {
           destinationCoords,
           paymentMethod,
           rideData,
-          riderInfo
+          riderInfo,
+          isMock: false,
         });
       }, 2000);
     }
@@ -207,40 +564,36 @@ export default function RideWaitingScreen({ route, navigation }) {
     }
   };
 
-  const handleDriverLocationUpdate = (location) => {
-    console.log('📍 Driver location update:', location);
-    
-    setDriverLocation({
-      latitude: location.latitude,
-      longitude: location.longitude,
-      bearing: location.bearing || 0
-    });
-    
-    // Update driver path for trail
-    setDriverPath(prev => {
-      const newPath = [...prev, { latitude: location.latitude, longitude: location.longitude }];
-      // Keep only last 10 locations for performance
-      return newPath.slice(-10);
-    });
-    
-    // Update map to follow driver if they're enroute
-    if (status === 'enroute' && mapRef.current) {
-      mapRef.current.animateToCoordinate({
-        latitude: location.latitude,
-        longitude: location.longitude,
-      }, 500);
-    }
+  const animateDriverCard = () => {
+    Animated.sequence([
+      Animated.spring(driverScale, {
+        toValue: 1.05,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+      Animated.spring(driverScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+    ]).start();
   };
 
-  const handleSOSResponse = (response) => {
-    Alert.alert('🆕 Help is on the way!', response.message || 'Emergency services have been alerted and are on their way.', [
-      { 
-        text: 'OK', 
-        onPress: () => {
-          // You could add additional actions here
-        }
-      }
-    ]);
+  const updateMapToShowDriver = (driverLocation) => {
+    if (mapRef.current && driverLocation) {
+      const coordinates = [
+        pickupCoords || mapRegion,
+        driverLocation,
+        destinationCoords || { latitude: -13.9897, longitude: 33.7777 }
+      ];
+      
+      mapRef.current.fitToCoordinates(coordinates, {
+        edgePadding: { top: 100, right: 100, bottom: 300, left: 100 },
+        animated: true,
+      });
+    }
   };
 
   const handleRideCancelled = (reason) => {
@@ -292,81 +645,99 @@ export default function RideWaitingScreen({ route, navigation }) {
     );
   };
 
-  const updateMapToShowDriver = (driverLocation) => {
-    if (mapRef.current && driverLocation) {
-      const coordinates = [
-        pickupCoords || mapRegion,
-        driverLocation,
-        destinationCoords || { latitude: -13.9897, longitude: 33.7777 }
-      ];
-      
-      mapRef.current.fitToCoordinates(coordinates, {
-        edgePadding: { top: 100, right: 100, bottom: 300, left: 100 },
-        animated: true,
-      });
-    }
+  const handleSOSResponse = (response) => {
+    Alert.alert('🆕 Help is on the way!', response.message || 'Emergency services have been alerted and are on their way.', [
+      { 
+        text: 'OK', 
+        onPress: () => {
+          // You could add additional actions here
+        }
+      }
+    ]);
   };
 
   const handleCancelRide = () => {
-    Alert.alert(
-      'Cancel Ride Request',
-      'Are you sure you want to cancel this ride request?',
-      [
-        { 
-          text: 'No, Keep Searching', 
-          style: 'cancel' 
-        },
-        { 
-          text: 'Yes, Cancel', 
-          style: 'destructive',
-          onPress: () => {
-            realTimeService.cancelRideRequest(rideId, 'Cancelled by rider');
-            navigation.goBack();
-          }
-        }
-      ]
-    );
+    if (!cancelReason.trim()) {
+      Alert.alert('Reason Required', 'Please provide a reason for cancellation');
+      return;
+    }
+    
+    // Button animation
+    Animated.sequence([
+      Animated.spring(buttonScale, {
+        toValue: 0.95,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+      Animated.spring(buttonScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+    ]).start();
+    
+    if (!isMock) {
+      realTimeService.cancelRideRequest(rideId || socketRequestId, cancelReason);
+    }
+    
+    animateModalOut('cancel');
+    
+    setTimeout(() => {
+      navigation.goBack();
+    }, 300);
   };
 
   const handleSOS = () => {
-    Alert.alert(
-      '🚨 Emergency SOS',
-      'This will alert nearby drivers, emergency contacts, and local authorities. Only use in real emergencies.',
-      [
-        { 
-          text: 'Cancel', 
-          style: 'cancel' 
-        },
-        { 
-          text: 'SEND EMERGENCY ALERT', 
-          style: 'destructive',
-          onPress: () => {
-            realTimeService.sendSOSAlert(
-              rideId,
-              driverLocation || pickupCoords || mapRegion,
-              'Emergency assistance requested by rider',
-              'emergency'
-            );
-            
-            Alert.alert(
-              'SOS Alert Sent',
-              'Help is on the way. Stay on the line if possible.',
-              [{ text: 'OK' }]
-            );
+    animateModalOut('sos');
+    
+    // Simulate SOS response
+    setTimeout(() => {
+      Alert.alert(
+        '🚨 Emergency SOS',
+        'This will alert nearby drivers, emergency contacts, and local authorities. Only use in real emergencies.',
+        [
+          { 
+            text: 'Cancel', 
+            style: 'cancel' 
+          },
+          { 
+            text: 'SEND EMERGENCY ALERT', 
+            style: 'destructive',
+            onPress: () => {
+              const location = driverLocation || pickupCoords || { latitude: -13.9626, longitude: 33.7741 };
+              
+              if (!isMock) {
+                realTimeService.sendSOSAlert(
+                  rideId || socketRequestId,
+                  location,
+                  'Emergency assistance requested by rider',
+                  'emergency'
+                );
+              }
+              
+              Alert.alert(
+                'SOS Alert Sent',
+                'Help is on the way. Stay on the line if possible.',
+                [{ text: 'OK' }]
+              );
+            }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }, 300);
   };
 
   const handleChatWithDriver = () => {
     if (driver) {
       navigation.navigate('RideChat', {
-        rideId,
+        rideId: rideId || socketRequestId,
         driverId: driver.id,
         driverName: driver.name,
         riderId: riderInfo?.userId,
-        riderName: riderInfo?.userName
+        riderName: riderInfo?.userName,
+        isMock: isMock,
       });
     }
   };
@@ -381,8 +752,7 @@ export default function RideWaitingScreen({ route, navigation }) {
           { 
             text: 'Call', 
             onPress: () => {
-              // Implement phone call functionality
-              // Linking.openURL(`tel:${driver.phone}`);
+              // Phone call functionality would go here
               Alert.alert('Call Function', 'Phone call would be initiated here');
             }
           }
@@ -393,61 +763,28 @@ export default function RideWaitingScreen({ route, navigation }) {
     }
   };
 
-  const getStatusMessage = () => {
-    switch (status) {
-      case 'searching':
-        return 'Finding nearby drivers...';
-      case 'matched':
-        return `Driver ${driver?.name} has been assigned`;
-      case 'accepted':
-        return `Driver ${driver?.name} accepted your ride`;
-      case 'enroute':
-        return `${driver?.name} is on the way to you`;
-      case 'arrived':
-        return `${driver?.name} has arrived!`;
-      case 'cancelled':
-        return 'Ride was cancelled';
-      case 'no_drivers':
-        return 'No drivers available';
-      default:
-        return 'Waiting for driver...';
-    }
-  };
+  const handleShareStatus = () => {
+    const shareMessage = `🚗 My Kabaza Ride Status:
+📍 From: ${pickup}
+🏁 To: ${destination}
+👤 Driver: ${driver?.name || 'Searching...'}
+⏰ Status: ${status.toUpperCase()}
+🕒 ETA: ${driverETA || estimatedArrival}
 
-  const getStatusIcon = () => {
-    switch (status) {
-      case 'searching':
-        return 'search';
-      case 'matched':
-        return 'person-search';
-      case 'accepted':
-        return 'check-circle';
-      case 'enroute':
-        return 'directions-car';
-      case 'arrived':
-        return 'location-on';
-      default:
-        return 'schedule';
-    }
-  };
-
-  const getStatusColor = () => {
-    switch (status) {
-      case 'searching':
-        return '#FBBC05';
-      case 'matched':
-        return '#4285F4';
-      case 'accepted':
-        return '#34A853';
-      case 'enroute':
-        return '#06C167';
-      case 'arrived':
-        return '#EA4335';
-      case 'cancelled':
-        return '#EA4335';
-      default:
-        return '#666';
-    }
+Track my ride in real-time!`;
+    
+    // In a real app, you would use Share API
+    Alert.alert(
+      'Share Ride Status',
+      shareMessage,
+      [
+        { text: 'Copy', onPress: () => {
+          // Copy to clipboard
+          Alert.alert('Copied!', 'Ride status copied to clipboard');
+        }},
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
   };
 
   const formatTime = (seconds) => {
@@ -456,27 +793,292 @@ export default function RideWaitingScreen({ route, navigation }) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const searchingScale = searchingAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.2]
-  });
+  const renderSearchAnimation = () => (
+    <AnimatedView 
+      style={[
+        styles.searchAnimation,
+        {
+          transform: [{ scale: searchPulseAnim }],
+          opacity: searchPulseAnim.interpolate({
+            inputRange: [1, 1.5],
+            outputRange: [0.3, 0.7],
+          }),
+        },
+      ]}
+    >
+      <View style={styles.searchRing}>
+        <MaterialIcon name="search" size={30} color={STATUS_COLORS.searching} />
+      </View>
+    </AnimatedView>
+  );
 
-  const searchingOpacity = searchingAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.7, 1]
-  });
+  const renderCancelModal = () => (
+    <Modal
+      visible={showCancelModal}
+      transparent
+      animationType="none"
+      onRequestClose={() => animateModalOut('cancel')}
+    >
+      <AnimatedView style={[styles.modalOverlay, { opacity: modalOpacity }]}>
+        <AnimatedView style={[styles.modalContent, { transform: [{ scale: modalScale }] }]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Cancel Ride</Text>
+            <TouchableOpacity onPress={() => animateModalOut('cancel')}>
+              <MaterialIcon name="close" size={24} color="#000" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.modalBody}>
+            <Text style={styles.modalText}>
+              Are you sure you want to cancel this ride request?
+              {status !== 'searching' && ' A cancellation fee may apply.'}
+            </Text>
+            
+            <TextInput
+              style={styles.reasonInput}
+              placeholder="Reason for cancellation (optional)"
+              value={cancelReason}
+              onChangeText={setCancelReason}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={styles.modalButtonSecondary}
+                onPress={() => animateModalOut('cancel')}
+              >
+                <Text style={styles.modalButtonTextSecondary}>Don't Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.modalButtonPrimary}
+                onPress={handleCancelRide}
+              >
+                <Text style={styles.modalButtonTextPrimary}>Cancel Ride</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </AnimatedView>
+      </AnimatedView>
+    </Modal>
+  );
+
+  const renderSOSModal = () => (
+    <Modal
+      visible={showSOSModal}
+      transparent
+      animationType="none"
+      onRequestClose={() => animateModalOut('sos')}
+    >
+      <AnimatedView style={[styles.modalOverlay, { opacity: modalOpacity }]}>
+        <AnimatedView style={[styles.modalContent, { transform: [{ scale: modalScale }] }]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>🚨 Emergency SOS</Text>
+            <TouchableOpacity onPress={() => animateModalOut('sos')}>
+              <MaterialIcon name="close" size={24} color="#000" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.modalBody}>
+            <View style={styles.sosWarning}>
+              <MaterialIcon name="warning" size={40} color="#EA4335" />
+              <Text style={styles.sosWarningText}>
+                This will immediately alert:
+              </Text>
+              <View style={styles.sosList}>
+                <View style={styles.sosItem}>
+                  <MaterialIcon name="directions-car" size={16} color="#666" />
+                  <Text style={styles.sosItemText}>Nearby drivers</Text>
+                </View>
+                <View style={styles.sosItem}>
+                  <MaterialIcon name="contact-emergency" size={16} color="#666" />
+                  <Text style={styles.sosItemText}>Emergency contacts</Text>
+                </View>
+                <View style={styles.sosItem}>
+                  <MaterialIcon name="local-police" size={16} color="#666" />
+                  <Text style={styles.sosItemText}>Local authorities</Text>
+                </View>
+              </View>
+            </View>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={styles.modalButtonSecondary}
+                onPress={() => animateModalOut('sos')}
+              >
+                <Text style={styles.modalButtonTextSecondary}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.sosButton}
+                onPress={handleSOS}
+              >
+                <MaterialIcon name="emergency" size={20} color="#FFF" />
+                <Text style={styles.sosButtonText}>SEND SOS</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </AnimatedView>
+      </AnimatedView>
+    </Modal>
+  );
+
+  const renderDriverCard = () => {
+    if (!driver || !showDriverInfo) return null;
+    
+    return (
+      <AnimatedView 
+        style={[
+          styles.driverCard,
+          {
+            opacity: driverOpacity,
+            transform: [{ scale: driverScale }],
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={['#F8F9FA', '#F1F3F4']}
+          style={styles.driverCardGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <TouchableOpacity 
+            style={styles.driverCardContent}
+            onPress={() => setShowDriverDetails(!showDriverDetails)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.driverHeader}>
+              <View style={styles.driverAvatar}>
+                <LinearGradient
+                  colors={[driver.color || '#06C167', '#10B981']}
+                  style={styles.driverAvatarGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.driverInitial}>
+                    {driver.name?.charAt(0)?.toUpperCase() || 'D'}
+                  </Text>
+                </LinearGradient>
+              </View>
+              
+              <View style={styles.driverInfo}>
+                <Text style={styles.driverName}>{driver.name}</Text>
+                <View style={styles.driverMeta}>
+                  <View style={styles.ratingContainer}>
+                    <MaterialIcon name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.rating}>{driver.rating || '4.5'}</Text>
+                  </View>
+                  <Text style={styles.ridesCount}>• {driver.totalRides || '100+'} rides</Text>
+                  {driver.vehicleType && (
+                    <Text style={styles.vehicleType}>• {driver.vehicleType.includes('bike') ? 'Bike' : 'Car'}</Text>
+                  )}
+                </View>
+              </View>
+              
+              <MaterialIcon 
+                name={showDriverDetails ? "keyboard-arrow-up" : "keyboard-arrow-down"} 
+                size={24} 
+                color="#666" 
+              />
+            </View>
+            
+            {showDriverDetails && (
+              <View style={styles.driverDetails}>
+                <View style={styles.driverDetailRow}>
+                  <MaterialCommunityIcon 
+                    name={driver.vehicleType?.includes('bike') ? 'motorcycle' : 'car'} 
+                    size={16} 
+                    color="#666" 
+                  />
+                  <Text style={styles.driverDetailText}>{driver.vehicleModel || 'Vehicle'}</Text>
+                  <Text style={styles.driverDetailPlate}>{driver.vehiclePlate || 'BL XXX'}</Text>
+                </View>
+                
+                <View style={styles.driverActions}>
+                  <TouchableOpacity 
+                    style={styles.driverActionButton}
+                    onPress={handleCallDriver}
+                  >
+                    <LinearGradient
+                      colors={['#4285F4', '#3B82F6']}
+                      style={styles.actionButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <MaterialIcon name="phone" size={18} color="#FFF" />
+                      <Text style={styles.actionButtonText}>Call</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.driverActionButton}
+                    onPress={handleChatWithDriver}
+                  >
+                    <LinearGradient
+                      colors={['#34A853', '#10B981']}
+                      style={styles.actionButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <MaterialIcon name="chat" size={18} color="#FFF" />
+                      <Text style={styles.actionButtonText}>Message</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.driverActionButton}
+                    onPress={handleShareStatus}
+                  >
+                    <LinearGradient
+                      colors={['#8B5CF6', '#7C3AED']}
+                      style={styles.actionButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <MaterialIcon name="share" size={18} color="#FFF" />
+                      <Text style={styles.actionButtonText}>Share</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </TouchableOpacity>
+        </LinearGradient>
+      </AnimatedView>
+    );
+  };
+
+  const renderRouteLine = () => {
+    if (!driverLocation || !pickupCoords || status !== 'enroute') return null;
+    
+    const lineLength = routeLineAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 100],
+    });
+    
+    return (
+      <Polyline
+        coordinates={[driverLocation, pickupCoords]}
+        strokeColor="#06C167"
+        strokeWidth={3}
+        lineDashPattern={[5, 5]}
+      />
+    );
+  };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
-      {/* Header */}
-      <View style={styles.header}>
+      {/* HEADER */}
+      <AnimatedView style={[styles.header, { opacity: headerOpacity }]}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => {
             if (status === 'searching') {
-              handleCancelRide();
+              animateModalIn('cancel');
             } else {
               navigation.goBack();
             }
@@ -496,41 +1098,76 @@ export default function RideWaitingScreen({ route, navigation }) {
         <View style={styles.connectionStatus}>
           <View style={[
             styles.connectionDot, 
-            { backgroundColor: connectionStatus === 'connected' ? '#06C167' : '#EA4335' }
+            { backgroundColor: connectionStatus === 'connected' ? '#10B981' : '#EF4444' }
           ]} />
           <Text style={styles.connectionText}>
             {connectionStatus === 'connected' ? 'Live' : 'Offline'}
           </Text>
         </View>
-      </View>
+      </AnimatedView>
 
-      {/* Map Section */}
-      <View style={styles.mapContainer}>
+      {/* MAP SECTION */}
+      <AnimatedView 
+        style={[
+          styles.mapContainer,
+          {
+            opacity: mapOpacity,
+            transform: [{ scale: mapScale }],
+          },
+        ]}
+      >
         <MapView
           ref={mapRef}
           style={styles.map}
           provider={PROVIDER_GOOGLE}
-          region={mapRegion}
+          initialRegion={{
+            latitude: pickupCoords?.latitude || -13.9626,
+            longitude: pickupCoords?.longitude || 33.7741,
+            latitudeDelta: 0.02,
+            longitudeDelta: 0.02,
+          }}
           showsUserLocation={true}
           showsMyLocationButton={false}
           zoomEnabled={true}
           scrollEnabled={true}
+          rotateEnabled={false}
         >
           {/* Pickup Marker */}
           {pickupCoords && (
             <Marker coordinate={pickupCoords} title="Pickup">
-              <View style={styles.pickupMarker}>
-                <MaterialIcon name="my-location" size={16} color="#FFF" />
-              </View>
+              <AnimatedView 
+                style={[
+                  styles.pickupMarker,
+                  {
+                    transform: [{ scale: pulseAnim }],
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={['#4285F4', '#3B82F6']}
+                  style={styles.markerGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcon name="my-location" size={16} color="#FFF" />
+                </LinearGradient>
+              </AnimatedView>
             </Marker>
           )}
           
           {/* Destination Marker */}
           {destinationCoords && (
             <Marker coordinate={destinationCoords} title="Destination">
-              <View style={styles.destinationMarker}>
-                <MaterialIcon name="place" size={16} color="#FFF" />
-              </View>
+              <AnimatedView style={styles.destinationMarker}>
+                <LinearGradient
+                  colors={['#EA4335', '#DC2626']}
+                  style={styles.markerGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcon name="place" size={16} color="#FFF" />
+                </LinearGradient>
+              </AnimatedView>
             </Marker>
           )}
           
@@ -539,34 +1176,60 @@ export default function RideWaitingScreen({ route, navigation }) {
             <Marker 
               coordinate={driverLocation}
               title={driver?.name || 'Driver'}
-              description={`ETA: ${estimatedArrival}`}
+              description={`ETA: ${driverETA || estimatedArrival}`}
               anchor={{ x: 0.5, y: 0.5 }}
-              rotation={driverLocation.bearing || 0}
+              rotation={driverBearing}
             >
-              <Animated.View style={[
-                styles.driverMarker,
-                { transform: [{ scale: status === 'enroute' ? 1 : searchingScale }] }
-              ]}>
-                <FontAwesome5 
-                  name={driver?.vehicleType?.includes('bike') ? 'motorcycle' : 'car'} 
-                  size={16} 
-                  color="#FFF" 
-                />
-              </Animated.View>
+              <AnimatedView 
+                style={[
+                  styles.driverMarker,
+                  {
+                    opacity: driverMarkerOpacity,
+                    transform: [{ scale: driverMarkerScale }],
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={['#06C167', '#10B981']}
+                  style={styles.driverMarkerGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcon 
+                    name={driver?.vehicleType?.includes('bike') ? 'motorcycle' : 'car'} 
+                    size={18} 
+                    color="#FFF" 
+                  />
+                </LinearGradient>
+              </AnimatedView>
             </Marker>
           )}
           
-          {/* Driver Path (trail) */}
+          {/* Driver Path */}
           {driverPath.length > 1 && status === 'enroute' && (
             <Polyline
               coordinates={driverPath}
               strokeColor="#06C167"
-              strokeWidth={3}
+              strokeWidth={2}
               lineDashPattern={[0]}
             />
           )}
           
-          {/* Route Line from pickup to destination */}
+          {/* Route Line */}
+          {renderRouteLine()}
+          
+          {/* Search Radius (when searching) */}
+          {status === 'searching' && pickupCoords && (
+            <Circle
+              center={pickupCoords}
+              radius={searchRadius}
+              strokeColor={STATUS_COLORS.searching + '40'}
+              fillColor={STATUS_COLORS.searching + '20'}
+              strokeWidth={1}
+            />
+          )}
+          
+          {/* Route from pickup to destination */}
           {pickupCoords && destinationCoords && (
             <Polyline
               coordinates={[pickupCoords, destinationCoords]}
@@ -577,176 +1240,228 @@ export default function RideWaitingScreen({ route, navigation }) {
           )}
         </MapView>
 
-        {/* Map Overlay - Status */}
-        <View style={styles.mapOverlay}>
-          <View style={[styles.statusIndicator, { backgroundColor: getStatusColor() }]}>
-            <MaterialIcon name={getStatusIcon()} size={20} color="#FFF" />
-            <Text style={styles.statusIndicatorText}>
-              {status.toUpperCase()}
-            </Text>
-          </View>
-        </View>
-      </View>
+        {/* Status Badge */}
+        <AnimatedView 
+          style={[
+            styles.statusBadge,
+            {
+              backgroundColor: STATUS_COLORS[status] + '20',
+              borderColor: STATUS_COLORS[status],
+            },
+          ]}
+        >
+          <MaterialIcon 
+            name={STATUS_ICONS[status]} 
+            size={16} 
+            color={STATUS_COLORS[status]} 
+          />
+          <Text style={[
+            styles.statusBadgeText,
+            { color: STATUS_COLORS[status] }
+          ]}>
+            {status.toUpperCase()}
+          </Text>
+        </AnimatedView>
 
-      {/* Status Card */}
-      <Animated.View 
+        {/* Search Animation Overlay */}
+        {status === 'searching' && showSearchAnimation && renderSearchAnimation()}
+      </AnimatedView>
+
+      {/* STATUS CARD */}
+      <AnimatedView 
         style={[
           styles.statusCard,
-          { opacity: searchingOpacity }
+          {
+            opacity: statusCardOpacity,
+            transform: [{ scale: statusCardScale }],
+          },
         ]}
       >
-        {/* Status Message */}
-        <View style={styles.statusMessageContainer}>
-          <ActivityIndicator 
-            size="large" 
-            color={getStatusColor()} 
-            animating={status === 'searching'}
-          />
-          <Text style={styles.statusMessage}>{getStatusMessage()}</Text>
-        </View>
-
-        {/* Driver Info (when available) */}
-        {showDriverInfo && driver && (
-          <View style={styles.driverCard}>
-            <View style={styles.driverHeader}>
-              <View style={styles.driverAvatar}>
-                <Text style={styles.driverInitial}>
-                  {driver.name?.charAt(0)?.toUpperCase() || 'D'}
-                </Text>
-              </View>
-              <View style={styles.driverInfo}>
-                <Text style={styles.driverName}>{driver.name}</Text>
-                <View style={styles.driverMeta}>
-                  <View style={styles.ratingContainer}>
-                    <MaterialIcon name="star" size={14} color="#FFD700" />
-                    <Text style={styles.rating}>{driver.rating || '4.5'}</Text>
-                  </View>
-                  <Text style={styles.ridesCount}>{driver.totalRides || '100+'} rides</Text>
-                </View>
-              </View>
-              <View style={styles.vehicleInfo}>
-                <FontAwesome5 
-                  name={driver.vehicleType?.includes('bike') ? 'motorcycle' : 'car'} 
-                  size={16} 
-                  color="#666" 
+        <LinearGradient
+          colors={['#FFFFFF', '#F9FAFB']}
+          style={styles.statusCardGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          {/* Status Header */}
+          <View style={styles.statusHeader}>
+            <View style={styles.statusIconContainer}>
+              <ActivityIndicator 
+                size="large" 
+                color={STATUS_COLORS[status]} 
+                animating={status === 'searching'}
+              />
+              {status !== 'searching' && (
+                <MaterialIcon 
+                  name={STATUS_ICONS[status]} 
+                  size={28} 
+                  color={STATUS_COLORS[status]} 
                 />
-                <Text style={styles.vehicleText}>{driver.vehicleModel || 'Vehicle'}</Text>
-                <Text style={styles.plateText}>{driver.vehiclePlate || 'BL XXX'}</Text>
+              )}
+            </View>
+            
+            <View style={styles.statusTextContainer}>
+              <Text style={styles.statusTitle}>{STATUS_MESSAGES[status]}</Text>
+              <Text style={styles.statusDescription}>
+                {STATUS_DESCRIPTIONS[status]}
+              </Text>
+            </View>
+          </View>
+
+          {/* Driver Card */}
+          {renderDriverCard()}
+
+          {/* Ride Details */}
+          <View style={styles.rideDetails}>
+            <View style={styles.rideDetailRow}>
+              <View style={styles.rideDetailIcon}>
+                <MaterialIcon name="my-location" size={18} color="#4285F4" />
+              </View>
+              <View style={styles.rideDetailText}>
+                <Text style={styles.rideDetailLabel}>PICKUP</Text>
+                <Text style={styles.rideDetailValue} numberOfLines={2}>
+                  {pickup || 'Your Location'}
+                </Text>
               </View>
             </View>
             
-            {/* Driver Actions */}
-            <View style={styles.driverActions}>
-              <TouchableOpacity 
-                style={styles.driverActionButton}
-                onPress={handleCallDriver}
-              >
-                <MaterialIcon name="phone" size={20} color="#4285F4" />
-                <Text style={styles.driverActionText}>Call</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.driverActionButton}
-                onPress={handleChatWithDriver}
-              >
-                <MaterialIcon name="chat" size={20} color="#34A853" />
-                <Text style={styles.driverActionText}>Message</Text>
-              </TouchableOpacity>
+            <View style={styles.routeLine} />
+            
+            <View style={styles.rideDetailRow}>
+              <View style={styles.rideDetailIcon}>
+                <MaterialIcon name="place" size={18} color="#EA4335" />
+              </View>
+              <View style={styles.rideDetailText}>
+                <Text style={styles.rideDetailLabel}>DESTINATION</Text>
+                <Text style={styles.rideDetailValue} numberOfLines={2}>
+                  {destination || 'Destination'}
+                </Text>
+              </View>
             </View>
           </View>
-        )}
 
-        {/* Ride Details */}
-        <View style={styles.rideDetails}>
-          <View style={styles.rideDetailRow}>
-            <MaterialIcon name="place" size={18} color="#EA4335" />
-            <View style={styles.rideDetailText}>
-              <Text style={styles.rideDetailLabel}>PICKUP</Text>
-              <Text style={styles.rideDetailValue} numberOfLines={2}>{pickup}</Text>
+          {/* Ride Info */}
+          <View style={styles.rideInfo}>
+            <View style={styles.infoItem}>
+              <MaterialIcon name="access-time" size={18} color="#666" />
+              <Text style={styles.infoLabel}>Est. arrival</Text>
+              <Text style={styles.infoValue}>{driverETA || estimatedArrival}</Text>
+            </View>
+            
+            <View style={styles.infoDivider} />
+            
+            <View style={styles.infoItem}>
+              <MaterialIcon name="attach-money" size={18} color="#666" />
+              <Text style={styles.infoLabel}>Fare</Text>
+              <Text style={styles.infoValue}>
+                {rideData?.formattedPrice || 'Calculating...'}
+              </Text>
+            </View>
+            
+            <View style={styles.infoDivider} />
+            
+            <View style={styles.infoItem}>
+              <MaterialIcon name={paymentMethod === 'cash' ? 'attach-money' : paymentMethod === 'card' ? 'credit-card' : 'smartphone'} size={18} color="#666" />
+              <Text style={styles.infoLabel}>Payment</Text>
+              <Text style={styles.infoValue}>
+                {paymentMethod === 'cash' ? 'Cash' : 
+                 paymentMethod === 'card' ? 'Card' : 'Mobile'}
+              </Text>
             </View>
           </View>
-          
-          <View style={styles.divider} />
-          
-          <View style={styles.rideDetailRow}>
-            <MaterialIcon name="flag" size={18} color="#34A853" />
-            <View style={styles.rideDetailText}>
-              <Text style={styles.rideDetailLabel}>DESTINATION</Text>
-              <Text style={styles.rideDetailValue} numberOfLines={2}>{destination}</Text>
-            </View>
-          </View>
-        </View>
+        </LinearGradient>
+      </AnimatedView>
 
-        {/* Estimated Arrival & Fare */}
-        <View style={styles.arrivalInfo}>
-          <View style={styles.arrivalItem}>
-            <MaterialIcon name="access-time" size={18} color="#666" />
-            <Text style={styles.arrivalLabel}>Est. arrival</Text>
-            <Text style={styles.arrivalValue}>{estimatedArrival}</Text>
-          </View>
-          
-          <View style={styles.arrivalItem}>
-            <MaterialIcon name="attach-money" size={18} color="#666" />
-            <Text style={styles.arrivalLabel}>Fare</Text>
-            <Text style={styles.arrivalValue}>
-              {rideData?.formattedPrice || 'Calculating...'}
-            </Text>
-          </View>
-        </View>
-      </Animated.View>
-
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
-        <TouchableOpacity 
+      {/* ACTION BUTTONS */}
+      <AnimatedView 
+        style={[
+          styles.actionButtons,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideUpAnim }],
+          },
+        ]}
+      >
+        <AnimatedTouchable 
           style={[
             styles.cancelButton,
-            status !== 'searching' && { backgroundColor: '#FFF' }
+            {
+              transform: [{ scale: buttonScale }],
+            },
           ]} 
-          onPress={handleCancelRide}
+          onPress={() => animateModalIn('cancel')}
+          activeOpacity={0.8}
         >
-          <MaterialIcon 
-            name="close" 
-            size={20} 
-            color={status === 'searching' ? '#666' : '#EA4335'} 
-          />
-          <Text style={[
-            styles.cancelButtonText,
-            status !== 'searching' && { color: '#EA4335' }
-          ]}>
-            {status === 'searching' ? 'Cancel Search' : 'Cancel Ride'}
-          </Text>
-        </TouchableOpacity>
+          <LinearGradient
+            colors={status === 'searching' ? ['#F3F4F6', '#E5E7EB'] : ['#FEF2F2', '#FEE2E2']}
+            style={styles.cancelButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <MaterialIcon 
+              name="close" 
+              size={20} 
+              color={status === 'searching' ? '#666' : '#EF4444'} 
+            />
+            <Text style={[
+              styles.cancelButtonText,
+              { color: status === 'searching' ? '#666' : '#EF4444' }
+            ]}>
+              {status === 'searching' ? 'Cancel Search' : 'Cancel Ride'}
+            </Text>
+          </LinearGradient>
+        </AnimatedTouchable>
         
         <TouchableOpacity 
           style={styles.sosButton} 
-          onPress={handleSOS}
+          onPress={() => animateModalIn('sos')}
+          activeOpacity={0.8}
         >
-          <MaterialIcon name="emergency" size={24} color="#FFF" />
-          <Text style={styles.sosButtonText}>SOS</Text>
+          <LinearGradient
+            colors={['#EA4335', '#DC2626']}
+            style={styles.sosButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <MaterialIcon name="emergency" size={24} color="#FFF" />
+            <Text style={styles.sosButtonText}>SOS</Text>
+          </LinearGradient>
         </TouchableOpacity>
-      </View>
-    </View>
+      </AnimatedView>
+
+      {/* MODALS */}
+      {renderCancelModal()}
+      {renderSOSModal()}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#F7F6F3' 
+    backgroundColor: '#F9FAFB' 
   },
+  
+  // HEADER
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: '#E5E7EB',
+    zIndex: 100,
   },
   backButton: {
-    padding: 4,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
   },
   headerCenter: {
     flex: 1,
@@ -754,7 +1469,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#000',
     marginBottom: 4,
   },
@@ -766,10 +1481,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginLeft: 4,
+    fontWeight: '500',
   },
   connectionStatus: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   connectionDot: {
     width: 8,
@@ -779,9 +1499,11 @@ const styles = StyleSheet.create({
   },
   connectionText: {
     fontSize: 12,
+    fontWeight: '600',
     color: '#666',
-    fontWeight: '500',
   },
+  
+  // MAP CONTAINER
   mapContainer: {
     flex: 1,
     position: 'relative',
@@ -789,177 +1511,260 @@ const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFillObject,
   },
-  mapOverlay: {
+  statusBadge: {
     position: 'absolute',
     top: 16,
-    left: 16,
-    right: 16,
-    alignItems: 'center',
-  },
-  statusIndicator: {
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 20,
-    elevation: 3,
+    borderWidth: 2,
+    elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  statusIndicatorText: {
-    color: '#FFF',
-    fontWeight: 'bold',
+  statusBadgeText: {
     fontSize: 12,
-    marginLeft: 8,
+    fontWeight: '700',
+    marginLeft: 6,
   },
+  
+  // SEARCH ANIMATION
+  searchAnimation: {
+    position: 'absolute',
+    top: '30%',
+    alignSelf: 'center',
+  },
+  searchRing: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  
+  // MARKERS
   pickupMarker: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#4285F4',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#FFF',
-    elevation: 4,
-  },
-  destinationMarker: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#EA4335',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#FFF',
-    elevation: 4,
-  },
-  driverMarker: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#06C167',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#FFF',
-    elevation: 5,
+    elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
   },
-  statusCard: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    marginTop: -20,
+  destinationMarker: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
     elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
-  statusMessageContainer: {
+  driverMarker: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  markerGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  driverMarkerGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  // STATUS CARD
+  statusCard: {
+    position: 'absolute',
+    bottom: 120,
+    left: 20,
+    right: 20,
+    borderRadius: 24,
+    elevation: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    overflow: 'hidden',
+  },
+  statusCardGradient: {
+    padding: 24,
+  },
+  statusHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
   },
-  statusMessage: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-    marginLeft: 12,
+  statusIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  statusTextContainer: {
     flex: 1,
   },
+  statusTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 4,
+  },
+  statusDescription: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  
+  // DRIVER CARD
   driverCard: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
     marginBottom: 20,
+  },
+  driverCardGradient: {
+    padding: 16,
+  },
+  driverCardContent: {
+    // For touchable opacity
   },
   driverHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
   driverAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#06C167',
+    marginRight: 16,
+  },
+  driverAvatarGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   driverInitial: {
-    color: '#FFF',
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   driverInfo: {
     flex: 1,
   },
   driverName: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#000',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   driverMeta: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 8,
   },
   rating: {
     fontSize: 14,
+    fontWeight: '600',
     color: '#666',
-    marginLeft: 4,
+    marginLeft: 2,
   },
   ridesCount: {
     fontSize: 12,
-    color: '#999',
+    color: '#666',
+    marginRight: 8,
   },
-  vehicleInfo: {
-    alignItems: 'flex-end',
-  },
-  vehicleText: {
+  vehicleType: {
     fontSize: 12,
     color: '#666',
-    marginTop: 2,
   },
-  plateText: {
-    fontSize: 10,
-    color: '#999',
-    marginTop: 2,
+  driverDetails: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  driverDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  driverDetailText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+    marginRight: 12,
+    flex: 1,
+  },
+  driverDetailPlate: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   driverActions: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    paddingTop: 12,
+    justifyContent: 'space-between',
   },
   driverActionButton: {
-    alignItems: 'center',
-    padding: 8,
     flex: 1,
+    marginHorizontal: 4,
   },
-  driverActionText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
+  actionButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
   },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  
+  // RIDE DETAILS
   rideDetails: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F9FAFB',
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
@@ -968,83 +1773,113 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
+  rideDetailIcon: {
+    marginRight: 12,
+    marginTop: 2,
+  },
   rideDetailText: {
     flex: 1,
-    marginLeft: 12,
   },
   rideDetailLabel: {
     fontSize: 10,
-    color: '#666',
     fontWeight: '600',
+    color: '#666',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: 2,
   },
   rideDetailValue: {
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '600',
     color: '#000',
-    fontWeight: '500',
     lineHeight: 20,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 12,
-    marginLeft: 30,
+  routeLine: {
+    width: 2,
+    height: 20,
+    backgroundColor: '#D1D5DB',
+    marginLeft: 11,
+    marginVertical: 8,
   },
-  arrivalInfo: {
+  
+  // RIDE INFO
+  rideInfo: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  arrivalItem: {
     alignItems: 'center',
-    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 16,
+    padding: 16,
   },
-  arrivalLabel: {
+  infoItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  infoLabel: {
     fontSize: 12,
     color: '#666',
-    marginTop: 4,
+    marginTop: 6,
   },
-  arrivalValue: {
+  infoValue: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#000',
     marginTop: 2,
   },
+  infoDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#E5E7EB',
+  },
+  
+  // ACTION BUTTONS
   actionButtons: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
-    backgroundColor: '#FFF',
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
   },
   cancelButton: {
-    flex: 1,
+    flex: 2,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  cancelButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    paddingVertical: 18,
+    borderRadius: 16,
+    gap: 8,
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
-    marginLeft: 8,
   },
   sosButton: {
     flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  sosButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    backgroundColor: '#EA4335',
-    borderRadius: 12,
-    marginLeft: 8,
-    elevation: 3,
+    paddingVertical: 18,
+    borderRadius: 16,
+    gap: 8,
+    elevation: 4,
     shadowColor: '#EA4335',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -1052,8 +1887,113 @@ const styles = StyleSheet.create({
   },
   sosButtonText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFF',
-    marginLeft: 8,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  
+  // MODAL STYLES
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    width: width - 40,
+    maxHeight: height * 0.7,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+  },
+  modalBody: {
+    padding: 24,
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#666',
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  reasonInput: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#000',
+    marginBottom: 20,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButtonSecondary: {
+    flex: 1,
+    paddingVertical: 16,
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+  },
+  modalButtonTextSecondary: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  modalButtonPrimary: {
+    flex: 1,
+    paddingVertical: 16,
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+  },
+  modalButtonTextPrimary: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  sosWarning: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  sosWarningText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  sosList: {
+    width: '100%',
+  },
+  sosItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  sosItemText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 12,
+    flex: 1,
   },
 });

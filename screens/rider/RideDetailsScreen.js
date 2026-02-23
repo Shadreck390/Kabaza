@@ -1,5 +1,4 @@
-// screens/rider/RideDetailsScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,16 +12,23 @@ import {
   Share,
   Linking,
   Modal,
+  Animated,
+  SafeAreaView,
+  Easing,
+  Platform,
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
+const AnimatedView = Animated.createAnimatedComponent(View);
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
-// Mock ride details data
+// Mock ride details data (keep your existing data)
 const RIDE_DETAILS = {
   '1': {
     id: '1',
@@ -80,62 +86,7 @@ const RIDE_DETAILS = {
       riderComment: 'Safe driver, good service',
     },
   },
-  '2': {
-    id: '2',
-    date: 'Yesterday, 3:30 PM',
-    pickup: {
-      name: 'Current Location',
-      address: 'Lilongwe, Malawi',
-      coordinates: { latitude: -13.9626, longitude: 33.7741 },
-    },
-    destination: {
-      name: 'Kamuzu Central Hospital',
-      address: 'Mzimba Street, Lilongwe, Malawi',
-      coordinates: { latitude: -13.9711, longitude: 33.7836 },
-    },
-    driver: {
-      name: 'Sarah Mwale',
-      phone: '+265 88 234 5678',
-      vehicle: 'Honda Fit',
-      plate: 'LL 5678 B',
-      rating: 4.5,
-      trips: 892,
-      photo: null,
-    },
-    fare: {
-      base: 500,
-      distance: 300,
-      time: 150,
-      total: 950,
-      currency: 'MWK',
-    },
-    distance: '3.2 km',
-    duration: '12 min',
-    status: 'completed',
-    paymentMethod: 'mobile_money',
-    receiptId: 'RCPT-2024-002',
-    routeCoordinates: [
-      { latitude: -13.9626, longitude: 33.7741 },
-      { latitude: -13.9650, longitude: 33.7760 },
-      { latitude: -13.9670, longitude: 33.7780 },
-      { latitude: -13.9690, longitude: 33.7800 },
-      { latitude: -13.9711, longitude: 33.7836 },
-    ],
-    timeline: [
-      { time: '3:30 PM', status: 'Ride requested', icon: 'schedule' },
-      { time: '3:31 PM', status: 'Driver Sarah Mwale accepted', icon: 'check-circle' },
-      { time: '3:35 PM', status: 'Driver arriving', icon: 'directions-car' },
-      { time: '3:37 PM', status: 'Ride started', icon: 'play-circle' },
-      { time: '3:49 PM', status: 'Ride completed', icon: 'check-circle' },
-      { time: '3:50 PM', status: 'Payment received', icon: 'payment' },
-    ],
-    rating: {
-      driver: 4,
-      rider: 5,
-      driverComment: 'Good passenger',
-      riderComment: 'Safe ride, thank you',
-    },
-  },
+  // ... keep your other mock data
 };
 
 export default function RideDetailsScreen() {
@@ -150,12 +101,134 @@ export default function RideDetailsScreen() {
     latitudeDelta: 0.05,
     longitudeDelta: 0.05,
   });
-  const [activeTab, setActiveTab] = useState('details'); // details, receipt, map
+  const [activeTab, setActiveTab] = useState('details');
   const [showFullMap, setShowFullMap] = useState(false);
 
+  // Animation refs
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const tabSlide = useRef(new Animated.Value(20)).current;
+  const mapAnim = useRef(new Animated.Value(0)).current;
+  const receiptAnim = useRef(new Animated.Value(0)).current;
+  const detailsAnim = useRef(new Animated.Value(0)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const modalSlide = useRef(new Animated.Value(height)).current;
+  const timelineAnim = useRef([]).current;
+  const mapMarkersScale = useRef({
+    pickup: new Animated.Value(1),
+    destination: new Animated.Value(1),
+  }).current;
+  const mapRouteAnim = useRef(new Animated.Value(0)).current;
+
+  // Initialize timeline animations
+  if (timelineAnim.length !== ride.timeline.length) {
+    ride.timeline.forEach((_, index) => {
+      timelineAnim[index] = {
+        opacity: new Animated.Value(0),
+        translateX: new Animated.Value(-20),
+      };
+    });
+  }
+
   useEffect(() => {
+    // Initial animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }),
+      Animated.timing(tabSlide, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+        delay: 200,
+      }),
+    ]).start();
+
+    // Map animations
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(mapAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(mapRouteAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, 300);
+
+    // Animate map markers
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(mapMarkersScale.pickup, {
+          toValue: 1.2,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(mapMarkersScale.pickup, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.delay(500),
+        Animated.timing(mapMarkersScale.destination, {
+          toValue: 1.2,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(mapMarkersScale.destination, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Animate timeline items
+    ride.timeline.forEach((_, index) => {
+      Animated.sequence([
+        Animated.delay(index * 200),
+        Animated.parallel([
+          Animated.timing(timelineAnim[index].opacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(timelineAnim[index].translateX, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    });
+
+    // Center map on route
     if (ride) {
-      // Center map on route
       const midLat = (ride.pickup.coordinates.latitude + ride.destination.coordinates.latitude) / 2;
       const midLng = (ride.pickup.coordinates.longitude + ride.destination.coordinates.longitude) / 2;
       setMapRegion({
@@ -165,48 +238,109 @@ export default function RideDetailsScreen() {
         longitudeDelta: 0.05,
       });
     }
+
+    return () => {
+      // Cleanup animations
+      mapMarkersScale.pickup.stopAnimation();
+      mapMarkersScale.destination.stopAnimation();
+    };
   }, [ride]);
 
-  const handleShareReceipt = async () => {
-    try {
-      const message = `Kabaza Ride Receipt\n\n` +
-        `Receipt ID: ${ride.receiptId}\n` +
-        `Date: ${ride.date}\n` +
-        `From: ${ride.pickup.name}\n` +
-        `To: ${ride.destination.name}\n` +
-        `Driver: ${ride.driver.name}\n` +
-        `Vehicle: ${ride.driver.vehicle} (${ride.driver.plate})\n` +
-        `Distance: ${ride.distance}\n` +
-        `Duration: ${ride.duration}\n` +
-        `Total Fare: MK ${ride.fare.total}\n` +
-        `Payment Method: ${ride.paymentMethod}\n` +
-        `Status: ${ride.status}`;
-      
-      await Share.share({
-        message,
-        title: `Kabaza Receipt - ${ride.receiptId}`,
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Could not share receipt');
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    // Animate tab content
+    if (tab === 'details') {
+      Animated.timing(detailsAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else if (tab === 'receipt') {
+      Animated.timing(receiptAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     }
   };
 
+  const handleShareReceipt = async () => {
+    // Button press animation
+    Animated.sequence([
+      Animated.spring(buttonScale, {
+        toValue: 0.9,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+      Animated.spring(buttonScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+    ]).start();
+
+    setTimeout(async () => {
+      try {
+        const message = `Kabaza Ride Receipt\n\n` +
+          `Receipt ID: ${ride.receiptId}\n` +
+          `Date: ${ride.date}\n` +
+          `From: ${ride.pickup.name}\n` +
+          `To: ${ride.destination.name}\n` +
+          `Driver: ${ride.driver.name}\n` +
+          `Vehicle: ${ride.driver.vehicle} (${ride.driver.plate})\n` +
+          `Distance: ${ride.distance}\n` +
+          `Duration: ${ride.duration}\n` +
+          `Total Fare: MK ${ride.fare.total}\n` +
+          `Payment Method: ${ride.paymentMethod}\n` +
+          `Status: ${ride.status}`;
+        
+        await Share.share({
+          message,
+          title: `Kabaza Receipt - ${ride.receiptId}`,
+        });
+      } catch (error) {
+        Alert.alert('Error', 'Could not share receipt');
+      }
+    }, 150);
+  };
+
   const handleContactDriver = () => {
-    Alert.alert(
-      'Contact Driver',
-      `Call ${ride.driver.name} at ${ride.driver.phone}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Call', 
-          onPress: () => Linking.openURL(`tel:${ride.driver.phone.replace(/\s/g, '')}`)
-        },
-        { 
-          text: 'Message', 
-          onPress: () => Linking.openURL(`sms:${ride.driver.phone.replace(/\s/g, '')}`)
-        },
-      ]
-    );
+    // Button press animation
+    const contactScale = new Animated.Value(1);
+    Animated.sequence([
+      Animated.spring(contactScale, {
+        toValue: 0.9,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+      Animated.spring(contactScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+    ]).start();
+
+    setTimeout(() => {
+      Alert.alert(
+        'Contact Driver',
+        `Call ${ride.driver.name} at ${ride.driver.phone}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Call', 
+            onPress: () => Linking.openURL(`tel:${ride.driver.phone.replace(/\s/g, '')}`)
+          },
+          { 
+            text: 'Message', 
+            onPress: () => Linking.openURL(`sms:${ride.driver.phone.replace(/\s/g, '')}`)
+          },
+        ]
+      );
+    }, 150);
   };
 
   const handleReportIssue = () => {
@@ -226,27 +360,60 @@ export default function RideDetailsScreen() {
 
   const handleViewFullMap = () => {
     setShowFullMap(true);
+    Animated.timing(modalSlide, {
+      toValue: 0,
+      duration: 400,
+      useNativeDriver: true,
+      easing: Easing.out(Easing.cubic),
+    }).start();
+  };
+
+  const closeFullMap = () => {
+    Animated.timing(modalSlide, {
+      toValue: height,
+      duration: 300,
+      useNativeDriver: true,
+      easing: Easing.in(Easing.cubic),
+    }).start(() => {
+      setShowFullMap(false);
+    });
   };
 
   const renderDetailsTab = () => (
-    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+    <Animated.ScrollView 
+      style={[styles.tabContent, { opacity: fadeAnim }]}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Driver Info */}
-      <View style={styles.section}>
+      <Animated.View 
+        style={[
+          styles.section,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         <Text style={styles.sectionTitle}>Driver & Vehicle</Text>
         <View style={styles.driverCard}>
           <View style={styles.driverInfo}>
-            <View style={styles.driverAvatar}>
+            <LinearGradient
+              colors={['#22C55E', '#16A34A']}
+              style={styles.driverAvatar}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
               <Text style={styles.driverInitials}>
                 {ride.driver.name.split(' ').map(n => n[0]).join('')}
               </Text>
-            </View>
+            </LinearGradient>
             <View style={styles.driverDetails}>
               <Text style={styles.driverName}>{ride.driver.name}</Text>
               <View style={styles.driverMeta}>
                 <MaterialIcon name="star" size={14} color="#F59E0B" />
                 <Text style={styles.driverRating}>{ride.driver.rating}</Text>
                 <Text style={styles.driverDivider}>•</Text>
-                <Text style={styles.driverTrips}>{ride.driver.trips} trips</Text>
+                <Text style={styles.driverTrips}>{ride.driver.trips.toLocaleString()} trips</Text>
               </View>
               <Text style={styles.driverVehicle}>
                 {ride.driver.vehicle} • {ride.driver.plate}
@@ -256,36 +423,80 @@ export default function RideDetailsScreen() {
           <TouchableOpacity 
             style={styles.contactButton}
             onPress={handleContactDriver}
+            activeOpacity={0.6}
           >
-            <MaterialIcon name="phone" size={20} color="#22C55E" />
+            <LinearGradient
+              colors={['#22C55E', '#16A34A']}
+              style={styles.contactButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <MaterialIcon name="phone" size={18} color="#FFFFFF" />
+            </LinearGradient>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Ride Summary */}
-      <View style={styles.section}>
+      <Animated.View 
+        style={[
+          styles.section,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         <Text style={styles.sectionTitle}>Ride Summary</Text>
         <View style={styles.summaryGrid}>
           <View style={styles.summaryItem}>
-            <MaterialIcon name="access-time" size={20} color="#666" />
+            <LinearGradient
+              colors={['#F3F4F6', '#E5E7EB']}
+              style={styles.summaryIcon}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <MaterialIcon name="access-time" size={20} color="#666" />
+            </LinearGradient>
             <Text style={styles.summaryValue}>{ride.duration}</Text>
             <Text style={styles.summaryLabel}>Duration</Text>
           </View>
           
           <View style={styles.summaryItem}>
-            <MaterialIcon name="map" size={20} color="#666" />
+            <LinearGradient
+              colors={['#F3F4F6', '#E5E7EB']}
+              style={styles.summaryIcon}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <MaterialIcon name="map" size={20} color="#666" />
+            </LinearGradient>
             <Text style={styles.summaryValue}>{ride.distance}</Text>
             <Text style={styles.summaryLabel}>Distance</Text>
           </View>
           
           <View style={styles.summaryItem}>
-            <MaterialIcon name="attach-money" size={20} color="#666" />
+            <LinearGradient
+              colors={['#F3F4F6', '#E5E7EB']}
+              style={styles.summaryIcon}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <MaterialIcon name="attach-money" size={20} color="#666" />
+            </LinearGradient>
             <Text style={styles.summaryValue}>MK {ride.fare.total}</Text>
             <Text style={styles.summaryLabel}>Fare</Text>
           </View>
           
           <View style={styles.summaryItem}>
-            <MaterialIcon name="payment" size={20} color="#666" />
+            <LinearGradient
+              colors={['#F3F4F6', '#E5E7EB']}
+              style={styles.summaryIcon}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <MaterialIcon name="payment" size={20} color="#666" />
+            </LinearGradient>
             <Text style={styles.summaryValue}>
               {ride.paymentMethod === 'cash' ? 'Cash' : 
                ride.paymentMethod === 'mobile_money' ? 'Mobile Money' : 
@@ -294,12 +505,25 @@ export default function RideDetailsScreen() {
             <Text style={styles.summaryLabel}>Payment</Text>
           </View>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Fare Breakdown */}
-      <View style={styles.section}>
+      <Animated.View 
+        style={[
+          styles.section,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         <Text style={styles.sectionTitle}>Fare Breakdown</Text>
-        <View style={styles.fareBreakdown}>
+        <LinearGradient
+          colors={['#F9FAFB', '#F3F4F6']}
+          style={styles.fareBreakdown}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
           <View style={styles.fareRow}>
             <Text style={styles.fareLabel}>Base Fare</Text>
             <Text style={styles.fareValue}>MK {ride.fare.base}</Text>
@@ -321,45 +545,90 @@ export default function RideDetailsScreen() {
             <Text style={styles.totalLabel}>Total Fare</Text>
             <Text style={styles.totalValue}>MK {ride.fare.total}</Text>
           </View>
-        </View>
-      </View>
+        </LinearGradient>
+      </Animated.View>
 
       {/* Timeline */}
-      <View style={styles.section}>
+      <Animated.View 
+        style={[
+          styles.section,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         <Text style={styles.sectionTitle}>Ride Timeline</Text>
         <View style={styles.timeline}>
-          {ride.timeline.map((item, index) => (
-            <View key={index} style={styles.timelineItem}>
-              <View style={styles.timelineIcon}>
-                <MaterialIcon name={item.icon} size={16} color="#22C55E" />
-              </View>
-              <View style={styles.timelineContent}>
-                <Text style={styles.timelineTime}>{item.time}</Text>
-                <Text style={styles.timelineStatus}>{item.status}</Text>
-              </View>
-              {index < ride.timeline.length - 1 && (
-                <View style={styles.timelineLine} />
-              )}
-            </View>
-          ))}
+          {ride.timeline.map((item, index) => {
+            const anim = timelineAnim[index] || { opacity: new Animated.Value(1), translateX: new Animated.Value(0) };
+            return (
+              <Animated.View 
+                key={index} 
+                style={[
+                  styles.timelineItem,
+                  {
+                    opacity: anim.opacity,
+                    transform: [{ translateX: anim.translateX }],
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={['#22C55E', '#16A34A']}
+                  style={styles.timelineIcon}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcon name={item.icon} size={14} color="#FFFFFF" />
+                </LinearGradient>
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineTime}>{item.time}</Text>
+                  <Text style={styles.timelineStatus}>{item.status}</Text>
+                </View>
+                {index < ride.timeline.length - 1 && (
+                  <View style={styles.timelineLine} />
+                )}
+              </Animated.View>
+            );
+          })}
         </View>
-      </View>
+      </Animated.View>
 
       {/* Ratings */}
       {ride.rating && (
-        <View style={styles.section}>
+        <Animated.View 
+          style={[
+            styles.section,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
           <Text style={styles.sectionTitle}>Ratings</Text>
-          <View style={styles.ratingsContainer}>
+          <LinearGradient
+            colors={['#F9FAFB', '#F3F4F6']}
+            style={styles.ratingsContainer}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
             <View style={styles.ratingItem}>
               <Text style={styles.ratingLabel}>You rated driver</Text>
               <View style={styles.ratingStars}>
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <MaterialIcon 
+                  <LinearGradient
                     key={star}
-                    name={star <= ride.rating.driver ? "star" : "star-border"} 
-                    size={20} 
-                    color="#F59E0B" 
-                  />
+                    colors={star <= ride.rating.driver ? ['#F59E0B', '#D97706'] : ['#F3F4F6', '#E5E7EB']}
+                    style={styles.starContainer}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <MaterialIcon 
+                      name="star" 
+                      size={16} 
+                      color={star <= ride.rating.driver ? "#FFFFFF" : "#9CA3AF"} 
+                    />
+                  </LinearGradient>
                 ))}
               </View>
               {ride.rating.riderComment && (
@@ -373,251 +642,427 @@ export default function RideDetailsScreen() {
                 <Text style={styles.ratingComment}>"{ride.rating.driverComment}"</Text>
               </View>
             )}
-          </View>
-        </View>
+          </LinearGradient>
+        </Animated.View>
       )}
-    </ScrollView>
+    </Animated.ScrollView>
   );
 
   const renderReceiptTab = () => (
-    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+    <Animated.ScrollView 
+      style={[styles.tabContent, { opacity: receiptAnim }]}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Receipt Header */}
-      <View style={styles.receiptHeader}>
-        <MaterialIcon name="receipt" size={48} color="#22C55E" />
-        <Text style={styles.receiptTitle}>Ride Receipt</Text>
-        <Text style={styles.receiptId}>{ride.receiptId}</Text>
-        <Text style={styles.receiptDate}>{ride.date}</Text>
-      </View>
+      <LinearGradient
+        colors={['#22C55E', '#16A34A']}
+        style={styles.receiptHeader}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Animated.View style={{ opacity: fadeAnim }}>
+          <MaterialIcon name="receipt" size={48} color="#FFFFFF" />
+          <Text style={styles.receiptTitle}>Ride Receipt</Text>
+          <Text style={styles.receiptId}>{ride.receiptId}</Text>
+          <Text style={styles.receiptDate}>{ride.date}</Text>
+        </Animated.View>
+      </LinearGradient>
 
       {/* Receipt Details */}
-      <View style={styles.receiptDetails}>
-        <View style={styles.receiptSection}>
-          <Text style={styles.receiptSectionTitle}>Trip Details</Text>
-          <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>From</Text>
-            <Text style={styles.receiptValue}>{ride.pickup.name}</Text>
-          </View>
-          <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>To</Text>
-            <Text style={styles.receiptValue}>{ride.destination.name}</Text>
-          </View>
-          <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>Distance</Text>
-            <Text style={styles.receiptValue}>{ride.distance}</Text>
-          </View>
-          <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>Duration</Text>
-            <Text style={styles.receiptValue}>{ride.duration}</Text>
-          </View>
-        </View>
-
-        <View style={styles.receiptSection}>
-          <Text style={styles.receiptSectionTitle}>Driver Details</Text>
-          <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>Name</Text>
-            <Text style={styles.receiptValue}>{ride.driver.name}</Text>
-          </View>
-          <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>Vehicle</Text>
-            <Text style={styles.receiptValue}>{ride.driver.vehicle}</Text>
-          </View>
-          <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>Plate Number</Text>
-            <Text style={styles.receiptValue}>{ride.driver.plate}</Text>
-          </View>
-        </View>
-
-        <View style={styles.receiptSection}>
-          <Text style={styles.receiptSectionTitle}>Payment Details</Text>
-          <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>Base Fare</Text>
-            <Text style={styles.receiptValue}>MK {ride.fare.base}</Text>
-          </View>
-          <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>Distance Fare</Text>
-            <Text style={styles.receiptValue}>MK {ride.fare.distance}</Text>
-          </View>
-          <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>Time Fare</Text>
-            <Text style={styles.receiptValue}>MK {ride.fare.time}</Text>
-          </View>
-          <View style={styles.receiptDivider} />
-          <View style={[styles.receiptRow, styles.receiptTotalRow]}>
-            <Text style={styles.receiptTotalLabel}>Total Amount</Text>
-            <Text style={styles.receiptTotalValue}>MK {ride.fare.total}</Text>
-          </View>
-          <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>Payment Method</Text>
-            <Text style={styles.receiptValue}>
-              {ride.paymentMethod === 'cash' ? 'Cash' : 
-               ride.paymentMethod === 'mobile_money' ? 'Mobile Money' : 
-               ride.paymentMethod === 'card' ? 'Card' : 'Wallet'}
-            </Text>
-          </View>
-          <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>Status</Text>
-            <View style={[
-              styles.statusBadge,
-              { backgroundColor: ride.status === 'completed' ? '#DCFCE7' : '#FEF2F2' }
-            ]}>
-              <Text style={[
-                styles.statusText,
-                { color: ride.status === 'completed' ? '#16A34A' : '#DC2626' }
-              ]}>
-                {ride.status.charAt(0).toUpperCase() + ride.status.slice(1)}
-              </Text>
+      <Animated.View 
+        style={[
+          styles.receiptDetails,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={['#FFFFFF', '#F8FAFC']}
+          style={styles.receiptDetailsGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.receiptSection}>
+            <Text style={styles.receiptSectionTitle}>Trip Details</Text>
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>From</Text>
+              <Text style={styles.receiptValue}>{ride.pickup.name}</Text>
+            </View>
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>To</Text>
+              <Text style={styles.receiptValue}>{ride.destination.name}</Text>
+            </View>
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Distance</Text>
+              <Text style={styles.receiptValue}>{ride.distance}</Text>
+            </View>
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Duration</Text>
+              <Text style={styles.receiptValue}>{ride.duration}</Text>
             </View>
           </View>
-        </View>
 
-        <View style={styles.receiptFooter}>
-          <Text style={styles.receiptFooterText}>
-            Thank you for choosing Kabaza!
-          </Text>
-          <Text style={styles.receiptFooterNote}>
-            This is an electronic receipt. No signature required.
-          </Text>
-        </View>
-      </View>
-    </ScrollView>
+          <View style={styles.receiptSection}>
+            <Text style={styles.receiptSectionTitle}>Driver Details</Text>
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Name</Text>
+              <Text style={styles.receiptValue}>{ride.driver.name}</Text>
+            </View>
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Vehicle</Text>
+              <Text style={styles.receiptValue}>{ride.driver.vehicle}</Text>
+            </View>
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Plate Number</Text>
+              <Text style={styles.receiptValue}>{ride.driver.plate}</Text>
+            </View>
+          </View>
+
+          <View style={styles.receiptSection}>
+            <Text style={styles.receiptSectionTitle}>Payment Details</Text>
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Base Fare</Text>
+              <Text style={styles.receiptValue}>MK {ride.fare.base}</Text>
+            </View>
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Distance Fare</Text>
+              <Text style={styles.receiptValue}>MK {ride.fare.distance}</Text>
+            </View>
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Time Fare</Text>
+              <Text style={styles.receiptValue}>MK {ride.fare.time}</Text>
+            </View>
+            <View style={styles.receiptDivider} />
+            <View style={[styles.receiptRow, styles.receiptTotalRow]}>
+              <Text style={styles.receiptTotalLabel}>Total Amount</Text>
+              <Text style={styles.receiptTotalValue}>MK {ride.fare.total}</Text>
+            </View>
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Payment Method</Text>
+              <Text style={styles.receiptValue}>
+                {ride.paymentMethod === 'cash' ? 'Cash' : 
+                 ride.paymentMethod === 'mobile_money' ? 'Mobile Money' : 
+                 ride.paymentMethod === 'card' ? 'Card' : 'Wallet'}
+              </Text>
+            </View>
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Status</Text>
+              <LinearGradient
+                colors={ride.status === 'completed' ? ['#DCFCE7', '#BBF7D0'] : ['#FEF2F2', '#FECACA']}
+                style={styles.statusBadge}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text style={[
+                  styles.statusText,
+                  { color: ride.status === 'completed' ? '#16A34A' : '#DC2626' }
+                ]}>
+                  {ride.status.charAt(0).toUpperCase() + ride.status.slice(1)}
+                </Text>
+              </LinearGradient>
+            </View>
+          </View>
+
+          <View style={styles.receiptFooter}>
+            <Text style={styles.receiptFooterText}>
+              Thank you for choosing Kabaza!
+            </Text>
+            <Text style={styles.receiptFooterNote}>
+              This is an electronic receipt. No signature required.
+            </Text>
+          </View>
+        </LinearGradient>
+      </Animated.View>
+    </Animated.ScrollView>
   );
 
   const renderMapTab = () => (
     <View style={styles.mapTab}>
-      <MapView
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        region={mapRegion}
-        showsUserLocation={false}
+      <Animated.View 
+        style={[
+          styles.mapContainer,
+          {
+            opacity: mapAnim,
+          },
+        ]}
       >
-        {/* Pickup Marker */}
-        <Marker
-          coordinate={ride.pickup.coordinates}
-          title="Pickup"
-          description={ride.pickup.address}
+        <MapView
+          provider={PROVIDER_GOOGLE}
+          style={styles.map}
+          region={mapRegion}
+          showsUserLocation={false}
         >
-          <View style={styles.mapMarker}>
-            <MaterialIcon name="location-pin" size={30} color="#3B82F6" />
-          </View>
-        </Marker>
+          {/* Pickup Marker with Animation */}
+          <Marker
+            coordinate={ride.pickup.coordinates}
+            title="Pickup"
+            description={ride.pickup.address}
+          >
+            <Animated.View style={[
+              styles.mapMarker,
+              { transform: [{ scale: mapMarkersScale.pickup }] }
+            ]}>
+              <LinearGradient
+                colors={['#3B82F6', '#2563EB']}
+                style={styles.mapMarkerInner}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <MaterialIcon name="location-pin" size={24} color="#FFFFFF" />
+              </LinearGradient>
+            </Animated.View>
+          </Marker>
 
-        {/* Destination Marker */}
-        <Marker
-          coordinate={ride.destination.coordinates}
-          title="Destination"
-          description={ride.destination.address}
+          {/* Destination Marker with Animation */}
+          <Marker
+            coordinate={ride.destination.coordinates}
+            title="Destination"
+            description={ride.destination.address}
+          >
+            <Animated.View style={[
+              styles.mapMarker,
+              { transform: [{ scale: mapMarkersScale.destination }] }
+            ]}>
+              <LinearGradient
+                colors={['#EF4444', '#DC2626']}
+                style={styles.mapMarkerInner}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <MaterialIcon name="place" size={24} color="#FFFFFF" />
+              </LinearGradient>
+            </Animated.View>
+          </Marker>
+
+          {/* Animated Route Polyline */}
+          {ride.routeCoordinates && (
+            <AnimatedPolyline
+              coordinates={ride.routeCoordinates}
+              strokeColor="#22C55E"
+              strokeWidth={4}
+              opacity={mapRouteAnim}
+            />
+          )}
+        </MapView>
+      </Animated.View>
+
+      <Animated.View 
+        style={[
+          styles.mapOverlay,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={['#FFFFFF', '#F8FAFC']}
+          style={styles.mapOverlayGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
-          <View style={styles.mapMarker}>
-            <MaterialIcon name="place" size={30} color="#EF4444" />
+          <Text style={styles.mapTitle}>Ride Route</Text>
+          <Text style={styles.mapSubtitle}>
+            {ride.pickup.name} → {ride.destination.name}
+          </Text>
+          
+          <View style={styles.mapStats}>
+            <View style={styles.mapStat}>
+              <LinearGradient
+                colors={['#F3F4F6', '#E5E7EB']}
+                style={styles.mapStatIcon}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <MaterialIcon name="map" size={14} color="#666" />
+              </LinearGradient>
+              <Text style={styles.mapStatText}>{ride.distance}</Text>
+            </View>
+            <View style={styles.mapStat}>
+              <LinearGradient
+                colors={['#F3F4F6', '#E5E7EB']}
+                style={styles.mapStatIcon}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <MaterialIcon name="access-time" size={14} color="#666" />
+              </LinearGradient>
+              <Text style={styles.mapStatText}>{ride.duration}</Text>
+            </View>
+            <View style={styles.mapStat}>
+              <LinearGradient
+                colors={['#F3F4F6', '#E5E7EB']}
+                style={styles.mapStatIcon}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <MaterialIcon name="directions-car" size={14} color="#666" />
+              </LinearGradient>
+              <Text style={styles.mapStatText}>{ride.driver.vehicle}</Text>
+            </View>
           </View>
-        </Marker>
-
-        {/* Route Polyline */}
-        {ride.routeCoordinates && (
-          <Polyline
-            coordinates={ride.routeCoordinates}
-            strokeColor="#22C55E"
-            strokeWidth={4}
-          />
-        )}
-      </MapView>
-
-      <View style={styles.mapOverlay}>
-        <Text style={styles.mapTitle}>Ride Route</Text>
-        <Text style={styles.mapSubtitle}>
-          {ride.pickup.name} → {ride.destination.name}
-        </Text>
-        
-        <View style={styles.mapStats}>
-          <View style={styles.mapStat}>
-            <MaterialIcon name="map" size={16} color="#666" />
-            <Text style={styles.mapStatText}>{ride.distance}</Text>
-          </View>
-          <View style={styles.mapStat}>
-            <MaterialIcon name="access-time" size={16} color="#666" />
-            <Text style={styles.mapStatText}>{ride.duration}</Text>
-          </View>
-          <View style={styles.mapStat}>
-            <MaterialIcon name="directions-car" size={16} color="#666" />
-            <Text style={styles.mapStatText}>{ride.driver.vehicle}</Text>
-          </View>
-        </View>
-      </View>
+        </LinearGradient>
+      </Animated.View>
     </View>
   );
 
   const renderFullMap = () => (
     <Modal
       visible={showFullMap}
-      animationType="slide"
-      onRequestClose={() => setShowFullMap(false)}
+      animationType="none"
+      transparent={true}
+      onRequestClose={closeFullMap}
     >
-      <View style={styles.fullMapContainer}>
-        <MapView
-          provider={PROVIDER_GOOGLE}
-          style={styles.fullMap}
-          region={mapRegion}
+      <Animated.View 
+        style={[
+          styles.modalOverlay,
+          {
+            opacity: fadeAnim,
+          },
+        ]}
+      >
+        <Animated.View 
+          style={[
+            styles.fullMapContainer,
+            {
+              transform: [{ translateY: modalSlide }],
+            },
+          ]}
         >
-          <Marker coordinate={ride.pickup.coordinates}>
-            <View style={styles.fullMapMarker}>
-              <MaterialIcon name="location-pin" size={40} color="#3B82F6" />
-            </View>
-          </Marker>
+          <MapView
+            provider={PROVIDER_GOOGLE}
+            style={styles.fullMap}
+            region={mapRegion}
+          >
+            <Marker coordinate={ride.pickup.coordinates}>
+              <View style={styles.fullMapMarker}>
+                <LinearGradient
+                  colors={['#3B82F6', '#2563EB']}
+                  style={styles.fullMapMarkerInner}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcon name="location-pin" size={30} color="#FFFFFF" />
+                </LinearGradient>
+              </View>
+            </Marker>
+            
+            <Marker coordinate={ride.destination.coordinates}>
+              <View style={styles.fullMapMarker}>
+                <LinearGradient
+                  colors={['#EF4444', '#DC2626']}
+                  style={styles.fullMapMarkerInner}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcon name="place" size={30} color="#FFFFFF" />
+                </LinearGradient>
+              </View>
+            </Marker>
+            
+            {ride.routeCoordinates && (
+              <Polyline
+                coordinates={ride.routeCoordinates}
+                strokeColor="#22C55E"
+                strokeWidth={6}
+              />
+            )}
+          </MapView>
           
-          <Marker coordinate={ride.destination.coordinates}>
-            <View style={styles.fullMapMarker}>
-              <MaterialIcon name="place" size={40} color="#EF4444" />
-            </View>
-          </Marker>
-          
-          {ride.routeCoordinates && (
-            <Polyline
-              coordinates={ride.routeCoordinates}
-              strokeColor="#22C55E"
-              strokeWidth={6}
-            />
-          )}
-        </MapView>
-        
-        <TouchableOpacity 
-          style={styles.closeMapButton}
-          onPress={() => setShowFullMap(false)}
-        >
-          <MaterialIcon name="close" size={24} color="#000" />
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity 
+            style={styles.closeMapButton}
+            onPress={closeFullMap}
+            activeOpacity={0.6}
+          >
+            <LinearGradient
+              colors={['#FFFFFF', '#F3F4F6']}
+              style={styles.closeMapButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <MaterialIcon name="close" size={20} color="#000" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* HEADER */}
-      <View style={styles.header}>
+      {/* Animated HEADER */}
+      <Animated.View 
+        style={[
+          styles.header,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
+          activeOpacity={0.6}
         >
-          <MaterialIcon name="arrow-back" size={24} color="#000000" />
+          <LinearGradient
+            colors={['#F1F5F9', '#E2E8F0']}
+            style={styles.backButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <MaterialIcon name="arrow-back" size={20} color="#000000" />
+          </LinearGradient>
         </TouchableOpacity>
         
         <Text style={styles.headerTitle}>Ride Details</Text>
         
-        <TouchableOpacity 
-          style={styles.shareButton}
-          onPress={handleShareReceipt}
-        >
-          <MaterialIcon name="share" size={24} color="#000000" />
-        </TouchableOpacity>
-      </View>
+        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+          <TouchableOpacity 
+            style={styles.shareButton}
+            onPress={handleShareReceipt}
+            activeOpacity={0.6}
+          >
+            <LinearGradient
+              colors={['#22C55E', '#16A34A']}
+              style={styles.shareButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <MaterialIcon name="share" size={18} color="#FFFFFF" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
 
-      {/* TABS */}
-      <View style={styles.tabs}>
+      {/* Animated TABS */}
+      <Animated.View 
+        style={[
+          styles.tabs,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: tabSlide }],
+          },
+        ]}
+      >
         <TouchableOpacity 
           style={[styles.tab, activeTab === 'details' && styles.activeTab]}
-          onPress={() => setActiveTab('details')}
+          onPress={() => handleTabChange('details')}
+          activeOpacity={0.7}
         >
+          {activeTab === 'details' ? (
+            <LinearGradient
+              colors={['#22C55E', '#16A34A']}
+              style={styles.tabIndicator}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+          ) : null}
+          <MaterialIcon name="list-alt" size={20} color={activeTab === 'details' ? '#22C55E' : '#666'} />
           <Text style={[styles.tabText, activeTab === 'details' && styles.activeTabText]}>
             Details
           </Text>
@@ -625,8 +1070,18 @@ export default function RideDetailsScreen() {
         
         <TouchableOpacity 
           style={[styles.tab, activeTab === 'receipt' && styles.activeTab]}
-          onPress={() => setActiveTab('receipt')}
+          onPress={() => handleTabChange('receipt')}
+          activeOpacity={0.7}
         >
+          {activeTab === 'receipt' ? (
+            <LinearGradient
+              colors={['#22C55E', '#16A34A']}
+              style={styles.tabIndicator}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+          ) : null}
+          <MaterialIcon name="receipt" size={20} color={activeTab === 'receipt' ? '#22C55E' : '#666'} />
           <Text style={[styles.tabText, activeTab === 'receipt' && styles.activeTabText]}>
             Receipt
           </Text>
@@ -634,53 +1089,98 @@ export default function RideDetailsScreen() {
         
         <TouchableOpacity 
           style={[styles.tab, activeTab === 'map' && styles.activeTab]}
-          onPress={() => setActiveTab('map')}
+          onPress={() => handleTabChange('map')}
+          activeOpacity={0.7}
         >
+          {activeTab === 'map' ? (
+            <LinearGradient
+              colors={['#22C55E', '#16A34A']}
+              style={styles.tabIndicator}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+          ) : null}
+          <MaterialIcon name="map" size={20} color={activeTab === 'map' ? '#22C55E' : '#666'} />
           <Text style={[styles.tabText, activeTab === 'map' && styles.activeTabText]}>
             Map
           </Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       {/* CONTENT */}
       {activeTab === 'details' && renderDetailsTab()}
       {activeTab === 'receipt' && renderReceiptTab()}
       {activeTab === 'map' && renderMapTab()}
 
-      {/* ACTION BUTTONS */}
-      <View style={styles.actions}>
+      {/* Animated ACTION BUTTONS */}
+      <Animated.View 
+        style={[
+          styles.actions,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         <TouchableOpacity 
           style={styles.actionButton}
           onPress={handleRepeatRide}
+          activeOpacity={0.7}
         >
-          <MaterialIcon name="repeat" size={20} color="#FFFFFF" />
-          <Text style={styles.actionButtonText}>Repeat Ride</Text>
+          <LinearGradient
+            colors={['#22C55E', '#16A34A']}
+            style={styles.actionButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <MaterialIcon name="repeat" size={18} color="#FFFFFF" />
+            <Text style={styles.actionButtonText}>Repeat Ride</Text>
+          </LinearGradient>
         </TouchableOpacity>
         
         {activeTab === 'map' && (
           <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: '#3B82F6' }]}
+            style={styles.actionButton}
             onPress={handleViewFullMap}
+            activeOpacity={0.7}
           >
-            <MaterialIcon name="fullscreen" size={20} color="#FFFFFF" />
-            <Text style={styles.actionButtonText}>Full Screen Map</Text>
+            <LinearGradient
+              colors={['#3B82F6', '#2563EB']}
+              style={styles.actionButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <MaterialIcon name="fullscreen" size={18} color="#FFFFFF" />
+              <Text style={styles.actionButtonText}>Full Screen Map</Text>
+            </LinearGradient>
           </TouchableOpacity>
         )}
         
         <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: '#6B7280' }]}
+          style={styles.actionButton}
           onPress={handleReportIssue}
+          activeOpacity={0.7}
         >
-          <MaterialIcon name="help" size={20} color="#FFFFFF" />
-          <Text style={styles.actionButtonText}>Report Issue</Text>
+          <LinearGradient
+            colors={['#6B7280', '#4B5563']}
+            style={styles.actionButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <MaterialIcon name="help" size={18} color="#FFFFFF" />
+            <Text style={styles.actionButtonText}>Report Issue</Text>
+          </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       {/* FULL SCREEN MAP MODAL */}
       {renderFullMap()}
-    </View>
+    </SafeAreaView>
   );
 }
+
+// Create Animated Polyline component
+const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
 
 const styles = StyleSheet.create({
   container: {
@@ -693,85 +1193,124 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 40,
-    paddingBottom: 16,
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 20 : 40,
+    paddingBottom: 20,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+  },
+  backButtonGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#000000',
+    letterSpacing: -0.3,
   },
   shareButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+  },
+  shareButtonGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   
   // TABS
   tabs: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  activeTab: {
-    borderBottomColor: '#22C55E',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-  },
-  activeTabText: {
-    color: '#22C55E',
-    fontWeight: '600',
-  },
-  
-  // TAB CONTENT
-  tabContent: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  
-  // SECTIONS
-  section: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderBottomColor: '#F0F0F0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
-  sectionTitle: {
-    fontSize: 16,
+  tab: {
+    flex: 1,
+    paddingVertical: 18,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  activeTab: {
+    position: 'relative',
+  },
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: '25%',
+    right: '25%',
+    height: 3,
+    borderRadius: 2,
+  },
+  tabText: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#666',
+    marginTop: 6,
+  },
+  activeTabText: {
+    color: '#22C55E',
+    fontWeight: '700',
+  },
+  
+  // TAB CONTENT
+  tabContent: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 100,
+  },
+  
+  // SECTIONS
+  section: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
     color: '#000000',
-    marginBottom: 12,
+    marginBottom: 20,
+    letterSpacing: -0.3,
   },
   
   // DRIVER CARD
@@ -786,16 +1325,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   driverAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#22C55E',
+    width: 56,
+    height: 56,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   driverInitials: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
@@ -803,10 +1346,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   driverName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#000000',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   driverMeta: {
     flexDirection: 'row',
@@ -815,7 +1358,7 @@ const styles = StyleSheet.create({
   },
   driverRating: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#666',
     marginLeft: 4,
   },
@@ -833,12 +1376,20 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   contactButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: 44,
+    height: 44,
+  },
+  contactButtonGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   
   // SUMMARY GRID
@@ -848,44 +1399,69 @@ const styles = StyleSheet.create({
     marginHorizontal: -8,
   },
   summaryItem: {
-    width: (width - 64) / 2,
+    width: (width - 96) / 2,
     alignItems: 'center',
-    padding: 12,
+    padding: 16,
     backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    borderRadius: 20,
     margin: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  summaryIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
   },
   summaryValue: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#000000',
-    marginTop: 4,
-    marginBottom: 2,
+    marginBottom: 6,
   },
   summaryLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#666',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   
   // FARE BREAKDOWN
   fareBreakdown: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
   fareRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 12,
   },
   fareLabel: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#666',
+    fontWeight: '500',
   },
   fareValue: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     color: '#000000',
   },
   divider: {
@@ -897,202 +1473,251 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   totalLabel: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#000000',
   },
   totalValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#22C55E',
+    letterSpacing: -0.5,
   },
   
   // TIMELINE
   timeline: {
-    paddingLeft: 20,
+    paddingLeft: 32,
   },
   timelineItem: {
     position: 'relative',
-    paddingBottom: 16,
+    paddingBottom: 20,
   },
   timelineIcon: {
     position: 'absolute',
-    left: -24,
+    left: -32,
     top: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F0F9F0',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   timelineContent: {
-    paddingLeft: 12,
+    paddingLeft: 16,
   },
   timelineTime: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#666',
-    marginBottom: 2,
+    marginBottom: 4,
+    fontWeight: '600',
   },
   timelineStatus: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     color: '#000000',
+    lineHeight: 20,
   },
   timelineLine: {
     position: 'absolute',
-    left: -8,
-    top: 32,
+    left: -14,
+    top: 36,
     bottom: 0,
     width: 2,
     backgroundColor: '#E5E7EB',
+    zIndex: 1,
   },
   
   // RATINGS
   ratingsContainer: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 12,
-  },
-  ratingItem: {
-    marginBottom: 12,
-  },
-  ratingLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  ratingStars: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  ratingComment: {
-    fontSize: 14,
-    color: '#000000',
-    fontStyle: 'italic',
-    backgroundColor: '#FFFFFF',
-    padding: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  
-  // RECEIPT TAB
-  receiptHeader: {
-    backgroundColor: '#22C55E',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  receiptTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginTop: 12,
-  },
-  receiptId: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    marginTop: 4,
-    opacity: 0.9,
-  },
-  receiptDate: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    marginTop: 4,
-    opacity: 0.9,
-  },
-  receiptDetails: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 20,
+    padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 1,
   },
-  receiptSection: {
+  ratingItem: {
     marginBottom: 20,
   },
-  receiptSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
+  ratingLabel: {
+    fontSize: 15,
+    color: '#666',
     marginBottom: 12,
-    borderBottomWidth: 1,
+    fontWeight: '600',
+  },
+  ratingStars: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    gap: 8,
+  },
+  starContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  ratingComment: {
+    fontSize: 15,
+    color: '#000000',
+    fontStyle: 'italic',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    lineHeight: 20,
+  },
+  
+  // RECEIPT TAB
+  receiptHeader: {
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  receiptTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginTop: 16,
+    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
+  receiptId: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    marginBottom: 4,
+    opacity: 0.9,
+    fontWeight: '600',
+  },
+  receiptDate: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    opacity: 0.9,
+    fontWeight: '600',
+  },
+  receiptDetails: {
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 10,
+    overflow: 'hidden',
+  },
+  receiptDetailsGradient: {
+    padding: 28,
+  },
+  receiptSection: {
+    marginBottom: 28,
+  },
+  receiptSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 2,
     borderBottomColor: '#E5E7EB',
-    paddingBottom: 8,
+    letterSpacing: -0.3,
   },
   receiptRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 14,
   },
   receiptLabel: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#666',
+    fontWeight: '500',
     flex: 1,
   },
   receiptValue: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     color: '#000000',
     flex: 1,
     textAlign: 'right',
   },
   receiptDivider: {
-    height: 1,
+    height: 2,
     backgroundColor: '#E5E7EB',
-    marginVertical: 12,
+    marginVertical: 16,
   },
   receiptTotalRow: {
-    marginTop: 4,
+    marginTop: 8,
   },
   receiptTotalLabel: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#000000',
   },
   receiptTotalValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '800',
     color: '#22C55E',
+    letterSpacing: -0.5,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   receiptFooter: {
     alignItems: 'center',
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 1,
+    marginTop: 32,
+    paddingTop: 28,
+    borderTopWidth: 2,
     borderTopColor: '#E5E7EB',
   },
   receiptFooterText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#22C55E',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   receiptFooterNote: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#666',
     textAlign: 'center',
+    fontWeight: '500',
   },
   
   // MAP TAB
   mapTab: {
     flex: 1,
     position: 'relative',
+  },
+  mapContainer: {
+    flex: 1,
   },
   map: {
     width: '100%',
@@ -1102,30 +1727,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  mapMarkerInner: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
   mapOverlay: {
     position: 'absolute',
-    top: 16,
-    left: 16,
-    right: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+    top: 20,
+    left: 24,
+    right: 24,
+    borderRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  mapOverlayGradient: {
+    borderRadius: 24,
+    padding: 24,
   },
   mapTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#000000',
-    marginBottom: 4,
+    marginBottom: 8,
+    letterSpacing: -0.5,
   },
   mapSubtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#666',
-    marginBottom: 12,
+    marginBottom: 20,
+    lineHeight: 20,
   },
   mapStats: {
     flexDirection: 'row',
@@ -1135,16 +1776,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  mapStatIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
+  },
   mapStatText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#000000',
-    marginLeft: 6,
+    fontWeight: '600',
   },
   
-  // FULL MAP MODAL
-  fullMapContainer: {
+  // MODAL
+  modalOverlay: {
     flex: 1,
-    position: 'relative',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  fullMapContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    overflow: 'hidden',
+    height: height * 0.9,
   },
   fullMap: {
     width: '100%',
@@ -1154,46 +1816,73 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeMapButton: {
-    position: 'absolute',
-    top: 40,
-    right: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+  fullMapMarkerInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  closeMapButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    width: 44,
+    height: 44,
+  },
+  closeMapButtonGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 4,
   },
   
   // ACTIONS
   actions: {
     flexDirection: 'row',
-    padding: 16,
+    padding: 24,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    gap: 8,
+    borderTopColor: '#F0F0F0',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 10,
   },
   actionButton: {
     flex: 1,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  actionButtonGradient: {
     flexDirection: 'row',
-    backgroundColor: '#22C55E',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 });

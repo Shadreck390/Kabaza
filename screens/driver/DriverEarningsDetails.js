@@ -46,7 +46,7 @@ import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Svg, Circle, Path, G, Text as SvgText } from 'react-native-svg';
-import { PieChart } from 'react-native-svg-charts';
+import { PieChart } from 'react-native-chart-kit';
 import * as shape from 'd3-shape';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 
@@ -181,12 +181,13 @@ export default function DriverEarningsDetails() {
   const prepareChartData = (data) => {
     if (!data) return;
 
-    // Prepare pie chart data
+    // Prepare pie chart data for react-native-chart-kit
     const pieChartData = data.breakdown.map((item, index) => ({
-      value: item.percentage,
-      svg: { fill: getColorForIndex(index) },
-      key: `pie-${index}`,
-      label: item.category,
+      name: item.category,
+      population: item.percentage,
+      color: getColorForIndex(index),
+      legendFontColor: "#333",
+      legendFontSize: 12,
     }));
     setPieData(pieChartData);
 
@@ -377,27 +378,6 @@ export default function DriverEarningsDetails() {
     return colors[index % colors.length];
   };
 
-  // Render pie chart label
-  const renderPieChartLabels = ({ slices }) => {
-    return slices.map((slice, index) => {
-      const { labelCentroid, pieCentroid, data } = slice;
-      return (
-        <SvgText
-          key={index}
-          x={pieCentroid[0]}
-          y={pieCentroid[1]}
-          fill="white"
-          textAnchor="middle"
-          alignmentBaseline="middle"
-          fontSize={12}
-          fontWeight="bold"
-        >
-          {data.value}%
-        </SvgText>
-      );
-    });
-  };
-
   // Render summary cards with animation
   const renderSummaryCards = () => {
     const cards = [
@@ -501,18 +481,18 @@ export default function DriverEarningsDetails() {
       <View style={styles.breakdownContainer}>
         <View style={styles.chartContainer}>
           <PieChart
-            style={{ height: 200 }}
             data={pieData}
-            innerRadius="60%"
-            outerRadius="80%"
-            labelRadius="90%"
-          >
-            {renderPieChartLabels({ slices: pieData.map((d, i) => ({ 
-              ...d, 
-              pieCentroid: [100, 100], 
-              labelCentroid: [100, 100] 
-            })) })}
-          </PieChart>
+            width={200}
+            height={200}
+            chartConfig={{
+              color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+            }}
+            accessor="population"
+            backgroundColor="transparent"
+            paddingLeft="15"
+            center={[100, 100]}
+            absolute
+          />
           <View style={styles.chartCenter}>
             <Text style={styles.chartCenterText}>Total</Text>
             <Text style={styles.chartCenterValue}>

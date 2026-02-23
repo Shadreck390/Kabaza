@@ -14,8 +14,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
-import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialIconFallback as MaterialIcon, MaterialCommunityIconFallback as MaterialCommunityIcon } from '@src/utils/iconUtils';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 

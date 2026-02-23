@@ -1,4 +1,4 @@
-// screens/rider/SearchLocationScreen.js
+// screens/rider/SearchLocationScreen.js - FIXED to match bt.jpg style with Malawi locations
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -6,88 +6,113 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  ScrollView,
-  StatusBar,
-  Dimensions,
   FlatList,
-  ActivityIndicator,
-  Keyboard,
-  Platform,
+  StatusBar,
+  SafeAreaView,
+  Animated,
+  Easing,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
-import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import Geolocation from 'react-native-geolocation-service';
 
-const { width, height } = Dimensions.get('window');
-
-
-// Mock location data for Lilongwe
-const LILONGWE_LOCATIONS = [
+// ROUTE DESTINATIONS - Malawi/Lilongwe locations from your original code
+const ROUTE_DESTINATIONS = [
   {
     id: '1',
-    name: 'Area 3 Shopping Complex',
-    address: 'Area 3, Lilongwe, Malawi',
-    type: 'shopping',
-    coordinates: { latitude: -13.9583, longitude: 33.7689 },
+    address: 'Area 3 Shopping Complex',
+    area: 'Area 3, Lilongwe, Malawi',
+    distance: '0.8 km',
+    icon: 'shopping-cart',
+    color: '#3B82F6',
   },
   {
     id: '2',
-    name: 'Lilongwe City Mall',
-    address: 'M1 Road, Lilongwe, Malawi',
-    type: 'shopping',
-    coordinates: { latitude: -13.9772, longitude: 33.7720 },
+    address: 'Lilongwe City Mall',
+    area: 'M1 Road, Lilongwe, Malawi',
+    distance: '1.5 km',
+    icon: 'storefront',
+    color: '#8B5CF6',
   },
   {
     id: '3',
-    name: 'Kamuzu Central Hospital',
-    address: 'Mzimba Street, Lilongwe, Malawi',
-    type: 'hospital',
-    coordinates: { latitude: -13.9711, longitude: 33.7836 },
+    address: 'Kamuzu Central Hospital',
+    area: 'Mzimba Street, Lilongwe, Malawi',
+    distance: '2.1 km',
+    icon: 'local-hospital',
+    color: '#EF4444',
   },
   {
     id: '4',
-    name: 'Bingu International Conference Centre',
-    address: 'Presidential Way, Lilongwe',
-    type: 'landmark',
-    coordinates: { latitude: -13.9897, longitude: 33.7886 },
+    address: 'Bingu International Conference Centre',
+    area: 'Presidential Way, Lilongwe',
+    distance: '3.2 km',
+    icon: 'apartment',
+    color: '#F59E0B',
   },
   {
     id: '5',
-    name: 'Crossroads Hotel',
-    address: 'Mchinji Road, Area 3',
-    type: 'hotel',
-    coordinates: { latitude: -13.9620, longitude: 33.7741 },
+    address: 'Crossroads Hotel',
+    area: 'Mchinji Road, Area 3',
+    distance: '0.5 km',
+    icon: 'hotel',
+    color: '#EC4899',
   },
   {
     id: '6',
-    name: 'Game Stores Lilongwe',
-    address: 'Shoprite Complex, Old Town',
-    type: 'shopping',
-    coordinates: { latitude: -13.9765, longitude: 33.7748 },
+    address: 'Game Stores Lilongwe',
+    area: 'Shoprite Complex, Old Town',
+    distance: '1.8 km',
+    icon: 'shopping-bag',
+    color: '#10B981',
   },
   {
     id: '7',
-    name: 'Lilongwe Wildlife Centre',
-    address: 'Kenya Avenue, Lilongwe',
-    type: 'attraction',
-    coordinates: { latitude: -13.9650, longitude: 33.7812 },
+    address: 'Lilongwe Wildlife Centre',
+    area: 'Kenya Avenue, Lilongwe',
+    distance: '2.5 km',
+    icon: 'nature-people',
+    color: '#22C55E',
   },
   {
     id: '8',
-    name: 'University of Malawi',
-    address: 'Chancellor College, Zomba Road',
-    type: 'education',
-    coordinates: { latitude: -13.9628, longitude: 33.7715 },
+    address: 'University of Malawi',
+    area: 'Chancellor College, Zomba Road',
+    distance: '0.7 km',
+    icon: 'school',
+    color: '#06B6D4',
   },
-];
-
-// Recent searches mock
-const RECENT_SEARCHES = [
-  { id: 'r1', name: 'Home', address: '123 Mchinji Road, Area 3' },
-  { id: 'r2', name: 'Work', address: 'Lilongwe City Mall' },
-  { id: 'r3', name: 'Gym', address: 'Fitness World, Old Town' },
+  {
+    id: '9',
+    address: 'Lilongwe Police Station',
+    area: 'Area 3 police, Lilongwe',
+    distance: '1.2 km',
+    icon: 'local-police',
+    color: '#6B7280',
+  },
+  {
+    id: '10',
+    address: 'Bingu National Stadium',
+    area: 'Bingu National Stadium, Lilongwe',
+    distance: '4.5 km',
+    icon: 'stadium',
+    color: '#DC2626',
+  },
+  {
+    id: '11',
+    address: 'Cross Roads Shopping Mall',
+    area: 'Cross Roads, Lilongwe',
+    distance: '2.3 km',
+    icon: 'store',
+    color: '#7C3AED',
+  },
+  {
+    id: '12',
+    address: 'Sunbird Capital Hotel',
+    area: 'Mokera Rd, Lilongwe',
+    distance: '1.8 km',
+    icon: 'business',
+    color: '#D97706',
+  },
 ];
 
 export default function SearchLocationScreen() {
@@ -95,392 +120,222 @@ export default function SearchLocationScreen() {
   const route = useRoute();
   const { onLocationSelect, initialType = 'destination' } = route.params || {};
   
-  const mapRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [recentSearches, setRecentSearches] = useState(RECENT_SEARCHES);
-  const [isSearching, setIsSearching] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
-  const [mapRegion, setMapRegion] = useState({
-    latitude: -13.9626,
-    longitude: 33.7741,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  });
-  const [showMap, setShowMap] = useState(false);
+  const [showRoute, setShowRoute] = useState(true);
+  
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
-    getUserLocation();
+    // Initial animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+    ]).start();
+    
+    // Set initial results to route destinations
+    setSearchResults(ROUTE_DESTINATIONS);
   }, []);
 
   useEffect(() => {
-    if (searchQuery.trim().length >= 2) {
-      performSearch(searchQuery);
+    if (searchQuery.trim().length > 0) {
+      // Filter destinations based on search
+      const filtered = ROUTE_DESTINATIONS.filter(
+        item => 
+          item.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.area.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setSearchResults(filtered);
+      setShowRoute(false);
     } else {
-      setSearchResults([]);
+      // Show all route destinations when search is empty
+      setSearchResults(ROUTE_DESTINATIONS);
+      setShowRoute(true);
     }
   }, [searchQuery]);
 
-  const getUserLocation = () => {
-    Geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setUserLocation({ latitude, longitude });
-        setMapRegion(prev => ({
-          ...prev,
-          latitude,
-          longitude,
-        }));
-        
-        // Add current location to results
-        setSearchResults(prev => [
-          {
-            id: 'current',
-            name: 'Current Location',
-            address: 'Using your current location',
-            type: 'current',
-            coordinates: { latitude, longitude },
-          },
-          ...prev,
-        ]);
-      },
-      (error) => {
-        console.log('Error getting location:', error);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
-  };
-
-  const performSearch = (query) => {
-    setIsSearching(true);
-    
-    // Simulate API delay
-    setTimeout(() => {
-      const filtered = LILONGWE_LOCATIONS.filter(
-        location =>
-          location.name.toLowerCase().includes(query.toLowerCase()) ||
-          location.address.toLowerCase().includes(query.toLowerCase())
-      );
-      setSearchResults(filtered);
-      setIsSearching(false);
-    }, 500);
-  };
-
   const handleSelectLocation = (location) => {
-    setSelectedLocation(location);
-    
-    if (mapRef.current && location.coordinates) {
-      mapRef.current.animateToRegion({
-        latitude: location.coordinates.latitude,
-        longitude: location.coordinates.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 1000);
-    }
-    
-    setShowMap(true);
-    Keyboard.dismiss();
+    // Navigate to ride confirmation with selected destination
+    navigation.navigate('RideSelection', {
+      destination: location.address,
+      destinationAddress: location.area,
+      destinationCoords: { latitude: -13.9626, longitude: 33.7741 }, // Lilongwe coordinates
+      pickupLocation: 'Bwaila Hospital', // This should be changed to a Malawi location too
+      pickupCoords: { latitude: -13.9626, longitude: 33.7741 },
+      
+    });
   };
 
-  const handleConfirmLocation = () => {
-    if (!selectedLocation) return;
-    
-    if (onLocationSelect) {
-      onLocationSelect({
-        name: selectedLocation.name,
-        address: selectedLocation.address,
-        coordinates: selectedLocation.coordinates,
-      });
-      navigation.goBack();
-    } else {
-      // Navigate to ride selection with this location
-      if (initialType === 'destination') {
-        navigation.navigate('RideSelection', {
-          destination: selectedLocation.name,
-          destinationAddress: selectedLocation.address,
-          destinationCoordinates: selectedLocation.coordinates,
-        });
-      } else {
-        navigation.navigate('RideSelection', {
-          pickupLocation: {
-            name: selectedLocation.name,
-            address: selectedLocation.address,
-            coordinates: selectedLocation.coordinates,
-          },
-        });
-      }
-    }
-  };
-
-  const handleUseCurrentLocation = () => {
-    if (userLocation) {
-      const currentLocation = {
-        id: 'current',
-        name: 'Current Location',
-        address: 'Using your GPS location',
-        type: 'current',
-        coordinates: userLocation,
-      };
-      handleSelectLocation(currentLocation);
-    }
-  };
-
-  const handleClearRecent = () => {
-    setRecentSearches([]);
-  };
-
-  const getIconForType = (type) => {
-    switch (type) {
-      case 'current':
-        return { name: 'my-location', color: '#22C55E' };
-      case 'shopping':
-        return { name: 'shopping-cart', color: '#3B82F6' };
-      case 'hospital':
-        return { name: 'local-hospital', color: '#EF4444' };
-      case 'hotel':
-        return { name: 'hotel', color: '#F59E0B' };
-      case 'landmark':
-        return { name: 'landscape', color: '#8B5CF6' };
-      case 'attraction':
-        return { name: 'attractions', color: '#EC4899' };
-      case 'education':
-        return { name: 'school', color: '#10B981' };
-      default:
-        return { name: 'place', color: '#6B7280' };
-    }
-  };
-
-  const renderLocationItem = ({ item }) => {
-    const icon = getIconForType(item.type);
-    
+  const renderDestinationItem = ({ item, index }) => {
     return (
-      <TouchableOpacity
-        style={styles.locationItem}
-        onPress={() => handleSelectLocation(item)}
+      <Animated.View
+        style={[
+          styles.destinationCard,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
       >
-        <View style={[styles.locationIcon, { backgroundColor: `${icon.color}15` }]}>
-          <MaterialIcon name={icon.name} size={20} color={icon.color} />
-        </View>
-        <View style={styles.locationInfo}>
-          <Text style={styles.locationName}>{item.name}</Text>
-          <Text style={styles.locationAddress} numberOfLines={1}>
-            {item.address}
-          </Text>
-        </View>
-        <MaterialIcon name="chevron-right" size={20} color="#D1D5DB" />
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.destinationTouchable}
+          onPress={() => handleSelectLocation(item)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.destinationIcon, { backgroundColor: `${item.color}15` }]}>
+            <MaterialIcon name={item.icon} size={22} color={item.color} />
+          </View>
+          
+          <View style={styles.destinationInfo}>
+            <Text style={styles.destinationAddress} numberOfLines={1}>
+              {item.address}
+            </Text>
+            <Text style={styles.destinationArea} numberOfLines={1}>
+              {item.area}
+            </Text>
+          </View>
+          
+          <View style={styles.distanceContainer}>
+            <Text style={styles.distanceText}>{item.distance}</Text>
+            <MaterialIcon name="chevron-right" size={20} color="#CCC" />
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
     );
   };
-
-  const renderRecentItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.recentItem}
-      onPress={() => {
-        // For recent items without coordinates, we'd need to geocode
-        Alert.alert('Info', 'This would trigger a geocode search in production');
-      }}
-    >
-      <MaterialIcon name="history" size={20} color="#6B7280" />
-      <View style={styles.recentInfo}>
-        <Text style={styles.recentName}>{item.name}</Text>
-        <Text style={styles.recentAddress}>{item.address}</Text>
-      </View>
-    </TouchableOpacity>
-  );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
-      {/* Header */}
-      <View style={styles.header}>
+      
+      {/* Header with back button and title */}
+      <Animated.View 
+        style={[
+          styles.header,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <MaterialIcon name="arrow-back" size={24} color="#000000" />
+          <MaterialIcon name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
+        
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>
-            {initialType === 'destination' ? 'Where to?' : 'Pickup Location'}
-          </Text>
+          <Text style={styles.headerTitle}>Your route</Text>
         </View>
-        <TouchableOpacity 
-          style={styles.currentLocationButton}
-          onPress={handleUseCurrentLocation}
-        >
-          <MaterialIcon name="my-location" size={20} color="#22C55E" />
+        
+        <TouchableOpacity style={styles.mapButton}>
+          <MaterialIcon name="map" size={24} color="#0066CC" />
+          <Text style={styles.mapButtonText}>Map</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <MaterialIcon name="search" size={20} color="#666" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder={
-            initialType === 'destination' 
-              ? "Search destination..." 
-              : "Search pickup location..."
-          }
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          autoFocus={true}
-          returnKeyType="search"
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <MaterialIcon name="close" size={20} color="#666" />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Map View */}
-      {showMap && selectedLocation && (
-        <View style={styles.mapContainer}>
-          <MapView
-            ref={mapRef}
-            provider={PROVIDER_GOOGLE}
-            style={styles.map}
-            region={mapRegion}
-            showsUserLocation={true}
-            showsMyLocationButton={false}
-          >
-            {selectedLocation.coordinates && (
-              <Marker
-                coordinate={selectedLocation.coordinates}
-                title={selectedLocation.name}
-                description={selectedLocation.address}
-              >
-                <View style={styles.mapMarker}>
-                  <MaterialIcon name="place" size={40} color="#EF4444" />
-                </View>
-              </Marker>
-            )}
-          </MapView>
-          
-          <View style={styles.mapOverlay}>
-            <View style={styles.selectedLocationCard}>
-              <View style={styles.selectedLocationIcon}>
-                <MaterialIcon name="place" size={24} color="#EF4444" />
-              </View>
-              <View style={styles.selectedLocationInfo}>
-                <Text style={styles.selectedLocationName} numberOfLines={1}>
-                  {selectedLocation.name}
-                </Text>
-                <Text style={styles.selectedLocationAddress} numberOfLines={2}>
-                  {selectedLocation.address}
-                </Text>
-              </View>
-            </View>
-            
-            <TouchableOpacity 
-              style={styles.confirmButton}
-              onPress={handleConfirmLocation}
-            >
-              <Text style={styles.confirmButtonText}>
-                {initialType === 'destination' ? 'Set Destination' : 'Set Pickup'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+      {/* Pickup location - Updated to Malawi location */}
+      <Animated.View 
+        style={[
+          styles.pickupContainer,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <View style={styles.pickupDot} />
+        <View style={styles.pickupInfo}>
+          <Text style={styles.pickupLabel}>DROPOFF LOCATION</Text>
+          <Text style={styles.pickupAddress}>Area 3, Lilongwe</Text>
         </View>
-      )}
+      </Animated.View>
 
-      {/* Search Results */}
-      {!showMap && (
-        <ScrollView style={styles.resultsContainer}>
-          {isSearching ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#22C55E" />
-              <Text style={styles.loadingText}>Searching locations...</Text>
-            </View>
-          ) : searchQuery.length >= 2 ? (
-            <>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Search Results</Text>
-                <Text style={styles.sectionCount}>({searchResults.length})</Text>
-              </View>
-              
-              {searchResults.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <MaterialIcon name="location-off" size={48} color="#D1D5DB" />
-                  <Text style={styles.emptyStateTitle}>No locations found</Text>
-                  <Text style={styles.emptyStateText}>
-                    Try different keywords or check your spelling
-                  </Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={searchResults}
-                  renderItem={renderLocationItem}
-                  keyExtractor={(item) => item.id}
-                  scrollEnabled={false}
-                  ItemSeparatorComponent={() => <View style={styles.separator} />}
-                />
-              )}
-            </>
-          ) : (
-            <>
-              {/* Recent Searches */}
-              {recentSearches.length > 0 && (
-                <View style={styles.section}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Recent Searches</Text>
-                    <TouchableOpacity onPress={handleClearRecent}>
-                      <Text style={styles.clearText}>Clear</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <FlatList
-                    data={recentSearches}
-                    renderItem={renderRecentItem}
-                    keyExtractor={(item) => item.id}
-                    scrollEnabled={false}
-                    ItemSeparatorComponent={() => <View style={styles.separator} />}
-                  />
-                </View>
-              )}
-
-              {/* Popular Destinations */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Popular in Lilongwe</Text>
-                {LILONGWE_LOCATIONS.slice(0, 4).map((location) => (
-                  <TouchableOpacity
-                    key={location.id}
-                    style={styles.popularItem}
-                    onPress={() => handleSelectLocation(location)}
-                  >
-                    <MaterialIcon name="location-on" size={20} color="#3B82F6" />
-                    <View style={styles.popularInfo}>
-                      <Text style={styles.popularName}>{location.name}</Text>
-                      <Text style={styles.popularAddress}>{location.address}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </>
+      {/* Search Bar - "Where to?" */}
+      <Animated.View 
+        style={[
+          styles.searchContainer,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <View style={styles.searchInputContainer}>
+          <MaterialIcon name="search" size={20} color="#666" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Where to?"
+            placeholderTextColor="#999"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus={false}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <MaterialIcon name="close" size={20} color="#666" />
+            </TouchableOpacity>
           )}
-        </ScrollView>
+        </View>
+      </Animated.View>
+
+      {/* Route Title - Only show when no search query */}
+      {showRoute && (
+        <Animated.View 
+          style={[
+            styles.routeTitleContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <Text style={styles.routeTitle}>Your route</Text>
+        </Animated.View>
       )}
-    </View>
+
+      {/* Destinations List */}
+      <FlatList
+        data={searchResults}
+        renderItem={renderDestinationItem}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 40,
-    paddingBottom: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#F0F0F0',
   },
   backButton: {
     width: 40,
@@ -495,26 +350,66 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#000000',
+    fontWeight: '700',
+    color: '#000',
   },
-  currentLocationButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchContainer: {
+  mapButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F0F9FF',
+  },
+  mapButtonText: {
+    fontSize: 14,
+    color: '#0066CC',
+    marginLeft: 4,
+    fontWeight: '600',
+  },
+  pickupContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     backgroundColor: '#FFFFFF',
-    margin: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  pickupDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#0066CC',
+    marginRight: 12,
+  },
+  pickupInfo: {
+    flex: 1,
+  },
+  pickupLabel: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  pickupAddress: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: '500',
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: '#F5F5F5',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   searchIcon: {
     marginRight: 12,
@@ -522,192 +417,64 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#000000',
+    color: '#000',
+    padding: 0,
   },
-  mapContainer: {
-    flex: 1,
+  routeTitleContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  map: {
-    width: '100%',
-    height: '100%',
+  routeTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    textTransform: 'uppercase',
   },
-  mapMarker: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
   },
-  mapOverlay: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
-  },
-  selectedLocationCard: {
+  destinationCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    paddingVertical: 16,
+  },
+  destinationTouchable: {
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
   },
-  selectedLocationIcon: {
+  destinationIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#FEF2F2',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
-  selectedLocationInfo: {
+  destinationInfo: {
     flex: 1,
   },
-  selectedLocationName: {
+  destinationAddress: {
     fontSize: 16,
+    fontWeight: '500',
+    color: '#000',
+    marginBottom: 4,
+  },
+  destinationArea: {
+    fontSize: 14,
+    color: '#666',
+  },
+  distanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  distanceText: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#000000',
-    marginBottom: 4,
-  },
-  selectedLocationAddress: {
-    fontSize: 14,
-    color: '#666',
-  },
-  confirmButton: {
-    backgroundColor: '#22C55E',
-    paddingVertical: 16,
-    borderRadius: 12,
-  },
-  confirmButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  resultsContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 80,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 16,
-  },
-  section: {
-    marginTop: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-  },
-  sectionCount: {
-    fontSize: 14,
-    color: '#666',
-  },
-  clearText: {
-    fontSize: 14,
-    color: '#EF4444',
-    fontWeight: '500',
-  },
-  locationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  locationIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  locationInfo: {
-    flex: 1,
-  },
-  locationName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
-    marginBottom: 4,
-  },
-  locationAddress: {
-    fontSize: 14,
-    color: '#666',
-  },
-  recentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  recentInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  recentName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
-    marginBottom: 4,
-  },
-  recentAddress: {
-    fontSize: 14,
-    color: '#666',
-  },
-  popularItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  popularInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  popularName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
-    marginBottom: 4,
-  },
-  popularAddress: {
-    fontSize: 14,
-    color: '#666',
+    color: '#0066CC',
+    marginRight: 8,
   },
   separator: {
     height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 80,
-  },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000000',
-    marginTop: 24,
-    marginBottom: 8,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    paddingHorizontal: 32,
+    backgroundColor: '#F0F0F0',
   },
 });

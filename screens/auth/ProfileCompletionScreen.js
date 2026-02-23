@@ -1,21 +1,93 @@
-import React, { useState } from 'react';
-import { 
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, 
-  Image, Platform 
+ // screens/auth/ProfileCompletionScreen.js
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Image,
+  Platform,
+  SafeAreaView,
+  Animated,
+  Easing,
+  Dimensions,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
+import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
 import { launchImageLibrary } from 'react-native-image-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // ADD THIS IMPORT
+import { 
+  saveUserData, 
+  getUserData, 
+  saveAuthToken, 
+  updateUserProfile 
+} from '@utils/userStorage';
+
+const { width, height } = Dimensions.get('window');
+const AnimatedView = Animated.createAnimatedComponent(View);
+const AnimatedText = Animated.createAnimatedComponent(Text);
 
 export default function ProfileCompletionScreen({ navigation, route }) {
-  const [firstName, setFirstName] = useState(route.params?.firstName || '');
-  const [surname, setSurname] = useState(route.params?.surname || '');
-  const [gender, setGender] = useState(route.params?.gender || '');
-  const [dateOfBirth, setDateOfBirth] = useState(route.params?.dateOfBirth || '');
-  const [profilePicture, setProfilePicture] = useState(null);
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const imageScale = useRef(new Animated.Value(1)).current;
 
-  // Handle image selection
+  const { phoneNumber, authMethod, socialUserInfo, verified } = route.params || {};
+
+  const [firstName, setFirstName] = useState(socialUserInfo?.givenName || '');
+  const [surname, setSurname] = useState(socialUserInfo?.familyName || '');
+  const [gender, setGender] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [profilePicture, setProfilePicture] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Animation on mount
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }),
+    ]).start();
+  }, []);
+
+  // Enhanced image selection with animation
   const handleSelectImage = () => {
+    Animated.sequence([
+      Animated.spring(imageScale, {
+        toValue: 0.95,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+      Animated.spring(imageScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+    ]).start();
+
     const options = {
       mediaType: 'photo',
       quality: 0.8,
@@ -31,16 +103,26 @@ export default function ProfileCompletionScreen({ navigation, route }) {
         Alert.alert('Error', 'Failed to select image');
       } else if (response.assets && response.assets[0]) {
         setProfilePicture(response.assets[0]);
+        // Pulse animation on successful selection
+        Animated.sequence([
+          Animated.timing(fadeAnim, {
+            toValue: 0.8,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+        ]).start();
       }
     });
   };
 
-  // Format date input (DD/MM/YYYY)
+  // Format date input (DD/MM/YYYY) - same as your format
   const formatDateOfBirth = (text) => {
-    // Remove non-numeric characters
     const cleaned = text.replace(/[^\d]/g, '');
-    
-    // Format as DD/MM/YYYY
     if (cleaned.length <= 2) {
       return cleaned;
     } else if (cleaned.length <= 4) {
@@ -55,267 +137,546 @@ export default function ProfileCompletionScreen({ navigation, route }) {
     setDateOfBirth(formatted);
   };
 
-  const handleContinue = async () => {  // CHANGE TO async
-    // Validate required fields
-    if (!firstName.trim() || !surname.trim() || !gender) {
-      Alert.alert('Missing Information', 'Please fill in all required fields (First Name, Surname, and Gender)');
-      return;
-    }
+  // Enhanced continue handler with animations and storage
+  const handleContinue = async () => {
+  // Validate required fields
+  if (!firstName.trim() || !surname.trim() || !gender) {
+    // Shake animation for invalid input
+    Animated.sequence([
+      Animated.timing(slideAnim, {
+        toValue: 10,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: -10,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-    // Validate date format if provided
-    if (dateOfBirth && !/^\d{2}\/\d{2}\/\d{4}$/.test(dateOfBirth)) {
-      Alert.alert('Invalid Date', 'Please enter date in DD/MM/YYYY format');
-      return;
-    }
+    Alert.alert('Missing Information', 'Please fill in all required fields (First Name, Surname, and Gender)');
+    return;
+  }
 
-    // Get existing params from previous screens
-    const { phoneNumber, authMethod, socialUserInfo, verified } = route.params || {};
+  // Validate date format if provided
+  if (dateOfBirth && !/^\d{2}\/\d{2}\/\d{4}$/.test(dateOfBirth)) {
+    Alert.alert('Invalid Date', 'Please enter date in DD/MM/YYYY format');
+    return;
+  }
 
-    // ✅ FIXED: Clean user data structure for storage
+  setLoading(true);
+
+  // Button press animation
+  Animated.sequence([
+    Animated.spring(buttonScale, {
+      toValue: 0.95,
+      useNativeDriver: true,
+      tension: 150,
+      friction: 3,
+    }),
+    Animated.spring(buttonScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 150,
+      friction: 3,
+    }),
+  ]).start();
+
+  try {
+    // Check if user already exists
+    const existingUser = await getUserData();
+    
+    // Create complete user profile
     const userData = {
-      phone: phoneNumber,
+      // Basic info
+      phoneNumber: phoneNumber,
+      verified: verified || true,
       authMethod: authMethod || 'phone',
-      socialUserInfo: socialUserInfo || null,
-      verified: verified || false,
-      profilePicture: profilePicture,
-      userProfile: {
+      userType: 'rider', // Default to rider
+      profileCompleted: true,
+      completedAt: new Date().toISOString(),
+      
+      // Profile info
+      profile: {
         firstName: firstName.trim(),
         surname: surname.trim(),
-        gender,
-        dateOfBirth: dateOfBirth || '',
         fullName: `${firstName.trim()} ${surname.trim()}`,
-      }
-    };
-
-    console.log('Navigating to RoleSelection with:', userData);
-
-    // ✅✅✅ CRITICAL FIX: SAVE TO ASYNCSTORAGE FOR PROFILE SCREEN
-    try {
-      // Prepare the data for profile screen
-      const profileDataToSave = {
-        // For DriverProfileScreen - single name field
-        name: `${firstName.trim()} ${surname.trim()}`,
-        
-        // For other uses
-        firstName: firstName.trim(),
-        surname: surname.trim(),
-        
-        // Contact info
-        phone: phoneNumber,
         gender: gender,
         dateOfBirth: dateOfBirth || '',
-        
-        // Profile picture if exists
-        profilePictureUri: profilePicture ? profilePicture.uri : null,
-        
-        // Timestamp
-        registeredAt: new Date().toISOString(),
-      };
+        profilePicture: profilePicture ? {
+          uri: profilePicture.uri,
+          type: profilePicture.type,
+          name: profilePicture.fileName,
+        } : null,
+      },
       
-      // Save to AsyncStorage - MULTIPLE KEYS for redundancy
-      await AsyncStorage.setItem('user_profile_data', JSON.stringify(profileDataToSave));
-      await AsyncStorage.setItem('driver_profile', JSON.stringify(profileDataToSave));
-      await AsyncStorage.setItem('user_data', JSON.stringify(profileDataToSave));
+      // Social info if available
+      ...(socialUserInfo && { socialUserInfo }),
       
-      console.log('✅ User data saved to AsyncStorage:', profileDataToSave);
-      console.log('✅ Name saved as:', profileDataToSave.name);
+      // Settings defaults
+      settings: {
+        notifications: true,
+        darkMode: false,
+        language: 'en',
+      },
       
-    } catch (error) {
-      console.error('❌ Error saving to AsyncStorage:', error);
-      Alert.alert('Error', 'Failed to save profile data. Please try again.');
-      return; // Don't continue if save fails
-    }
+      // Ride preferences (rider-specific)
+      preferences: {
+        favoriteLocations: [],
+        rideHistory: [],
+        paymentMethods: [],
+      },
+    };
 
-    // ✅ FIXED: Use navigate instead of replace to maintain back stack
-    navigation.navigate('RoleSelection', userData);
-  };
+    // Merge with existing data if any
+    const mergedData = existingUser ? { ...existingUser, ...userData } : userData;
+
+    // Save to userStorage
+    await saveUserData(mergedData);
+    
+    // Also update profile separately for easy access
+    await updateUserProfile({
+      name: `${firstName.trim()} ${surname.trim()}`,
+      firstName: firstName.trim(),
+      surname: surname.trim(),
+      gender: gender,
+      dateOfBirth: dateOfBirth || '',
+      phone: phoneNumber,
+      profilePictureUri: profilePicture?.uri,
+      lastUpdated: new Date().toISOString(),
+    });
+
+    console.log('✅ Rider profile saved successfully:', mergedData);
+
+    // ✅ FIXED: Navigate to role selection with animation
+    setTimeout(() => {
+      try {
+        // Prepare navigation params
+        const navigationParams = {
+          // Basic user info
+          phone: phoneNumber, // Pass the original phoneNumber from route params
+          authMethod: authMethod || 'phone',
+          
+          // Social info if available
+          ...(socialUserInfo && { socialUserInfo }),
+          
+          // Profile data (MUST MATCH RoleSelectionScreen expectation)
+          userProfile: {
+            firstName: firstName.trim(),
+            surname: surname.trim(),
+            gender,
+            dateOfBirth: dateOfBirth || '',
+            fullName: `${firstName.trim()} ${surname.trim()}`,
+            profilePicture: profilePicture?.uri || null,
+          },
+          
+          // Verification status
+          verified: true,
+          
+          // Optional flag
+          fromProfileCompletion: true,
+        };
+        
+        console.log('🚀 Navigating to RoleSelection with params:', {
+          phone: navigationParams.phone,
+          hasphone: !!navigationParams.phone,
+          hasProfile: !!navigationParams.userProfile,
+          profileName: navigationParams.userProfile.fullName,
+        });
+        
+        // Navigate to RoleSelection
+        navigation.navigate('RoleSelection', navigationParams);
+        
+      } catch (navError) {
+        console.error('❌ Navigation error:', navError);
+        
+        // Fallback navigation if main navigation fails
+        Alert.alert(
+          'Profile Completed',
+          'Your profile has been saved successfully. Please select your role.',
+          [
+            {
+              text: 'Continue',
+              onPress: () => {
+                // Try simpler navigation as fallback
+                navigation.navigate('RoleSelection', {
+                  phone: phoneNumber,
+                  userProfile: {
+                    firstName: firstName.trim(),
+                    surname: surname.trim(),
+                    fullName: `${firstName.trim()} ${surname.trim()}`,
+                  }
+                });
+              }
+            }
+          ]
+        );
+      }
+    }, 500);
+
+  } catch (error) {
+    console.error('❌ Error saving profile:', error);
+    Alert.alert('Error', 'Failed to save profile. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+}; // ← THIS CLOSING BRACE WAS MISSING
+
+  const isFormValid = firstName.trim() && surname.trim() && gender;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Complete Your Profile</Text>
-        <Text style={styles.headerSubtitle}>Tell us a bit about yourself</Text>
-      </View>
-
-      {/* Profile Picture Section */}
-      <View style={styles.profilePictureSection}>
-        <TouchableOpacity style={styles.profilePictureContainer} onPress={handleSelectImage}>
-          {profilePicture ? (
-            <Image 
-              source={{ uri: profilePicture.uri }} 
-              style={styles.profileImage}
-            />
-          ) : (
-            <View style={styles.profilePicturePlaceholder}>
-              <Icon name="camera" size={32} color="#6c3" />
-              <Text style={styles.profilePictureText}>Add Photo</Text>
-            </View>
-          )}
-          <View style={styles.cameraIconOverlay}>
-            <Icon name="camera" size={16} color="#fff" />
-          </View>
-        </TouchableOpacity>
-        <Text style={styles.profilePictureHint}>Tap to add profile picture</Text>
-      </View>
-
-      {/* Personal Information Form */}
-      <View style={styles.formSection}>
-        {/* First Name */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>First Name *</Text>
-          <TextInput
-            style={styles.input}
-            value={firstName}
-            onChangeText={setFirstName}
-            placeholder="Enter your first name"
-            autoCapitalize="words"
-          />
-        </View>
-
-        {/* Spacing */}
-        <View style={styles.spacing} />
-
-        {/* Surname */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Surname *</Text>
-          <TextInput
-            style={styles.input}
-            value={surname}
-            onChangeText={setSurname}
-            placeholder="Enter your surname"
-            autoCapitalize="words"
-          />
-        </View>
-
-        {/* Spacing */}
-        <View style={styles.spacing} />
-
-        {/* Gender Selection */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Gender *</Text>
-          <View style={styles.genderContainer}>
-            {['Male', 'Female', 'Other'].map((item) => (
-              <TouchableOpacity
-                key={item.toLowerCase()}
-                style={[
-                  styles.genderButton,
-                  gender === item.toLowerCase() && styles.genderButtonSelected
-                ]}
-                onPress={() => setGender(item.toLowerCase())}
-              >
-                <Text style={[
-                  styles.genderText,
-                  gender === item.toLowerCase() && styles.genderTextSelected
-                ]}>
-                  {item}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Spacing */}
-        <View style={styles.spacing} />
-
-        {/* Date of Birth */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Date of Birth</Text>
-          <TextInput
-            style={styles.input}
-            value={dateOfBirth}
-            onChangeText={handleDateChange}
-            placeholder="DD/MM/YYYY"
-            keyboardType="numeric"
-            maxLength={10}
-          />
-          <Text style={styles.dateHint}>Format: DD/MM/YYYY</Text>
-        </View>
-      </View>
-
-      {/* Spacing before button */}
-      <View style={styles.largeSpacing} />
-
-      {/* Continue Button */}
-      <TouchableOpacity
-        style={[
-          styles.continueButton,
-          (!firstName || !surname || !gender) && styles.continueButtonDisabled
-        ]}
-        onPress={handleContinue}
-        disabled={!firstName || !surname || !gender}
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.continueButtonText}>Continue to Role Selection</Text>
-      </TouchableOpacity>
+        {/* Header with gradient like RiderHomeScreen */}
+        <LinearGradient
+          colors={['#00a82d', '#00c853']}
+          style={styles.header}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <AnimatedView
+            style={[
+              styles.headerContent,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <MaterialIcon name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <AnimatedText
+              style={[
+                styles.headerTitle,
+                {
+                  transform: [{ scale: scaleAnim }],
+                },
+              ]}
+            >
+              Complete Your Profile
+            </AnimatedText>
+            <AnimatedText
+              style={[
+                styles.headerSubtitle,
+                {
+                  opacity: fadeAnim,
+                },
+              ]}
+            >
+              Tell us a bit about yourself
+            </AnimatedText>
+          </AnimatedView>
+        </LinearGradient>
 
-      {/* Spacing before terms */}
-      <View style={styles.mediumSpacing} />
+        {/* Profile Picture Section */}
+        <AnimatedView
+          style={[
+            styles.profilePictureSection,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <AnimatedView style={{ transform: [{ scale: imageScale }] }}>
+            <TouchableOpacity
+              style={styles.profilePictureContainer}
+              onPress={handleSelectImage}
+              activeOpacity={0.8}
+            >
+              {profilePicture ? (
+                <Image
+                  source={{ uri: profilePicture.uri }}
+                  style={styles.profileImage}
+                />
+              ) : (
+                <LinearGradient
+                  colors={['#f0fff4', '#e0f7e9']}
+                  style={styles.profilePicturePlaceholder}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcon name="person" size={48} color="#00a82d" />
+                  <Text style={styles.profilePictureText}>Add Photo</Text>
+                </LinearGradient>
+              )}
+              <LinearGradient
+                colors={['#00a82d', '#00c853']}
+                style={styles.cameraIconOverlay}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <MaterialIcon name="camera-alt" size={18} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </AnimatedView>
+          <Text style={styles.profilePictureHint}>
+            Tap to add profile picture (Optional)
+          </Text>
+        </AnimatedView>
 
-      <Text style={styles.termsText}>
-        By continuing, you agree to our Terms & Conditions and Privacy Policy
-      </Text>
-    </ScrollView>
+        {/* Form Section */}
+        <AnimatedView
+          style={[
+            styles.formSection,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+          {/* First Name */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>
+              First Name <Text style={styles.required}>*</Text>
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={firstName}
+              onChangeText={setFirstName}
+              placeholder="Enter your first name"
+              placeholderTextColor="#999"
+              autoCapitalize="words"
+              editable={!loading}
+            />
+          </View>
+
+          <View style={styles.spacing} />
+
+          {/* Surname */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>
+              Surname <Text style={styles.required}>*</Text>
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={surname}
+              onChangeText={setSurname}
+              placeholder="Enter your surname"
+              placeholderTextColor="#999"
+              autoCapitalize="words"
+              editable={!loading}
+            />
+          </View>
+
+          <View style={styles.spacing} />
+
+          {/* Gender Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>
+              Gender <Text style={styles.required}>*</Text>
+            </Text>
+            <View style={styles.genderContainer}>
+              {['Male', 'Female', 'Other'].map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={[
+                    styles.genderButton,
+                    gender.toLowerCase() === item.toLowerCase() && styles.genderButtonSelected,
+                  ]}
+                  onPress={() => setGender(item.toLowerCase())}
+                  disabled={loading}
+                  activeOpacity={0.7}
+                >
+                  {gender.toLowerCase() === item.toLowerCase() ? (
+                    <LinearGradient
+                      colors={['#00a82d', '#00c853']}
+                      style={styles.genderButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Text style={styles.genderTextSelected}>{item}</Text>
+                    </LinearGradient>
+                  ) : (
+                    <Text style={styles.genderText}>{item}</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.spacing} />
+
+          {/* Date of Birth */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Date of Birth (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={dateOfBirth}
+              onChangeText={handleDateChange}
+              placeholder="DD/MM/YYYY"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+              maxLength={10}
+              editable={!loading}
+            />
+            <Text style={styles.dateHint}>Format: DD/MM/YYYY</Text>
+          </View>
+        </AnimatedView>
+
+        {/* Continue Button */}
+        <AnimatedView
+          style={[
+            styles.buttonContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: buttonScale }],
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={[
+              styles.continueButton,
+              !isFormValid && styles.continueButtonDisabled,
+            ]}
+            onPress={handleContinue}
+            disabled={!isFormValid || loading}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={isFormValid && !loading ? ['#00a82d', '#00c853'] : ['#ccc', '#ddd']}
+              style={styles.buttonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Text style={styles.continueButtonText}>
+                {loading ? (
+                  <>
+                    <MaterialIcon name="hourglass-empty" size={20} color="#fff" />
+                    {' Saving Profile...'}
+                  </>
+                ) : (
+                  'Continue to Role Selection'
+                )}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </AnimatedView>
+
+        {/* Terms */}
+        <AnimatedView
+          style={[
+            styles.termsContainer,
+            {
+              opacity: fadeAnim,
+            },
+          ]}
+        >
+          <Text style={styles.termsText}>
+            By continuing, you agree to our{' '}
+            <Text style={styles.termsLink}>Terms & Conditions</Text> and{' '}
+            <Text style={styles.termsLink}>Privacy Policy</Text>
+          </Text>
+        </AnimatedView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 30,
+    paddingBottom: 40,
   },
   header: {
-    backgroundColor: '#6c3',
-    padding: 30,
-    paddingTop: Platform.OS === 'ios' ? 70 : 50,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 30,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerContent: {
+    alignItems: 'center',
+  },
+  backButton: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '800',
     color: '#fff',
     marginBottom: 8,
+    textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
   },
   profilePictureSection: {
     alignItems: 'center',
-    marginVertical: 30,
+    marginTop: 40,
+    marginBottom: 30,
   },
   profilePictureContainer: {
     position: 'relative',
-    marginBottom: 10,
+    marginBottom: 16,
   },
   profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: '#6c3',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 4,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   profilePicturePlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#f0f7f0',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#6c3',
-    borderStyle: 'dashed',
+    borderWidth: 4,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   profilePictureText: {
-    marginTop: 8,
-    color: '#6c3',
+    marginTop: 12,
     fontSize: 14,
-    fontWeight: '500',
+    color: '#00a82d',
+    fontWeight: '600',
   },
   profilePictureHint: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#666',
     textAlign: 'center',
   },
@@ -323,106 +684,136 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 5,
     right: 5,
-    backgroundColor: '#6c3',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#fff',
-  },
-  formSection: {
-    backgroundColor: '#fff',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 15,
-    padding: 25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
   },
+  formSection: {
+    backgroundColor: '#fff',
+    marginHorizontal: 24,
+    marginBottom: 30,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 5,
+  },
   inputGroup: {
-    marginBottom: 0, // Using spacing components instead
+    marginBottom: 0,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  required: {
+    color: '#ff6b6b',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 15,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     fontSize: 16,
-    backgroundColor: '#fafafa',
+    color: '#333',
+    backgroundColor: '#f8f9fa',
+    fontWeight: '500',
   },
   dateHint: {
     fontSize: 12,
     color: '#666',
-    marginTop: 5,
+    marginTop: 8,
+    marginLeft: 4,
     fontStyle: 'italic',
   },
   genderContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 10,
+    gap: 12,
   },
   genderButton: {
     flex: 1,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    alignItems: 'center',
-    backgroundColor: '#fafafa',
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#f8f9fa',
   },
   genderButtonSelected: {
-    backgroundColor: '#6c3',
-    borderColor: '#6c3',
+    borderColor: '#00a82d',
+  },
+  genderButtonGradient: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   genderText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#666',
+    paddingVertical: 16,
+    textAlign: 'center',
   },
   genderTextSelected: {
     color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
-  // Spacing components
   spacing: {
     height: 20,
   },
-  mediumSpacing: {
-    height: 15,
-  },
-  largeSpacing: {
-    height: 25,
-  },
-  continueButton: {
-    backgroundColor: '#6c3',
-    marginHorizontal: 20,
-    padding: 18,
-    borderRadius: 12,
-    alignItems: 'center',
+  buttonContainer: {
+    paddingHorizontal: 24,
     marginBottom: 20,
   },
+  continueButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+  },
   continueButtonDisabled: {
-    backgroundColor: '#ccc',
+    opacity: 0.7,
+  },
+  buttonGradient: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   continueButtonText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  termsContainer: {
+    paddingHorizontal: 24,
   },
   termsText: {
-    textAlign: 'center',
     fontSize: 12,
     color: '#666',
-    marginHorizontal: 20,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: '#00a82d',
+    fontWeight: '600',
   },
 });

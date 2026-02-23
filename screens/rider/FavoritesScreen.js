@@ -1,5 +1,5 @@
 // screens/rider/FavoritesScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,20 +11,26 @@ import {
   TextInput,
   Alert,
   Modal,
+  Animated,
+  FlatList,
+  Easing,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
-import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
+import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
-
 
 const FAVORITE_TYPES = {
   HOME: 'home',
   WORK: 'work',
   OTHER: 'other',
 };
+
+// Animation constants
+const CARD_HEIGHT = 120;
+const ANIMATION_DURATION = 300;
 
 export default function FavoritesScreen() {
   const navigation = useNavigation();
@@ -40,7 +46,52 @@ export default function FavoritesScreen() {
     coordinates: null,
   });
 
+  // Animation refs
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const headerSlide = useRef(new Animated.Value(-20)).current;
+  const modalSlide = useRef(new Animated.Value(height)).current;
+  const cardAnimations = useRef([]);
+  const searchBarScale = useRef(new Animated.Value(1)).current;
+
+  // Initialize card animations
+  if (cardAnimations.current.length !== favorites.length) {
+    cardAnimations.current = favorites.map(() => ({
+      scale: new Animated.Value(0.9),
+      opacity: new Animated.Value(0),
+      translateY: new Animated.Value(20),
+    }));
+  }
+
   useEffect(() => {
+    // Initial animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 8,
+      }),
+      Animated.timing(headerSlide, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
     loadFavorites();
   }, []);
 
@@ -55,7 +106,51 @@ export default function FavoritesScreen() {
       );
       setFilteredFavorites(filtered);
     }
+
+    // Search bar animation
+    if (searchQuery.length > 0) {
+      Animated.spring(searchBarScale, {
+        toValue: 1.02,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }).start();
+    } else {
+      Animated.spring(searchBarScale, {
+        toValue: 1,
+        useNativeDriver: true,
+      }).start();
+    }
   }, [searchQuery, favorites]);
+
+  useEffect(() => {
+    // Animate cards in sequence
+    cardAnimations.current.forEach((anim, index) => {
+      Animated.sequence([
+        Animated.delay(index * 100),
+        Animated.parallel([
+          Animated.spring(anim.scale, {
+            toValue: 1,
+            useNativeDriver: true,
+            tension: 60,
+            friction: 8,
+          }),
+          Animated.timing(anim.opacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+            easing: Easing.out(Easing.cubic),
+          }),
+          Animated.timing(anim.translateY, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+            easing: Easing.out(Easing.cubic),
+          }),
+        ]),
+      ]).start();
+    });
+  }, [favorites]);
 
   const loadFavorites = async () => {
     try {
@@ -65,7 +160,6 @@ export default function FavoritesScreen() {
         setFavorites(parsed);
         setFilteredFavorites(parsed);
       } else {
-        // Default favorites
         const defaultFavorites = [
           {
             id: '1',
@@ -119,13 +213,34 @@ export default function FavoritesScreen() {
       coordinates: null,
     });
     setEditingFavorite(null);
-    setShowAddModal(true);
+    openModal();
   };
 
   const handleEditFavorite = (favorite) => {
     setNewFavorite(favorite);
     setEditingFavorite(favorite.id);
+    openModal();
+  };
+
+  const openModal = () => {
     setShowAddModal(true);
+    Animated.timing(modalSlide, {
+      toValue: 0,
+      duration: 400,
+      useNativeDriver: true,
+      easing: Easing.out(Easing.cubic),
+    }).start();
+  };
+
+  const closeModal = () => {
+    Animated.timing(modalSlide, {
+      toValue: height,
+      duration: 300,
+      useNativeDriver: true,
+      easing: Easing.in(Easing.cubic),
+    }).start(() => {
+      setShowAddModal(false);
+    });
   };
 
   const handleSaveFavorite = async () => {
@@ -153,7 +268,24 @@ export default function FavoritesScreen() {
     }
 
     await saveFavorites(updatedFavorites);
-    setShowAddModal(false);
+    closeModal();
+    
+    // Success animation
+    Animated.sequence([
+      Animated.spring(searchBarScale, {
+        toValue: 1.05,
+        useNativeDriver: true,
+        tension: 200,
+        friction: 3,
+      }),
+      Animated.spring(searchBarScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 200,
+        friction: 3,
+      }),
+    ]).start();
+    
     Alert.alert('Success', editingFavorite ? 'Favorite updated' : 'Favorite added');
   };
 
@@ -167,8 +299,28 @@ export default function FavoritesScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            const updatedFavorites = favorites.filter(fav => fav.id !== id);
-            await saveFavorites(updatedFavorites);
+            // Animate card removal
+            const index = favorites.findIndex(fav => fav.id === id);
+            if (index >= 0 && cardAnimations.current[index]) {
+              Animated.parallel([
+                Animated.timing(cardAnimations.current[index].scale, {
+                  toValue: 0.8,
+                  duration: 200,
+                  useNativeDriver: true,
+                }),
+                Animated.timing(cardAnimations.current[index].opacity, {
+                  toValue: 0,
+                  duration: 200,
+                  useNativeDriver: true,
+                }),
+              ]).start(() => {
+                const updatedFavorites = favorites.filter(fav => fav.id !== id);
+                saveFavorites(updatedFavorites);
+              });
+            } else {
+              const updatedFavorites = favorites.filter(fav => fav.id !== id);
+              saveFavorites(updatedFavorites);
+            }
           },
         },
       ]
@@ -176,45 +328,91 @@ export default function FavoritesScreen() {
   };
 
   const handleUseFavorite = (favorite) => {
-    navigation.navigate('RideSelection', {
-      destination: favorite.name,
-      destinationAddress: favorite.address,
-      destinationCoordinates: favorite.coordinates,
-    });
+    // Button press animation
+    const buttonScale = new Animated.Value(1);
+    Animated.sequence([
+      Animated.spring(buttonScale, {
+        toValue: 0.95,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+      Animated.spring(buttonScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 3,
+      }),
+    ]).start();
+
+    setTimeout(() => {
+      navigation.navigate('RideSelection', {
+        destination: favorite.name,
+        destinationAddress: favorite.address,
+        destinationCoordinates: favorite.coordinates,
+      });
+    }, 150);
   };
 
   const getIconForType = (type) => {
     switch (type) {
       case FAVORITE_TYPES.HOME:
-        return { name: 'home', color: '#3B82F6' };
+        return { name: 'home', color: '#3B82F6', gradient: ['#3B82F6', '#2563EB'] };
       case FAVORITE_TYPES.WORK:
-        return { name: 'work', color: '#22C55E' };
+        return { name: 'work', color: '#22C55E', gradient: ['#22C55E', '#16A34A'] };
       default:
-        return { name: 'place', color: '#6B7280' };
+        return { name: 'place', color: '#6B7280', gradient: ['#6B7280', '#4B5563'] };
     }
   };
 
-  const renderFavoriteItem = (item) => {
+  const renderFavoriteItem = ({ item, index }) => {
     const icon = getIconForType(item.type);
-    
+    const anim = cardAnimations.current[index] || {
+      scale: new Animated.Value(1),
+      opacity: new Animated.Value(1),
+      translateY: new Animated.Value(0),
+    };
+
     return (
-      <View key={item.id} style={styles.favoriteCard}>
+      <Animated.View
+        style={[
+          styles.favoriteCard,
+          {
+            opacity: anim.opacity,
+            transform: [
+              { scale: anim.scale },
+              { translateY: anim.translateY },
+            ],
+          },
+        ]}
+      >
         <TouchableOpacity 
           style={styles.favoriteContent}
           onPress={() => handleUseFavorite(item)}
+          activeOpacity={0.7}
         >
-          <View style={[styles.favoriteIcon, { backgroundColor: `${icon.color}15` }]}>
-            <MaterialIcon name={icon.name} size={24} color={icon.color} />
-          </View>
+          <LinearGradient
+            colors={icon.gradient}
+            style={styles.favoriteIcon}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <MaterialIcon name={icon.name} size={28} color="#FFFFFF" />
+          </LinearGradient>
           <View style={styles.favoriteInfo}>
             <Text style={styles.favoriteName}>{item.name}</Text>
             <Text style={styles.favoriteAddress} numberOfLines={1}>
               {item.address}
             </Text>
-            <Text style={styles.favoriteType}>
-              {item.type === FAVORITE_TYPES.HOME ? 'Home' : 
-               item.type === FAVORITE_TYPES.WORK ? 'Work' : 'Favorite'}
-            </Text>
+            <View style={styles.favoriteMeta}>
+              <Text style={styles.favoriteType}>
+                {item.type === FAVORITE_TYPES.HOME ? 'Home' : 
+                 item.type === FAVORITE_TYPES.WORK ? 'Work' : 'Favorite'}
+              </Text>
+              <Text style={styles.favoriteDate}>
+                Added: {item.createdAt}
+              </Text>
+            </View>
           </View>
         </TouchableOpacity>
         
@@ -222,130 +420,258 @@ export default function FavoritesScreen() {
           <TouchableOpacity 
             style={styles.favoriteAction}
             onPress={() => handleEditFavorite(item)}
+            activeOpacity={0.6}
           >
-            <MaterialIcon name="edit" size={20} color="#6B7280" />
+            <View style={styles.editButton}>
+              <MaterialIcon name="edit" size={18} color="#FFFFFF" />
+            </View>
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.favoriteAction}
             onPress={() => handleDeleteFavorite(item.id)}
+            activeOpacity={0.6}
           >
-            <MaterialIcon name="delete" size={20} color="#EF4444" />
+            <View style={styles.deleteButton}>
+              <MaterialIcon name="delete" size={18} color="#FFFFFF" />
+            </View>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
     );
   };
 
   const renderAddModal = () => (
     <Modal
       visible={showAddModal}
-      animationType="slide"
+      animationType="none"
       transparent={true}
-      onRequestClose={() => setShowAddModal(false)}
+      onRequestClose={closeModal}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {editingFavorite ? 'Edit Favorite' : 'Add Favorite'}
-            </Text>
-            <TouchableOpacity onPress={() => setShowAddModal(false)}>
-              <MaterialIcon name="close" size={24} color="#000" />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalBody}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Name *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., Home, Work, Gym"
-                value={newFavorite.name}
-                onChangeText={(text) => setNewFavorite({ ...newFavorite, name: text })}
-              />
+      <Animated.View 
+        style={[
+          styles.modalOverlay,
+          {
+            opacity: fadeAnim,
+          },
+        ]}
+      >
+        <Animated.View 
+          style={[
+            styles.modalContent,
+            {
+              transform: [{ translateY: modalSlide }],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={['#FFFFFF', '#F8FAFC']}
+            style={styles.modalGradient}
+          >
+            {/* Modal Handle */}
+            <View style={styles.modalHandleContainer}>
+              <View style={styles.modalHandle} />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Address *</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Enter full address"
-                value={newFavorite.address}
-                onChangeText={(text) => setNewFavorite({ ...newFavorite, address: text })}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Type</Text>
-              <View style={styles.typeOptions}>
-                {Object.values(FAVORITE_TYPES).map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[
-                      styles.typeOption,
-                      newFavorite.type === type && styles.typeOptionSelected,
-                    ]}
-                    onPress={() => setNewFavorite({ ...newFavorite, type })}
-                  >
-                    <MaterialIcon
-                      name={type === FAVORITE_TYPES.HOME ? 'home' : 
-                            type === FAVORITE_TYPES.WORK ? 'work' : 'place'}
-                      size={20}
-                      color={newFavorite.type === type ? '#FFFFFF' : '#666'}
-                    />
-                    <Text style={[
-                      styles.typeOptionText,
-                      newFavorite.type === type && styles.typeOptionTextSelected,
-                    ]}>
-                      {type === FAVORITE_TYPES.HOME ? 'Home' : 
-                       type === FAVORITE_TYPES.WORK ? 'Work' : 'Other'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            <TouchableOpacity 
-              style={styles.locationButton}
-              onPress={() => {
-                setShowAddModal(false);
-                navigation.navigate('SearchLocation', {
-                  onLocationSelect: (location) => {
-                    setNewFavorite({
-                      ...newFavorite,
-                      address: location.address,
-                      coordinates: location.coordinates,
-                    });
-                    setShowAddModal(true);
-                  },
-                });
-              }}
-            >
-              <MaterialIcon name="map" size={20} color="#22C55E" />
-              <Text style={styles.locationButtonText}>Choose on Map</Text>
-            </TouchableOpacity>
-          </ScrollView>
-
-          <View style={styles.modalFooter}>
-            <TouchableOpacity 
-              style={styles.cancelButton}
-              onPress={() => setShowAddModal(false)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.saveButton}
-              onPress={handleSaveFavorite}
-            >
-              <Text style={styles.saveButtonText}>
-                {editingFavorite ? 'Update' : 'Save'}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editingFavorite ? 'Edit Favorite' : 'Add Favorite'}
               </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+              <TouchableOpacity 
+                onPress={closeModal}
+                activeOpacity={0.6}
+                style={styles.closeModalButton}
+              >
+                <MaterialIcon name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView 
+              style={styles.modalBody}
+              showsVerticalScrollIndicator={false}
+            >
+              <Animated.View 
+                style={[
+                  styles.inputGroup,
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ translateY: slideAnim }],
+                  },
+                ]}
+              >
+                <Text style={styles.inputLabel}>Name *</Text>
+                <View style={styles.inputContainer}>
+                  <MaterialIcon name="label" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g., Home, Work, Gym"
+                    placeholderTextColor="#999"
+                    value={newFavorite.name}
+                    onChangeText={(text) => setNewFavorite({ ...newFavorite, name: text })}
+                  />
+                </View>
+              </Animated.View>
+
+              <Animated.View 
+                style={[
+                  styles.inputGroup,
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ translateY: slideAnim }],
+                  },
+                ]}
+              >
+                <Text style={styles.inputLabel}>Address *</Text>
+                <View style={styles.inputContainer}>
+                  <MaterialIcon name="location-on" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    placeholder="Enter full address"
+                    placeholderTextColor="#999"
+                    value={newFavorite.address}
+                    onChangeText={(text) => setNewFavorite({ ...newFavorite, address: text })}
+                    multiline
+                    numberOfLines={3}
+                  />
+                </View>
+              </Animated.View>
+
+              <Animated.View 
+                style={[
+                  styles.inputGroup,
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ translateY: slideAnim }],
+                  },
+                ]}
+              >
+                <Text style={styles.inputLabel}>Type</Text>
+                <View style={styles.typeOptions}>
+                  {Object.values(FAVORITE_TYPES).map((type, index) => {
+                    const typeConfig = getIconForType(type);
+                    return (
+                      <Animated.View
+                        key={type}
+                        style={{
+                          opacity: fadeAnim,
+                          transform: [{ translateY: slideAnim }],
+                        }}
+                      >
+                        <TouchableOpacity
+                          style={[
+                            styles.typeOption,
+                            newFavorite.type === type && styles.typeOptionSelected,
+                          ]}
+                          onPress={() => setNewFavorite({ ...newFavorite, type })}
+                          activeOpacity={0.7}
+                        >
+                          {newFavorite.type === type ? (
+                            <LinearGradient
+                              colors={typeConfig.gradient}
+                              style={styles.typeOptionIcon}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 1 }}
+                            >
+                              <MaterialIcon
+                                name={type === FAVORITE_TYPES.HOME ? 'home' : 
+                                      type === FAVORITE_TYPES.WORK ? 'work' : 'place'}
+                                size={20}
+                                color="#FFFFFF"
+                              />
+                            </LinearGradient>
+                          ) : (
+                            <View style={[styles.typeOptionIcon, { backgroundColor: '#F1F5F9' }]}>
+                              <MaterialIcon
+                                name={type === FAVORITE_TYPES.HOME ? 'home' : 
+                                      type === FAVORITE_TYPES.WORK ? 'work' : 'place'}
+                                size={20}
+                                color="#666"
+                              />
+                            </View>
+                          )}
+                          <Text style={[
+                            styles.typeOptionText,
+                            newFavorite.type === type && styles.typeOptionTextSelected,
+                          ]}>
+                            {type === FAVORITE_TYPES.HOME ? 'Home' : 
+                             type === FAVORITE_TYPES.WORK ? 'Work' : 'Other'}
+                          </Text>
+                        </TouchableOpacity>
+                      </Animated.View>
+                    );
+                  })}
+                </View>
+              </Animated.View>
+
+              <Animated.View
+                style={{
+                  opacity: fadeAnim,
+                  transform: [{ translateY: slideAnim }],
+                }}
+              >
+                <TouchableOpacity 
+                  style={styles.locationButton}
+                  onPress={() => {
+                    closeModal();
+                    setTimeout(() => {
+                      navigation.navigate('SearchLocation', {
+                        onLocationSelect: (location) => {
+                          setNewFavorite({
+                            ...newFavorite,
+                            address: location.address,
+                            coordinates: location.coordinates,
+                          });
+                          openModal();
+                        },
+                      });
+                    }, 300);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <LinearGradient
+                    colors={['#22C55E', '#16A34A']}
+                    style={styles.locationButtonIcon}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <MaterialIcon name="map" size={20} color="#FFFFFF" />
+                  </LinearGradient>
+                  <View>
+                    <Text style={styles.locationButtonTitle}>Choose on Map</Text>
+                    <Text style={styles.locationButtonSubtitle}>Select location visually</Text>
+                  </View>
+                  <MaterialIcon name="chevron-right" size={20} color="#22C55E" />
+                </TouchableOpacity>
+              </Animated.View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={closeModal}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.saveButton}
+                onPress={handleSaveFavorite}
+                activeOpacity={0.7}
+              >
+                <LinearGradient
+                  colors={['#22C55E', '#16A34A']}
+                  style={styles.saveButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.saveButtonText}>
+                    {editingFavorite ? 'Update' : 'Save'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 
@@ -353,67 +679,160 @@ export default function FavoritesScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Animated Header */}
+      <Animated.View 
+        style={[
+          styles.header,
+          {
+            transform: [{ translateY: headerSlide }],
+          },
+        ]}
+      >
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
+          activeOpacity={0.6}
         >
-          <MaterialIcon name="arrow-back" size={24} color="#000000" />
+          <LinearGradient
+            colors={['#F1F5F9', '#E2E8F0']}
+            style={styles.backButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <MaterialIcon name="arrow-back" size={20} color="#000000" />
+          </LinearGradient>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Favorites</Text>
+        
+        <Animated.Text 
+          style={[
+            styles.headerTitle,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          Favorites
+        </Animated.Text>
+        
         <TouchableOpacity 
           style={styles.addButton}
           onPress={handleAddFavorite}
+          activeOpacity={0.6}
         >
-          <MaterialIcon name="add" size={24} color="#000000" />
+          <LinearGradient
+            colors={['#22C55E', '#16A34A']}
+            style={styles.addButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <MaterialIcon name="add" size={20} color="#FFFFFF" />
+          </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
+      {/* Animated Search Bar */}
+      <Animated.View 
+        style={[
+          styles.searchContainer,
+          {
+            transform: [{ scale: searchBarScale }],
+          },
+        ]}
+      >
         <MaterialIcon name="search" size={20} color="#666" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search favorites..."
+          placeholderTextColor="#999"
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
+          <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={0.6}>
             <MaterialIcon name="close" size={20} color="#666" />
           </TouchableOpacity>
         )}
-      </View>
+      </Animated.View>
 
       {/* Favorites List */}
-      <ScrollView style={styles.content}>
+      <Animated.View 
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         {filteredFavorites.length === 0 ? (
-          <View style={styles.emptyState}>
-            <MaterialIcon name="favorite-border" size={64} color="#D1D5DB" />
-            <Text style={styles.emptyStateTitle}>No favorites yet</Text>
+          <Animated.View 
+            style={[
+              styles.emptyState,
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: scaleAnim }],
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={['#F1F5F9', '#E2E8F0']}
+              style={styles.emptyStateIcon}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <MaterialIcon name="favorite-border" size={48} color="#94A3B8" />
+            </LinearGradient>
+            <Text style={styles.emptyStateTitle}>
+              {searchQuery ? 'No matches found' : 'No favorites yet'}
+            </Text>
             <Text style={styles.emptyStateText}>
-              {searchQuery ? 'No matches found' : 'Add your frequently visited locations'}
+              {searchQuery ? 'Try different search terms' : 'Add your frequently visited locations'}
             </Text>
             <TouchableOpacity 
               style={styles.emptyStateButton}
               onPress={handleAddFavorite}
+              activeOpacity={0.7}
             >
-              <Text style={styles.emptyStateButtonText}>Add Favorite</Text>
+              <LinearGradient
+                colors={['#22C55E', '#16A34A']}
+                style={styles.emptyStateButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <MaterialIcon name="add" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.emptyStateButtonText}>Add Favorite</Text>
+              </LinearGradient>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         ) : (
           <>
-            <View style={styles.section}>
+            <Animated.View 
+              style={[
+                styles.section,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ translateY: slideAnim }],
+                },
+              ]}
+            >
               <Text style={styles.sectionTitle}>
                 {searchQuery ? 'Search Results' : 'My Favorites'} 
+              </Text>
+              <Text style={styles.sectionCount}>
                 ({filteredFavorites.length})
               </Text>
-            </View>
-            {filteredFavorites.map(renderFavoriteItem)}
+            </Animated.View>
+            <FlatList
+              data={filteredFavorites}
+              renderItem={renderFavoriteItem}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.favoritesList}
+            />
           </>
         )}
-      </ScrollView>
+      </Animated.View>
 
       {/* Add/Edit Modal */}
       {renderAddModal()}
@@ -430,42 +849,73 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 40,
-    paddingBottom: 16,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 20,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 5,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+  },
+  backButtonGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 28,
+    fontWeight: '800',
     color: '#000000',
+    letterSpacing: -0.5,
   },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+  },
+  addButtonGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    margin: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    marginHorizontal: 24,
+    marginTop: 20,
+    marginBottom: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   searchIcon: {
     marginRight: 12,
@@ -474,32 +924,45 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#000000',
+    fontWeight: '500',
   },
   content: {
     flex: 1,
-    paddingHorizontal: 16,
   },
   section: {
-    marginTop: 16,
-    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    marginTop: 8,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#000000',
+    marginRight: 8,
+  },
+  sectionCount: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#22C55E',
+  },
+  favoritesList: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
   },
   favoriteCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 12,
+    borderRadius: 20,
+    marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 5,
   },
   favoriteContent: {
     flex: 1,
@@ -507,131 +970,236 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   favoriteIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   favoriteInfo: {
     flex: 1,
   },
   favoriteName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#000000',
     marginBottom: 4,
   },
   favoriteAddress: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  favoriteMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   favoriteType: {
     fontSize: 12,
     color: '#22C55E',
+    fontWeight: '600',
+    backgroundColor: '#F0F9F0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  favoriteDate: {
+    fontSize: 11,
+    color: '#94A3B8',
     fontWeight: '500',
   },
   favoriteActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: 12,
   },
   favoriteAction: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    marginLeft: 8,
+  },
+  editButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  deleteButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 2,
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 80,
+    paddingVertical: 100,
+    paddingHorizontal: 32,
+  },
+  emptyStateIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#000000',
-    marginTop: 24,
     marginBottom: 8,
+    textAlign: 'center',
   },
   emptyStateText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#666',
     textAlign: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 32,
+    marginBottom: 32,
+    lineHeight: 22,
   },
   emptyStateButton: {
-    backgroundColor: '#22C55E',
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 12,
+    width: '100%',
+    maxWidth: 200,
+  },
+  emptyStateButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+    paddingVertical: 16,
+    borderRadius: 16,
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   emptyStateButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
   },
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: height * 0.8,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    overflow: 'hidden',
+    maxHeight: height * 0.85,
+  },
+  modalGradient: {
+    flex: 1,
+  },
+  modalHandleContainer: {
+    paddingTop: 16,
+    paddingBottom: 12,
+    alignItems: 'center',
+  },
+  modalHandle: {
+    width: 48,
+    height: 5,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#F1F5F9',
+  },
+  closeModalButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#000000',
   },
   modalBody: {
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 20,
   },
   modalFooter: {
     flexDirection: 'row',
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#F1F5F9',
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   inputLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#000000',
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 16,
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    flex: 1,
     fontSize: 16,
     color: '#000000',
+    fontWeight: '500',
+    paddingVertical: 16,
   },
   textArea: {
-    minHeight: 80,
+    minHeight: 100,
     textAlignVertical: 'top',
+    paddingTop: 16,
   },
   typeOptions: {
     flexDirection: 'row',
@@ -639,69 +1207,108 @@ const styles = StyleSheet.create({
   },
   typeOption: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    backgroundColor: '#F8FAFC',
     gap: 8,
   },
   typeOptionSelected: {
-    backgroundColor: '#22C55E',
     borderColor: '#22C55E',
+    backgroundColor: '#F0F9F0',
+  },
+  typeOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   typeOptionText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#666',
   },
   typeOptionTextSelected: {
-    color: '#FFFFFF',
+    color: '#22C55E',
   },
   locationButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#22C55E',
-    backgroundColor: '#F0F9F0',
-    gap: 8,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    gap: 16,
     marginTop: 8,
   },
-  locationButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#22C55E',
+  locationButtonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  locationButtonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 2,
+  },
+  locationButtonSubtitle: {
+    fontSize: 13,
+    color: '#666',
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    paddingVertical: 18,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
     backgroundColor: '#FFFFFF',
     marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
   cancelButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#666',
     textAlign: 'center',
   },
   saveButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#22C55E',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  saveButtonGradient: {
+    paddingVertical: 18,
+    borderRadius: 16,
   },
   saveButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
     textAlign: 'center',

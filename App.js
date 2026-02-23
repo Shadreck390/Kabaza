@@ -15,6 +15,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { NavigationContainer } from '@react-navigation/native';
+import { store, persistor } from '@store';
+import AppNavigator from './navigation/AppNavigator';
 // ConfigTest commented since it might have Firebase dependencies
 // import ConfigTest from './src/test-config';
 
@@ -195,7 +197,6 @@ export default function App() {
       <GestureHandlerRootView style={styles.container}>
         <Provider store={store}>
           <PersistGate loading={<LoadingScreen />} persistor={persistor}>
-            {/* 🔥 CRITICAL FIX: Add NavigationContainer here */}
             <NavigationContainer>
               <AppNavigator />
             </NavigationContainer>

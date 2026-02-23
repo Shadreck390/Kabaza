@@ -34,7 +34,7 @@ import MapView, {
   Overlay,
   LocalTile,
 } from 'react-native-maps';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as Icon } from '@src/utils/iconUtils';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -1168,7 +1168,7 @@ export default function DriverMapScreen() {
       >
         <View style={[styles.statusDot, { backgroundColor: config.color }]} />
         <Text style={[styles.statusText, { color: config.color }]}>{config.text}</Text>
-        <MaterialIcon name={config.icon} size={16} color={config.color} />
+        <Icon name={config.icon} size={16} color={config.color} />
       </TouchableOpacity>
     );
   };
@@ -1221,7 +1221,7 @@ export default function DriverMapScreen() {
     
     return (
       <View style={styles.weatherIndicator}>
-        <MaterialIcon name="wb-sunny" size={16} color="#F59E0B" />
+        <Icon name="wb-sunny" size={16} color="#F59E0B" />
         <Text style={styles.weatherText}>{weatherData.temperature}°C</Text>
       </View>
     );
@@ -1249,30 +1249,30 @@ export default function DriverMapScreen() {
           onPress={() => setShowStats(false)}
         >
           <Text style={styles.statsTitle}>Today's Stats</Text>
-          <MaterialIcon name="expand-less" size={20} color="#666" />
+          <Icon name="expand-less" size={20} color="#666" />
         </TouchableOpacity>
         
         <View style={styles.statsGrid}>
           <View style={styles.statItem}>
-            <MaterialIcon name="attach-money" size={20} color="#22C55E" />
+            <Icon name="attach-money" size={20} color="#22C55E" />
             <Text style={styles.statValue}>MK {earningsToday.toLocaleString()}</Text>
             <Text style={styles.statLabel}>Earnings</Text>
           </View>
           
           <View style={styles.statItem}>
-            <MaterialIcon name="directions-car" size={20} color="#3B82F6" />
+            <Icon name="directions-car" size={20} color="#3B82F6" />
             <Text style={styles.statValue}>{rideCountToday}</Text>
             <Text style={styles.statLabel}>Rides</Text>
           </View>
           
           <View style={styles.statItem}>
-            <MaterialIcon name="timer" size={20} color="#F59E0B" />
+            <Icon name="timer" size={20} color="#F59E0B" />
             <Text style={styles.statValue}>{onlineHours.toFixed(1)}h</Text>
             <Text style={styles.statLabel}>Online</Text>
           </View>
           
           <View style={styles.statItem}>
-            <MaterialIcon name="trending-up" size={20} color="#8B5CF6" />
+            <Icon name="trending-up" size={20} color="#8B5CF6" />
             <Text style={styles.statValue}>{acceptanceRate}%</Text>
             <Text style={styles.statLabel}>Acceptance</Text>
           </View>
@@ -1310,10 +1310,10 @@ export default function DriverMapScreen() {
               <View>
                 <Text style={styles.passengerName}>{request.passenger.name}</Text>
                 <View style={styles.ratingContainer}>
-                  <MaterialIcon name="star" size={12} color="#F59E0B" />
+                  <Icon name="star" size={12} color="#F59E0B" />
                   <Text style={styles.ratingText}>{request.passenger.rating}</Text>
                   {request.passenger.verified && (
-                    <MaterialIcon name="verified" size={12} color="#22C55E" />
+                    <Icon name="verified" size={12} color="#22C55E" />
                   )}
                 </View>
               </View>
@@ -1329,14 +1329,14 @@ export default function DriverMapScreen() {
           
           <View style={styles.requestDetails}>
             <View style={styles.locationRow}>
-              <MaterialIcon name="location-pin" size={16} color="#3B82F6" />
+              <Icon name="location-pin" size={16} color="#3B82F6" />
               <Text style={styles.locationText} numberOfLines={1}>
                 {request.pickup.name}
               </Text>
             </View>
             
             <View style={styles.locationRow}>
-              <MaterialIcon name="place" size={16} color="#EF4444" />
+              <Icon name="place" size={16} color="#EF4444" />
               <Text style={styles.locationText} numberOfLines={1}>
                 {request.destination.name}
               </Text>
@@ -1345,9 +1345,9 @@ export default function DriverMapScreen() {
           
           <View style={styles.requestFooter}>
             <View style={styles.distanceInfo}>
-              <MaterialIcon name="map" size={14} color="#666" />
+              <Icon name="map" size={14} color="#666" />
               <Text style={styles.distanceText}>{request.distance}</Text>
-              <MaterialIcon name="access-time" size={14} color="#666" />
+              <Icon name="access-time" size={14} color="#666" />
               <Text style={styles.distanceText}>{request.duration}</Text>
             </View>
             
@@ -1355,7 +1355,7 @@ export default function DriverMapScreen() {
               styles.timerContainer,
               isExpiring && styles.timerContainerExpiring
             ]}>
-              <MaterialIcon name="timer" size={14} color={isExpiring ? '#EF4444' : '#666'} />
+              <Icon name="timer" size={14} color={isExpiring ? '#EF4444' : '#666'} />
               <Text style={[
                 styles.timerText,
                 isExpiring && styles.timerTextExpiring
@@ -1412,7 +1412,7 @@ export default function DriverMapScreen() {
                 }).start();
               }}
             >
-              <MaterialIcon name="close" size={24} color="#000" />
+              <Icon name="close" size={24} color="#000" />
             </TouchableOpacity>
           </View>
           
@@ -1425,11 +1425,11 @@ export default function DriverMapScreen() {
             <View style={styles.passengerInfoDetail}>
               <Text style={styles.passengerNameLarge}>{selectedRequest.passenger.name}</Text>
               <View style={styles.ratingContainerLarge}>
-                <MaterialIcon name="star" size={16} color="#F59E0B" />
+                <Icon name="star" size={16} color="#F59E0B" />
                 <Text style={styles.ratingTextLarge}>{selectedRequest.passenger.rating}</Text>
                 <Text style={styles.ridesText}>• 124 rides</Text>
                 {selectedRequest.passenger.verified && (
-                  <MaterialIcon name="verified" size={16} color="#22C55E" />
+                  <Icon name="verified" size={16} color="#22C55E" />
                 )}
               </View>
               <Text style={styles.passengerNote}>
@@ -1497,19 +1497,19 @@ export default function DriverMapScreen() {
               <Text style={styles.routePreviewTitle}>Route Preview</Text>
               <View style={styles.routeStats}>
                 <View style={styles.routeStat}>
-                  <MaterialIcon name="map" size={16} color="#666" />
+                  <Icon name="map" size={16} color="#666" />
                   <Text style={styles.routeStatText}>
                     {calculateRouteDistance(routeCoordinates)} km
                   </Text>
                 </View>
                 <View style={styles.routeStat}>
-                  <MaterialIcon name="access-time" size={16} color="#666" />
+                  <Icon name="access-time" size={16} color="#666" />
                   <Text style={styles.routeStatText}>
                     {calculateRouteTime(routeCoordinates)} min
                   </Text>
                 </View>
                 <View style={styles.routeStat}>
-                  <MaterialIcon name="attach-money" size={16} color="#666" />
+                  <Icon name="attach-money" size={16} color="#666" />
                   <Text style={styles.routeStatText}>
                     MK {estimateFuelCost(routeCoordinates)}
                   </Text>
@@ -1520,7 +1520,7 @@ export default function DriverMapScreen() {
           
           {trafficData && (
             <View style={styles.trafficInfo}>
-              <MaterialIcon name="traffic" size={16} color="#F59E0B" />
+              <Icon name="traffic" size={16} color="#F59E0B" />
               <Text style={styles.trafficText}>
                 {trafficData.condition} • {trafficData.delay} min delay
               </Text>
@@ -1533,7 +1533,7 @@ export default function DriverMapScreen() {
             style={styles.rejectButton}
             onPress={() => handleRejectRide(selectedRequest.id)}
           >
-            <MaterialIcon name="close" size={20} color="#EF4444" />
+            <Icon name="close" size={20} color="#EF4444" />
             <Text style={styles.rejectButtonText}>Reject</Text>
           </TouchableOpacity>
           
@@ -1541,7 +1541,7 @@ export default function DriverMapScreen() {
             style={styles.acceptButton}
             onPress={() => handleAcceptRide(selectedRequest)}
           >
-            <MaterialIcon name="check" size={20} color="#FFFFFF" />
+            <Icon name="check" size={20} color="#FFFFFF" />
             <Text style={styles.acceptButtonText}>Accept</Text>
           </TouchableOpacity>
         </View>
@@ -1603,11 +1603,11 @@ export default function DriverMapScreen() {
           
           <View style={styles.rideInfo}>
             <View style={styles.rideInfoItem}>
-              <MaterialIcon name="attach-money" size={16} color="#22C55E" />
+              <Icon name="attach-money" size={16} color="#22C55E" />
               <Text style={styles.rideInfoText}>MK {activeRide.fare}</Text>
             </View>
             <View style={styles.rideInfoItem}>
-              <MaterialIcon name="map" size={16} color="#3B82F6" />
+              <Icon name="map" size={16} color="#3B82F6" />
               <Text style={styles.rideInfoText}>
                 {calculateDistance(
                   currentLocation.latitude,
@@ -1618,7 +1618,7 @@ export default function DriverMapScreen() {
               </Text>
             </View>
             <View style={styles.rideInfoItem}>
-              <MaterialIcon name="timer" size={16} color="#F59E0B" />
+              <Icon name="timer" size={16} color="#F59E0B" />
               <Text style={styles.rideInfoText}>{rideTimer}s</Text>
             </View>
           </View>
@@ -1662,15 +1662,15 @@ export default function DriverMapScreen() {
             <Text style={styles.layerTitle}>Map Layers</Text>
             <View style={styles.layerOptions}>
               <TouchableOpacity style={styles.layerOption}>
-                <MaterialIcon name="traffic" size={20} color="#666" />
+                <Icon name="traffic" size={20} color="#666" />
                 <Text style={styles.layerText}>Traffic</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.layerOption}>
-                <MaterialIcon name="transit-enterexit" size={20} color="#666" />
+                <Icon name="transit-enterexit" size={20} color="#666" />
                 <Text style={styles.layerText}>Transit</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.layerOption}>
-                <MaterialIcon name="terrain" size={20} color="#666" />
+                <Icon name="terrain" size={20} color="#666" />
                 <Text style={styles.layerText}>Terrain</Text>
               </TouchableOpacity>
             </View>
@@ -1684,7 +1684,7 @@ export default function DriverMapScreen() {
         style={styles.mapControlsButton}
         onPress={() => setShowMapControls(true)}
       >
-        <MaterialIcon name="layers" size={24} color="#000000" />
+        <Icon name="layers" size={24} color="#000000" />
       </TouchableOpacity>
     );
   };
@@ -1704,7 +1704,7 @@ export default function DriverMapScreen() {
               <View style={styles.filterHeader}>
                 <Text style={styles.filterTitle}>Ride Filters</Text>
                 <TouchableOpacity onPress={() => setShowFilters(false)}>
-                  <MaterialIcon name="close" size={24} color="#000" />
+                  <Icon name="close" size={24} color="#000" />
                 </TouchableOpacity>
               </View>
               
@@ -1827,7 +1827,7 @@ export default function DriverMapScreen() {
         style={styles.filterButton}
         onPress={() => setShowFilters(true)}
       >
-        <MaterialIcon name="filter-list" size={24} color="#000000" />
+        <Icon name="filter-list" size={24} color="#000000" />
         {filterDistance !== 10 || filterMinFare !== 500 ? (
           <View style={styles.filterBadge}>
             <Text style={styles.filterBadgeText}>!</Text>
@@ -1850,7 +1850,7 @@ export default function DriverMapScreen() {
           Linking.openURL('tel:997');
         }}
       >
-        <MaterialIcon name="warning" size={24} color="#FFFFFF" />
+        <Icon name="warning" size={24} color="#FFFFFF" />
       </TouchableOpacity>
     );
   };
@@ -1861,7 +1861,7 @@ export default function DriverMapScreen() {
     
     return (
       <View style={styles.offlineModeIndicator}>
-        <MaterialIcon name="cloud-off" size={16} color="#EF4444" />
+        <Icon name="cloud-off" size={16} color="#EF4444" />
         <Text style={styles.offlineModeText}>Offline Mode</Text>
       </View>
     );
@@ -1960,7 +1960,7 @@ export default function DriverMapScreen() {
                 styles.rideRequestMarker,
                 { transform: [{ scale: pulseAnim }] }
               ]}>
-                <MaterialIcon name="person-pin" size={30} color="#22C55E" />
+                <Icon name="person-pin" size={30} color="#22C55E" />
                 <View style={styles.markerPulse} />
               </Animated.View>
             </Marker>
@@ -2011,7 +2011,7 @@ export default function DriverMapScreen() {
           style={styles.earningsCard}
           onPress={() => navigation.navigate('DriverEarnings')}
         >
-          <MaterialIcon name="attach-money" size={16} color="#22C55E" />
+          <Icon name="attach-money" size={16} color="#22C55E" />
           <Text style={styles.earningsText}>MK {earningsToday.toLocaleString()}</Text>
           <Text style={styles.ridesText}>• {rideCountToday} rides</Text>
         </TouchableOpacity>
@@ -2029,7 +2029,7 @@ export default function DriverMapScreen() {
                 Ride Requests ({rideRequests.length})
               </Text>
               <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                <MaterialIcon name="notifications-active" size={20} color="#EF4444" />
+                <Icon name="notifications-active" size={20} color="#EF4444" />
               </Animated.View>
             </View>
             <TouchableOpacity 
@@ -2056,7 +2056,7 @@ export default function DriverMapScreen() {
             style={styles.controlButton}
             onPress={handleGoToCurrentLocation}
           >
-            <MaterialIcon name="my-location" size={24} color="#000000" />
+            <Icon name="my-location" size={24} color="#000000" />
           </TouchableOpacity>
           
           {renderMapControls()}
@@ -2067,14 +2067,14 @@ export default function DriverMapScreen() {
             style={styles.controlButton}
             onPress={() => navigation.navigate('DriverSchedule')}
           >
-            <MaterialIcon name="schedule" size={24} color="#000000" />
+            <Icon name="schedule" size={24} color="#000000" />
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.controlButton}
             onPress={() => navigation.navigate('DriverSupport')}
           >
-            <MaterialIcon name="help" size={24} color="#000000" />
+            <Icon name="help" size={24} color="#000000" />
           </TouchableOpacity>
         </View>
         

@@ -1,7 +1,7 @@
 // src/components/RideRequestCard.js
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as Icon } from '@src/utils/iconUtils';
 
 const RideRequestCard = ({ 
   request,
@@ -20,14 +20,14 @@ const RideRequestCard = ({
             <Image source={{ uri: rider.avatar }} style={styles.avatar} />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <MaterialIcon name="person" size={24} color="#6B7280" />
+              <Icon name="person" size={24} color="#6B7280" />
             </View>
           )}
         </View>
         <View style={styles.riderDetails}>
           <Text style={styles.riderName}>{rider.name}</Text>
           <View style={styles.ratingContainer}>
-            <MaterialIcon name="star" size={14} color="#FBBF24" />
+            <Icon name="star" size={14} color="#FBBF24" />
             <Text style={styles.rating}>{rider.rating}</Text>
             <Text style={styles.ridesCount}>({rider.totalRides} rides)</Text>
           </View>
@@ -38,12 +38,12 @@ const RideRequestCard = ({
       {/* Route */}
       <View style={styles.route}>
         <View style={styles.location}>
-          <MaterialIcon name="circle" size={12} color="#10B981" />
+          <Icon name="circle" size={12} color="#10B981" />
           <Text style={styles.locationText} numberOfLines={1}>{pickup}</Text>
         </View>
         <View style={styles.divider} />
         <View style={styles.location}>
-          <MaterialIcon name="location-pin" size={14} color="#EF4444" />
+          <Icon name="location-pin" size={14} color="#EF4444" />
           <Text style={styles.locationText} numberOfLines={1}>{destination}</Text>
         </View>
       </View>
@@ -51,15 +51,15 @@ const RideRequestCard = ({
       {/* Fare & Info */}
       <View style={styles.infoRow}>
         <View style={styles.infoItem}>
-          <MaterialIcon name="attach-money" size={16} color="#10B981" />
+          <Icon name="attach-money" size={16} color="#10B981" />
           <Text style={styles.infoText}>MK {fare}</Text>
         </View>
         <View style={styles.infoItem}>
-          <MaterialIcon name="directions-car" size={16} color="#3B82F6" />
+          <Icon name="directions-car" size={16} color="#3B82F6" />
           <Text style={styles.infoText}>{distance}</Text>
         </View>
         <View style={styles.infoItem}>
-          <MaterialIcon name="access-time" size={16} color="#F59E0B" />
+          <Icon name="access-time" size={16} color="#F59E0B" />
           <Text style={styles.infoText}>{eta}</Text>
         </View>
       </View>
@@ -70,7 +70,7 @@ const RideRequestCard = ({
           style={[styles.button, styles.declineButton]}
           onPress={() => onDecline(request.id)}
         >
-          <MaterialIcon name="close" size={18} color="#EF4444" />
+          <Icon name="close" size={18} color="#EF4444" />
           <Text style={styles.declineText}>Decline</Text>
         </TouchableOpacity>
         
@@ -78,7 +78,7 @@ const RideRequestCard = ({
           style={[styles.button, styles.acceptButton]}
           onPress={() => onAccept(request.id)}
         >
-          <MaterialIcon name="check" size={18} color="#FFFFFF" />
+          <Icon name="check" size={18} color="#FFFFFF" />
           <Text style={styles.acceptText}>Accept</Text>
         </TouchableOpacity>
         
@@ -86,7 +86,7 @@ const RideRequestCard = ({
           style={styles.detailsButton}
           onPress={() => onViewDetails(request.id)}
         >
-          <MaterialIcon name="more-horiz" size={20} color="#6B7280" />
+          <Icon name="more-horiz" size={20} color="#6B7280" />
         </TouchableOpacity>
       </View>
     </View>

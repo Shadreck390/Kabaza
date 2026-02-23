@@ -10,7 +10,7 @@ react {
 }
 
 project.ext.vectoricons = [
-    iconFontNames: ['FontAwesome.ttf']
+    iconFontNames: ['MaterialIcons.ttf', 'FontAwesome.ttf', 'MaterialCommunityIcons.ttf', 'Ionicons.ttf']
 ]
 
 apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"

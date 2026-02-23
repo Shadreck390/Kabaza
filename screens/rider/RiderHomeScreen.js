@@ -1,4 +1,4 @@
-// screens/rider/RiderHomeScreen.js
+// screens/rider/RiderHomeScreen.js - FIXED VERSION (Bottom Nav Removed)
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -15,11 +15,13 @@ import {
   TextInput,
   FlatList,
   ActivityIndicator,
+  Easing,
+  SafeAreaView,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
-import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
+import LinearGradient from 'react-native-linear-gradient';
 import { getUserData } from '@src/utils/userStorage';
 
 const { width, height } = Dimensions.get('window');
@@ -29,155 +31,24 @@ const SHEET_MIN_HEIGHT = 160;
 
 // ========== MALAWI REAL LOCATIONS DATABASE ==========
 const MALAWI_LOCATIONS = [
-  // Lilongwe Hospitals
   { 
     id: '1', 
-    name: 'Likuni Hospital', 
-    address: 'Likuni Road, Lilongwe, Malawi', 
-    type: 'hospital', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.9786, longitude: 33.7431 }
-  },
-  { 
-    id: '2', 
-    name: 'Kamuzu Central Hospital (KCH)', 
-    address: 'Mzimba Street, Lilongwe, Malawi', 
-    type: 'hospital', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.9711, longitude: 33.7836 }
-  },
-  { 
-    id: '3', 
-    name: 'Bwaila Hospital', 
-    address: 'Lilongwe, Malawi', 
-    type: 'hospital', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.9667, longitude: 33.7833 }
-  },
-  { 
-    id: '4', 
-    name: 'St. John\'s Hospital', 
-    address: 'Mzimba Street, Lilongwe', 
-    type: 'hospital', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.9700, longitude: 33.7800 }
-  },
-  { 
-    id: '5', 
-    name: 'Mchinji District Hospital', 
-    address: 'Mchinji, Malawi', 
-    type: 'hospital', 
-    city: 'Mchinji',
-    coordinates: { latitude: -13.8000, longitude: 32.9000 }
-  },
-  
-  // Blantyre Hospitals
-  { 
-    id: '6', 
-    name: 'Queen Elizabeth Central Hospital (QECH)', 
-    address: 'Blantyre, Malawi', 
-    type: 'hospital', 
-    city: 'Blantyre',
-    coordinates: { latitude: -15.7833, longitude: 35.0167 }
-  },
-  { 
-    id: '7', 
-    name: 'Mwaiwathu Private Hospital', 
-    address: 'Blantyre, Malawi', 
-    type: 'hospital', 
-    city: 'Blantyre',
-    coordinates: { latitude: -15.7833, longitude: 35.0083 }
-  },
-  { 
-    id: '8', 
-    name: 'Blantyre Adventist Hospital', 
-    address: 'Blantyre, Malawi', 
-    type: 'hospital', 
-    city: 'Blantyre',
-    coordinates: { latitude: -15.7900, longitude: 35.0100 }
-  },
-  
-  // Mzuzu Hospitals
-  { 
-    id: '9', 
-    name: 'Mzuzu Central Hospital', 
-    address: 'Mzuzu, Malawi', 
-    type: 'hospital', 
-    city: 'Mzuzu',
-    coordinates: { latitude: -11.4500, longitude: 34.0200 }
-  },
-  
-  // Universities
-  { 
-    id: '10', 
-    name: 'University of Malawi - College of Medicine', 
-    address: 'Blantyre, Malawi', 
-    type: 'university', 
-    city: 'Blantyre',
-    coordinates: { latitude: -15.7860, longitude: 35.0200 }
-  },
-  { 
-    id: '11', 
-    name: 'Mzuzu University', 
-    address: 'Mzuzu, Malawi', 
-    type: 'university', 
-    city: 'Mzuzu',
-    coordinates: { latitude: -11.4528, longitude: 34.0162 }
-  },
-  { 
-    id: '12', 
-    name: 'University of Malawi - Chancellor College', 
-    address: 'Zomba, Malawi', 
-    type: 'university', 
-    city: 'Zomba',
-    coordinates: { latitude: -15.3861, longitude: 35.3189 }
-  },
-  
-  // Shopping Malls
-  { 
-    id: '13', 
-    name: 'Lilongwe City Mall', 
-    address: 'M1 Road, Lilongwe, Malawi', 
-    type: 'mall', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.9772, longitude: 33.7720 }
-  },
-  { 
-    id: '14', 
-    name: 'Game Stores Lilongwe', 
-    address: 'City Center, Lilongwe', 
-    type: 'shopping', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.9758, longitude: 33.7881 }
-  },
-  { 
-    id: '15', 
     name: 'Area 3 Shopping Complex', 
-    address: 'Area 3, Lilongwe', 
+    address: 'Lilongwe, Malawi', 
     type: 'shopping', 
     city: 'Lilongwe',
     coordinates: { latitude: -13.9583, longitude: 33.7689 }
   },
   { 
-    id: '16', 
-    name: 'Shoprite Blantyre', 
-    address: 'Victoria Avenue, Blantyre', 
-    type: 'shopping', 
-    city: 'Blantyre',
-    coordinates: { latitude: -15.7867, longitude: 35.0067 }
+    id: '2', 
+    name: 'Bingu National Stadium', 
+    address: 'Lilongwe, Malawi', 
+    type: 'stadium', 
+    city: 'Lilongwe',
+    coordinates: { latitude: -13.9917, longitude: 33.7753 }
   },
   { 
-    id: '17', 
-    name: 'Chichiri Shopping Centre', 
-    address: 'Blantyre, Malawi', 
-    type: 'mall', 
-    city: 'Blantyre',
-    coordinates: { latitude: -15.7889, longitude: 35.0128 }
-  },
-  
-  // Hotels
-  { 
-    id: '18', 
+    id: '3', 
     name: 'Crossroads Hotel', 
     address: 'Lilongwe, Malawi', 
     type: 'hotel', 
@@ -185,144 +56,40 @@ const MALAWI_LOCATIONS = [
     coordinates: { latitude: -13.9750, longitude: 33.7867 }
   },
   { 
-    id: '19', 
-    name: 'Sunbird Capital Hotel', 
-    address: 'Lilongwe, Malawi', 
-    type: 'hotel', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.9739, longitude: 33.7881 }
-  },
-  { 
-    id: '20', 
-    name: 'Mount Soche Hotel', 
-    address: 'Victoria Avenue, Blantyre', 
-    type: 'hotel', 
-    city: 'Blantyre',
-    coordinates: { latitude: -15.7850, longitude: 35.0083 }
-  },
-  
-  // Airports
-  { 
-    id: '21', 
-    name: 'Kamuzu International Airport (LLW)', 
-    address: 'Lilongwe, Malawi', 
-    type: 'airport', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.7894, longitude: 33.7811 }
-  },
-  { 
-    id: '22', 
-    name: 'Chileka International Airport (BLZ)', 
-    address: 'Blantyre, Malawi', 
-    type: 'airport', 
-    city: 'Blantyre',
-    coordinates: { latitude: -15.6794, longitude: 34.9744 }
-  },
-  
-  // Taxi Ranks & Transport
-  { 
-    id: '23', 
-    name: 'Lilongwe Bus Station', 
-    address: 'Lilongwe, Malawi', 
-    type: 'transport', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.9731, longitude: 33.7878 }
-  },
-  { 
-    id: '24', 
-    name: 'Bunda Taxi Rank', 
-    address: 'Bunda Road, Lilongwe', 
-    type: 'transport', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.9667, longitude: 33.7833 }
-  },
-  { 
-    id: '25', 
-    name: 'MTN Butchery Taxi Rank', 
-    address: 'Lilongwe, Malawi', 
-    type: 'transport', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.9744, longitude: 33.7867 }
-  },
-  { 
-    id: '26', 
-    name: 'Bree Street Taxi Rank', 
-    address: 'Blantyre, Malawi', 
-    type: 'transport', 
-    city: 'Blantyre',
-    coordinates: { latitude: -15.7850, longitude: 35.0078 }
-  },
-  
-  // Popular addresses (like your screenshot)
-  { 
-    id: '27', 
-    name: '30 Wolmarans Street', 
-    address: 'Lilongwe, Malawi', 
-    type: 'address', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.9650, longitude: 33.7750 }
-  },
-  { 
-    id: '28', 
-    name: '6th Avenue', 
-    address: 'Lilongwe, Malawi', 
-    type: 'address', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.9626, longitude: 33.7741 }
-  },
-  { 
-    id: '29', 
-    name: 'Propoff Location', 
-    address: 'Kamuzu Procession Road, Lilongwe', 
-    type: 'landmark', 
-    city: 'Lilongwe',
-    coordinates: { latitude: -13.9600, longitude: 33.7800 }
-  },
-  { 
-    id: '30', 
-    name: 'Main Entrance Maponya Mall', 
-    address: 'Lilongwe, Malawi', 
+    id: '4', 
+    name: 'Lilongwe City Mall', 
+    address: 'M1 Road, Lilongwe, Malawi', 
     type: 'mall', 
     city: 'Lilongwe',
-    coordinates: { latitude: -13.9811, longitude: 33.7717 }
+    coordinates: { latitude: -13.9772, longitude: 33.7720 }
   },
   { 
-    id: '31', 
-    name: 'Bingu National Stadium', 
-    address: 'Lilongwe, Malawi', 
-    type: 'stadium', 
+    id: '5', 
+    name: 'Game Stores Lilongwe', 
+    address: 'City Center, Lilongwe', 
+    type: 'shopping', 
     city: 'Lilongwe',
-    coordinates: { latitude: -13.9917, longitude: 33.7753 }
-  },
-  
-  // Additional real locations
-  { 
-    id: '32', 
-    name: 'Kameza Roundabout', 
-    address: 'Blantyre, Malawi', 
-    type: 'landmark', 
-    city: 'Blantyre',
-    coordinates: { latitude: -15.7300, longitude: 34.9700 }
+    coordinates: { latitude: -13.9758, longitude: 33.7881 }
   },
   { 
-    id: '33', 
-    name: 'Mulanje Mountain', 
-    address: 'Mulanje, Malawi', 
-    type: 'landmark', 
-    city: 'Mulanje',
-    coordinates: { latitude: -15.9333, longitude: 35.6000 }
-  },
-  { 
-    id: '34', 
-    name: 'Zomba Plateau', 
-    address: 'Zomba, Malawi', 
-    type: 'landmark', 
-    city: 'Zomba',
-    coordinates: { latitude: -15.3333, longitude: 35.3333 }
+    id: '6', 
+    name: 'Kamuzu Central Hospital (KCH)', 
+    address: 'Mzimba Street, Lilongwe, Malawi', 
+    type: 'hospital', 
+    city: 'Lilongwe',
+    coordinates: { latitude: -13.9711, longitude: 33.7836 }
   },
 ];
 
-export default function RiderHomeScreen({ navigation }) {
+// ========== ANIMATED COMPONENTS ==========
+const AnimatedView = Animated.createAnimatedComponent(View);
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+
+export default function RiderHomeScreen({ navigation, route }) {
+  // ✅ Add route parameter to get userData
+  const userDataFromParams = route.params?.userData || {};
+  
+  // States
   const [region, setRegion] = useState({
     latitude: -13.9626,
     longitude: 33.7741,
@@ -330,51 +97,20 @@ export default function RiderHomeScreen({ navigation }) {
     longitudeDelta: 0.05,
   });
   const [currentLocation, setCurrentLocation] = useState(null);
-  const [userData, setUserData] = useState(null);
+  const [userData, setUserData] = useState(userDataFromParams);
   const [searchQuery, setSearchQuery] = useState('');
   const [showRideOptions, setShowRideOptions] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState(null);
-  const [activeService, setActiveService] = useState('Rides');
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [dynamicRideOptions, setDynamicRideOptions] = useState([]);
   
-  // Animation
-  const sheetHeight = useRef(new Animated.Value(SHEET_MAX_HEIGHT)).current;
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, gestureState) => {
-        const newHeight = SHEET_MAX_HEIGHT - gestureState.dy;
-        if (newHeight >= SHEET_MIN_HEIGHT && newHeight <= SHEET_MAX_HEIGHT) {
-          sheetHeight.setValue(newHeight);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        const currentHeight = SHEET_MAX_HEIGHT - gestureState.dy;
-        const snapThreshold = (SHEET_MAX_HEIGHT + SHEET_MIN_HEIGHT) / 2;
-        
-        if (currentHeight < snapThreshold) {
-          Animated.spring(sheetHeight, {
-            toValue: SHEET_MIN_HEIGHT,
-            useNativeDriver: false,
-            tension: 50,
-            friction: 8,
-          }).start();
-        } else {
-          Animated.spring(sheetHeight, {
-            toValue: SHEET_MAX_HEIGHT,
-            useNativeDriver: false,
-            tension: 50,
-            friction: 8,
-          }).start();
-        }
-      },
-    })
-  ).current;
+  // Animation values
+  const sheetHeight = useRef(new Animated.Value(SHEET_MIN_HEIGHT)).current;
+  const mapOpacity = useRef(new Animated.Value(1)).current;
 
-  // Quick actions
+  // Quick Actions - MATCHING SCREENSHOT
   const quickActions = [
     {
       id: 'rides',
@@ -382,13 +118,15 @@ export default function RiderHomeScreen({ navigation }) {
       subtitle: "Let's get moving",
       icon: 'directions-car',
       color: '#00a82d',
+      gradient: ['#00a82d', '#00c853'],
     },
     {
       id: 'schedule',
       title: 'Schedule',
       subtitle: 'Book ahead',
-      icon: 'calendar-today',
+      icon: 'schedule',
       color: '#2196f3',
+      gradient: ['#2196f3', '#21cbf3'],
     },
     {
       id: 'send',
@@ -396,114 +134,249 @@ export default function RiderHomeScreen({ navigation }) {
       subtitle: 'Package delivery',
       icon: 'local-shipping',
       color: '#ff9800',
+      gradient: ['#ff9800', '#ffb74d'],
     },
   ];
 
-  // Recent destinations
-  const recentDestinations = [
+  // Suggested Destinations - MATCHING SCREENSHOT FORMAT
+  const suggestedDestinations = [
     {
       id: '1',
-      name: 'Area 3 Shopping Complex',
-      address: 'Lilongwe, Malawi',
-      icon: 'shopping-cart',
+      name: 'cross roads shopping mall',
+      address: 'Cross Roads, Lilongwe',
+      distance: '3 km',
       coordinates: { latitude: -13.9583, longitude: 33.7689 }
     },
     {
       id: '2',
       name: 'Bingu National Stadium',
-      address: 'Lilongwe, Malawi',
-      icon: 'stadium',
+      address: 'Bingu National Stadium, Lilongwe',
+      distance: '1 km',
       coordinates: { latitude: -13.9917, longitude: 33.7753 }
     },
     {
       id: '3',
-      name: 'Crossroads Hotel',
-      address: 'Lilongwe, Malawi',
-      icon: 'hotel',
+      name: 'Lilongwe Police Station',
+      address: 'Area 3 police , Lilongwe',
+      distance: '1 km',
       coordinates: { latitude: -13.9750, longitude: 33.7867 }
     },
   ];
 
-  // Ride options
   const rideOptions = [
-    { id: 'kabaza', name: 'Kabaza', price: 'MK 850 - MK 1050', icon: 'directions-car', color: '#00a82d' },
-    { id: 'comfort', name: 'Comfort', price: 'MK 1100 - MK 1300', icon: 'directions-car', color: '#2196f3' },
-    { id: 'green', name: 'Green', price: 'MK 950 - MK 1150', icon: 'eco', color: '#4caf50' },
-    { id: 'xl', name: 'Kabaza XL', price: 'MK 1500 - MK 1800', icon: 'airport-shuttle', color: '#ff9800' },
+    { 
+      id: 'kabaza', 
+      name: 'Kabaza', 
+      price: 'MK 5500 - MK 7500', 
+      icon: 'directions-car', 
+      color: '#00a82d',
+      gradient: ['#00a82d', '#00c853'],
+      time: '2 min',
+    },
+    { 
+      id: 'comfort', 
+      name: 'Comfort', 
+      price: 'MK 8500 - MK 10000', 
+      icon: 'directions-car', 
+      color: '#2196f3',
+      gradient: ['#2196f3', '#21cbf3'],
+      time: '3 min',
+    },
+    { 
+      id: 'green', 
+      name: 'Green', 
+      price: 'MK 9500 - MK 11500', 
+      icon: 'eco', 
+      color: '#4caf50',
+      gradient: ['#4caf50', '#66bb6a'],
+      time: '4 min',
+    },
   ];
 
+  // Pan responder for draggable sheet - SIMPLIFIED
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gestureState) => {
+        const newHeight = SHEET_MIN_HEIGHT - gestureState.dy;
+        if (newHeight >= SHEET_MIN_HEIGHT && newHeight <= SHEET_MAX_HEIGHT) {
+          sheetHeight.setValue(newHeight);
+          Animated.spring(mapOpacity, {
+            toValue: Math.max(0.7, 1 - (gestureState.dy / height) * 0.5),
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const currentHeight = SHEET_MIN_HEIGHT - gestureState.dy;
+        const snapThreshold = (SHEET_MAX_HEIGHT + SHEET_MIN_HEIGHT) / 2;
+        
+        if (currentHeight < snapThreshold) {
+          Animated.parallel([
+            Animated.spring(sheetHeight, {
+              toValue: SHEET_MIN_HEIGHT,
+              useNativeDriver: false,
+              tension: 60,
+              friction: 10,
+            }),
+            Animated.spring(mapOpacity, {
+              toValue: 1,
+              useNativeDriver: true,
+            }),
+          ]).start();
+        } else {
+          Animated.parallel([
+            Animated.spring(sheetHeight, {
+              toValue: SHEET_MAX_HEIGHT,
+              useNativeDriver: false,
+              tension: 60,
+              friction: 10,
+            }),
+            Animated.spring(mapOpacity, {
+              toValue: 0.7,
+              useNativeDriver: true,
+            }),
+          ]).start();
+        }
+      },
+    })
+  ).current;
+
+  // Initialize
   useEffect(() => {
-    const loadUserData = async () => {
+    setDynamicRideOptions(rideOptions);
+    
+    const initializeScreen = async () => {
       try {
-        const data = await getUserData();
-        setUserData(data);
+        if (!userData.phone) {
+          const storedData = await getUserData();
+          if (storedData) {
+            setUserData(storedData);
+          }
+        }
+        
+        const hasPermission = await requestLocationPermission();
+        if (hasPermission) {
+          await getCurrentLocation();
+        }
       } catch (error) {
-        console.warn('Failed to load user data:', error);
+        console.error('Initialization error:', error);
       }
     };
-    loadUserData();
-    requestLocationPermission();
+    
+    initializeScreen();
   }, []);
 
-  // REAL-TIME SEARCH EFFECT
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      return;
-    }
-    
-    setLoading(true);
-    
-    // Simulate API delay
-    const timeout = setTimeout(() => {
-      const results = MALAWI_LOCATIONS.filter(location => 
-        location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        location.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        location.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        location.type.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      
-      setSearchResults(results);
-      setShowSearchResults(true);
-      setLoading(false);
-    }, 300);
-    
-    return () => clearTimeout(timeout);
-  }, [searchQuery]);
-
   const requestLocationPermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
+    try {
+      if (Platform.OS === 'ios') {
+        return true;
+      } else {
         const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location Access Required',
+            message: 'Kabaza needs access to your location to find rides',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
         );
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          getCurrentLocation();
-        }
-      } catch (err) {
-        console.warn(err);
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
       }
-    } else {
-      getCurrentLocation();
+    } catch (err) {
+      console.error('📍 Permission error:', err);
+      return false;
     }
   };
 
   const getCurrentLocation = () => {
-    Geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setRegion({
-          latitude,
-          longitude,
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        console.warn('⚠️ Location timeout - using default');
+        const defaultLocation = {
+          latitude: -13.9626,
+          longitude: 33.7741,
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
-        });
-        setCurrentLocation({ latitude, longitude });
-      },
-      (error) => console.log(error),
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
-    );
+        };
+        setRegion(defaultLocation);
+        setCurrentLocation(defaultLocation);
+        resolve(defaultLocation);
+      }, 10000); // 10 second timeout
+      
+      Geolocation.getCurrentPosition(
+        (position) => {
+          clearTimeout(timeout);
+          const location = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          };
+          setCurrentLocation(location);
+          setRegion(location);
+          resolve(location);
+        },
+        (error) => {
+          clearTimeout(timeout);
+          console.warn('⚠️ Location error - using default:', error);
+          const defaultLocation = {
+            latitude: -13.9626,
+            longitude: 33.7741,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          };
+          setRegion(defaultLocation);
+          setCurrentLocation(defaultLocation);
+          resolve(defaultLocation);
+        },
+        { 
+          enableHighAccuracy: true, 
+          timeout: 10000, // Reduced timeout
+          maximumAge: 10000 
+        }
+      );
+    });
+  };
+
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+    return distance.toFixed(1);
+  };
+
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    
+    if (query.trim() === '') {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      setShowRideOptions(false);
+      return;
+    }
+    
+    const filtered = MALAWI_LOCATIONS.filter(location => {
+      const searchLower = query.toLowerCase();
+      return (
+        location.name.toLowerCase().includes(searchLower) ||
+        location.address.toLowerCase().includes(searchLower) ||
+        location.city.toLowerCase().includes(searchLower) ||
+        location.type.toLowerCase().includes(searchLower)
+      );
+    });
+    
+    setSearchResults(filtered);
+    setShowSearchResults(true);
+    setShowRideOptions(false);
   };
 
   const handleDestinationSelect = (destination) => {
@@ -512,7 +385,19 @@ export default function RiderHomeScreen({ navigation }) {
     setShowRideOptions(true);
     setShowSearchResults(false);
     
-    // Center map on destination
+    // Navigate to RideSelectionScreen with destination data
+    navigation.navigate('RideSelection', {
+      destination: destination.name,
+      destinationAddress: destination.address || 'Malawi Location',
+      destinationCoordinates: destination.coordinates || {
+        latitude: -13.9626,
+        longitude: 33.7741
+      },
+      pickupLocation: 'Your Location',
+      pickupCoordinates: currentLocation || region,
+      rideType: 'kabaza',
+    });
+    
     if (destination.coordinates) {
       setRegion({
         ...region,
@@ -520,25 +405,63 @@ export default function RiderHomeScreen({ navigation }) {
         longitude: destination.coordinates.longitude,
       });
     }
+    
+    if (currentLocation && destination.coordinates) {
+      const distance = calculateDistance(
+        currentLocation.latitude,
+        currentLocation.longitude,
+        destination.coordinates.latitude,
+        destination.coordinates.longitude
+      );
+      
+      const updatedRides = rideOptions.map(ride => ({
+        ...ride,
+        price: calculateRidePrice(parseFloat(distance), ride.id),
+        time: calculateEstimatedTime(parseFloat(distance))
+      }));
+      
+      setDynamicRideOptions(updatedRides);
+    }
   };
 
   const handleRideSelect = (rideType) => {
+    if (!selectedDestination) return;
+    
     navigation.navigate('RideSelection', {
       destination: selectedDestination.name,
-      destinationAddress: selectedDestination.address,
-      destinationCoordinates: selectedDestination.coordinates,
-      pickupLocation: currentLocation || region,
+      destinationAddress: selectedDestination.address || 'Malawi Location',
+      destinationCoordinates: selectedDestination.coordinates || {
+        latitude: -13.9626,
+        longitude: 33.7741
+      },
+      pickupLocation: 'Your Location',
+      pickupCoordinates: currentLocation || region,
       rideType: rideType,
     });
   };
 
-  const handleSearchFocus = () => {
-    Animated.spring(sheetHeight, {
-      toValue: SHEET_MAX_HEIGHT * 0.6,
-      useNativeDriver: false,
-      tension: 50,
-      friction: 8,
-    }).start();
+  const calculateRidePrice = (distanceKm, rideType) => {
+    const basePrices = {
+      kabaza: { base: 500, perKm: 200 },
+      comfort: { base: 700, perKm: 250 },
+      green: { base: 600, perKm: 220 },
+      xl: { base: 900, perKm: 300 },
+    };
+    
+    const price = basePrices[rideType];
+    if (!price) return 'MK 850 - MK 1050';
+    
+    const minPrice = price.base + (distanceKm * price.perKm * 0.8);
+    const maxPrice = price.base + (distanceKm * price.perKm * 1.2);
+    
+    return `MK ${Math.round(minPrice)} - MK ${Math.round(maxPrice)}`;
+  };
+
+  const calculateEstimatedTime = (distanceKm) => {
+    const avgSpeed = 30;
+    const timeHours = distanceKm / avgSpeed;
+    const timeMinutes = Math.round(timeHours * 60);
+    return `${Math.max(2, timeMinutes)} min`;
   };
 
   const clearSearch = () => {
@@ -548,282 +471,246 @@ export default function RiderHomeScreen({ navigation }) {
     setShowRideOptions(false);
   };
 
-  const getLocationIcon = (type) => {
-    switch (type) {
-      case 'hospital': return 'local-hospital';
-      case 'mall': return 'shopping-mall';
-      case 'shopping': return 'shopping-cart';
-      case 'hotel': return 'hotel';
-      case 'airport': return 'airport';
-      case 'transport': return 'directions-bus';
-      case 'university': return 'school';
-      case 'stadium': return 'stadium';
-      case 'landmark': return 'place';
-      default: return 'location-pin';
-    }
+  // RENDER FUNCTIONS
+  const renderTopStatus = () => (
+    <View style={styles.topTimeContainer}>
+      <Text style={styles.timeText}>15:20</Text>
+    </View>
+  );
+
+  const renderQuickAction = (action, index) => {
+    return (
+      <TouchableOpacity
+        key={action.id}
+        style={styles.quickActionCard}
+        onPress={() => {
+          if (action.id === 'schedule') {
+            navigation.navigate('Schedule');
+          } else if (action.id === 'send') {
+            navigation.navigate('PackageDelivery');
+          } else {
+            setShowRideOptions(true);
+          }
+        }}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={action.gradient}
+          style={styles.quickActionIcon}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <MaterialIcon name={action.icon} size={24} color="#fff" />
+        </LinearGradient>
+        <Text style={styles.quickActionTitle}>{action.title}</Text>
+        <Text style={styles.quickActionSubtitle}>{action.subtitle}</Text>
+      </TouchableOpacity>
+    );
   };
 
-  const renderSearchResult = ({ item }) => (
-    <TouchableOpacity
-      style={styles.searchResultItem}
-      onPress={() => handleDestinationSelect(item)}
-    >
-      <MaterialIcon name={getLocationIcon(item.type)} size={20} color="#666" />
-      <View style={styles.searchResultInfo}>
-        <Text style={styles.searchResultName}>{item.name}</Text>
-        <Text style={styles.searchResultAddress}>{item.address}</Text>
-      </View>
-      <View style={styles.distanceContainer}>
-        <Text style={styles.distanceText}>
-          {item.coordinates ? `${Math.floor(Math.random() * 20) + 1} km` : 'Distance'}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderSuggestedDestination = (item) => {
+    return (
+      <TouchableOpacity
+        key={item.id}
+        style={styles.locationItem}
+        onPress={() => {
+          navigation.navigate('RideSelection', {
+            destination: item.name,
+            destinationAddress: item.address,
+            destinationCoordinates: item.coordinates,
+            pickupLocation: 'Your Location',
+            pickupCoordinates: currentLocation || region,
+            rideType: 'kabaza',
+          });
+        }}
+        activeOpacity={0.7}
+      >
+        <View style={styles.locationIcon}>
+          <MaterialIcon name="location-on" size={20} color="#00a82d" />
+        </View>
+        <View style={styles.locationInfo}>
+          <Text style={styles.locationName}>{item.name}</Text>
+          <Text style={styles.locationAddress}>{item.address}</Text>
+        </View>
+        <MaterialIcon name="chevron-right" size={20} color="#666" />
+      </TouchableOpacity>
+    );
+  };
 
-  const renderDestinationItem = ({ item, index }) => (
-    <TouchableOpacity
-      style={styles.destinationItem}
-      onPress={() => handleDestinationSelect(item)}
-    >
-      <View style={styles.destinationNumber}>
-        <Text style={styles.numberText}>{index + 1}</Text>
-      </View>
-      <View style={styles.destinationInfo}>
-        <Text style={styles.destinationName}>{item.name}</Text>
-        <Text style={styles.destinationAddress}>{item.address}</Text>
-      </View>
-      <MaterialIcon name="chevron-right" size={20} color="#666" />
-    </TouchableOpacity>
-  );
-
-  const renderRecentDestination = ({ item }) => (
-    <TouchableOpacity
-      style={styles.recentDestination}
-      onPress={() => handleDestinationSelect(item)}
-    >
-      <MaterialIcon name={item.icon} size={20} color="#666" style={styles.destinationIcon} />
-      <View style={styles.destinationInfo}>
-        <Text style={styles.destinationName}>{item.name}</Text>
-        <Text style={styles.destinationAddress}>{item.address}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-
-  const renderRideOption = ({ item }) => (
-    <TouchableOpacity
-      style={styles.rideOption}
-      onPress={() => handleRideSelect(item.id)}
-    >
-      <View style={[styles.rideIcon, { backgroundColor: `${item.color}20` }]}>
-        <MaterialIcon name={item.icon} size={24} color={item.color} />
-      </View>
-      <Text style={styles.rideName}>{item.name}</Text>
-      <Text style={styles.ridePrice}>{item.price}</Text>
-    </TouchableOpacity>
-  );
-
-  // Check current sheet height
-  const currentSheetHeight = sheetHeight.__getValue();
-  const isSheetUp = currentSheetHeight > SHEET_MAX_HEIGHT * 0.6;
-  const isSheetDown = currentSheetHeight < SHEET_MAX_HEIGHT * 0.4;
+  const renderRideOption = ({ item, index }) => {
+    return (
+      <TouchableOpacity
+        style={styles.rideOptionCard}
+        onPress={() => handleRideSelect(item.id)}
+        activeOpacity={0.7}
+      >
+        <LinearGradient
+          colors={item.gradient}
+          style={styles.rideOptionIcon}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <MaterialIcon name={item.icon} size={24} color="#fff" />
+        </LinearGradient>
+        <View style={styles.rideOptionInfo}>
+          <Text style={styles.rideOptionName}>{item.name}</Text>
+          <Text style={styles.rideOptionPrice}>{item.price}</Text>
+          <View style={styles.rideOptionMeta}>
+            <View style={styles.metaItem}>
+              <MaterialIcon name="access-time" size={12} color="#666" />
+              <Text style={styles.metaText}>{item.time}</Text>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      {/* MAP */}
-      <MapView
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        region={region}
-        showsUserLocation={true}
-        showsMyLocationButton={false}
-      >
-        {currentLocation && (
-          <Marker
-            coordinate={currentLocation}
-            title="Your Location"
-            pinColor="#00a82d"
-          />
-        )}
-        {selectedDestination && selectedDestination.coordinates && (
-          <Marker
-            coordinate={selectedDestination.coordinates}
-            title={selectedDestination.name}
-            pinColor="#ff6b6b"
-          />
-        )}
-      </MapView>
+      {/* TOP TIME */}
+      {renderTopStatus()}
+
+      {/* MAP VIEW */}
+      <Animated.View style={[styles.mapContainer, { opacity: mapOpacity }]}>
+        <MapView
+          provider={PROVIDER_GOOGLE}
+          style={styles.map}
+          region={region}
+          showsUserLocation={true}
+          showsMyLocationButton={false}
+        >
+          {currentLocation && (
+            <Marker
+              coordinate={currentLocation}
+              title="Your Location"
+              pinColor="#00a82d"
+            />
+          )}
+          {selectedDestination && selectedDestination.coordinates && (
+            <Marker
+              coordinate={selectedDestination.coordinates}
+              title={selectedDestination.name}
+              pinColor="#ff6b6b"
+            />
+          )}
+        </MapView>
+      </Animated.View>
 
       {/* DRAGGABLE SHEET */}
       <Animated.View style={[styles.sheet, { height: sheetHeight }]}>
-        {/* Drag Handle */}
         <View style={styles.handleContainer} {...panResponder.panHandlers}>
           <View style={styles.handle} />
         </View>
 
-        {/* When sheet is up - show full content */}
-        {isSheetUp && (
-          <ScrollView 
-            style={styles.sheetContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>Smooth sailing ahead.</Text>
-            </View>
-
-            {/* Quick Actions */}
-            <View style={styles.actionsContainer}>
-              {quickActions.map((action) => (
-                <TouchableOpacity
-                  key={action.id}
-                  style={styles.actionCard}
-                  onPress={() => {
-                    if (action.id === 'schedule') {
-                      navigation.navigate('RideSelection', { scheduleLater: true });
-                    } else if (action.id === 'send') {
-                      navigation.navigate('PackageDelivery');
-                    }
-                  }}
-                >
-                  <View style={[styles.actionIcon, { backgroundColor: `${action.color}20` }]}>
-                    <MaterialIcon name={action.icon} size={28} color={action.color} />
-                  </View>
-                  <Text style={styles.actionTitle}>{action.title}</Text>
-                  <Text style={styles.actionSubtitle}>{action.subtitle}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View style={styles.divider} />
-          </ScrollView>
-        )}
-
-        {/* SEARCH SECTION - Always visible */}
-        <View style={styles.searchSection}>
-          <Text style={styles.searchTitle}>Where to?</Text>
-          <View style={styles.searchButton}>
-            <View style={styles.searchButtonContent}>
-              <MaterialIcon name="search" size={20} color="#666" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Where to?"
-                placeholderTextColor="#666"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onFocus={handleSearchFocus}
-                returnKeyType="search"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={clearSearch}>
-                  <MaterialIcon name="close" size={20} color="#666" />
-                </TouchableOpacity>
-              )}
-            </View>
-            <TouchableOpacity 
-              style={styles.laterButton}
-              onPress={() => navigation.navigate('RideSelection', { scheduleLater: true })}
-            >
-              <MaterialIcon name="access-time" size={16} color="#000" />
-              <Text style={styles.laterText}>Later</Text>
-            </TouchableOpacity>
+        <ScrollView 
+          style={styles.sheetContent}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.sheetContentContainer}
+        >
+          {/* SHEET HEADER */}
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetTitle}>Choose your adventure.</Text>
           </View>
-        </View>
 
-        {/* SEARCH RESULTS */}
-        {showSearchResults && (
-          <View style={styles.searchResultsContainer}>
-            {loading ? (
-              <ActivityIndicator size="large" color="#00a82d" />
-            ) : searchResults.length > 0 ? (
-              <FlatList
-                data={searchResults}
-                renderItem={renderSearchResult}
-                keyExtractor={(item) => item.id}
-                style={styles.searchResultsList}
-                keyboardShouldPersistTaps="handled"
-              />
-            ) : (
-              <View style={styles.noResults}>
-                <MaterialIcon name="search-off" size={48} color="#ccc" />
-                <Text style={styles.noResultsText}>No locations found</Text>
-                <Text style={styles.noResultsSubtext}>Try searching for hospitals, malls, or addresses</Text>
-              </View>
-            )}
+          {/* QUICK ACTIONS */}
+          <View style={styles.quickActionsContainer}>
+            {quickActions.map((action, index) => renderQuickAction(action, index))}
           </View>
-        )}
 
-        {/* DESTINATIONS (when no search) */}
-        {!showSearchResults && !showRideOptions && isSheetUp && (
-          <View style={styles.destinationsSection}>
-            <Text style={styles.suggestionsTitle}>Suggested destinations</Text>
-            <FlatList
-              data={MALAWI_LOCATIONS.slice(0, 5)}
-              renderItem={renderDestinationItem}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-            />
-            
-            <Text style={[styles.suggestionsTitle, { marginTop: 20 }]}>Recent destinations</Text>
-            <FlatList
-              data={recentDestinations}
-              renderItem={renderRecentDestination}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-            />
-          </View>
-        )}
-
-        {/* RIDE OPTIONS */}
-        {showRideOptions && (
-          <View style={styles.rideOptionsSection}>
-            <View style={styles.panelHeader}>
-              <Text style={styles.panelTitle}>Choose your ride</Text>
-              <TouchableOpacity onPress={() => setShowRideOptions(false)}>
-                <MaterialIcon name="close" size={24} color="#666" />
+          {/* SEARCH BAR - FIXED with clickable Later */}
+          <View style={styles.searchContainer}>
+            <View style={styles.searchBox}>
+              <TouchableOpacity 
+                style={styles.searchLeftPart}
+                onPress={() => navigation.navigate('SearchLocation', {
+                  initialType: 'destination',
+                  onLocationSelect: (selectedLocation) => {
+                    // When user selects a location from SearchLocationScreen
+                    navigation.navigate('RideSelection', {
+                      destination: selectedLocation.name,
+                      destinationAddress: selectedLocation.address || 'Malawi Location',
+                      destinationCoordinates: selectedLocation.coordinates,
+                      pickupLocation: 'Your Location',
+                      pickupCoordinates: currentLocation || region,
+                      rideType: 'kabaza',
+                    });
+                  }
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcon name="search" size={20} color="#666" />
+                <Text style={styles.searchPlaceholder}>
+                  Where to?
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.laterContainer}
+                onPress={() => navigation.navigate('Schedule')}
+                activeOpacity={0.8}
+              >
+                <MaterialIcon name="schedule" size={20} color="#666" style={styles.laterIcon} />
+                <Text style={styles.laterText}>Later</Text>
               </TouchableOpacity>
             </View>
-            
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.rideOptionsList}>
-              {rideOptions.map((ride) => (
-                <TouchableOpacity
-                  key={ride.id}
-                  style={styles.rideOption}
-                  onPress={() => handleRideSelect(ride.id)}
-                >
-                  <View style={[styles.rideIcon, { backgroundColor: `${ride.color}20` }]}>
-                    <MaterialIcon name={ride.icon} size={24} color={ride.color} />
-                  </View>
-                  <Text style={styles.rideName}>{ride.name}</Text>
-                  <Text style={styles.ridePrice}>{ride.price}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {/* Schedule Ride Option */}
-            <TouchableOpacity 
-              style={styles.scheduleButton}
-              onPress={() => navigation.navigate('RideSelection', { 
-                destination: selectedDestination.name,
-                scheduleLater: true 
-              })}
-            >
-              <View style={styles.scheduleContent}>
-                <View>
-                  <Text style={styles.scheduleTitle}>Schedule a ride</Text>
-                  <Text style={styles.scheduleSubtitle}>Book ahead for your trip</Text>
-                </View>
-                <MaterialIcon name="calendar-today" size={24} color="#00a82d" />
-              </View>
-            </TouchableOpacity>
           </View>
-        )}
-      </Animated.View>
 
-      {/* BOTTOM NAVIGATION - Using React Navigation tabs instead */}
-    </View>
+          {/* SEARCH RESULTS */}
+          {showSearchResults && !loading && searchResults.length > 0 && (
+            <View style={styles.searchResultsContainer}>
+              <FlatList
+                data={searchResults}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.locationItem}
+                    onPress={() => handleDestinationSelect(item)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.locationIcon}>
+                      <MaterialIcon name="location-on" size={20} color="#00a82d" />
+                    </View>
+                    <View style={styles.locationInfo}>
+                      <Text style={styles.locationName}>{item.name}</Text>
+                      <Text style={styles.locationAddress}>{item.address}</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                keyExtractor={(item) => item.id}
+                style={styles.searchResultsList}
+                scrollEnabled={false}
+              />
+            </View>
+          )}
+
+          {/* RIDE OPTIONS */}
+          {showRideOptions && (
+            <View style={styles.rideOptionsContainer}>
+              <FlatList
+                data={dynamicRideOptions}
+                renderItem={renderRideOption}
+                keyExtractor={(item) => item.id}
+                numColumns={3}
+                scrollEnabled={false}
+                columnWrapperStyle={styles.rideOptionsRow}
+              />
+            </View>
+          )}
+
+          {/* SUGGESTED DESTINATIONS */}
+          {!showSearchResults && !showRideOptions && (
+            <View style={styles.suggestedContainer}>
+              {suggestedDestinations.map(item => renderSuggestedDestination(item))}
+            </View>
+          )}
+          
+          {/* ADD EXTRA SPACE AT BOTTOM FOR BETTER SCROLLING */}
+          <View style={styles.bottomSpacing} />
+        </ScrollView>
+      </Animated.View>
+    </SafeAreaView>
   );
 }
 
@@ -832,11 +719,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  topTimeContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 30,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  timeText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  mapContainer: {
+    ...StyleSheet.absoluteFillObject,
+  },
   map: {
     ...StyleSheet.absoluteFillObject,
   },
-  
-  // DRAGGABLE SHEET
   sheet: {
     position: 'absolute',
     bottom: 0,
@@ -849,8 +750,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
-    elevation: 10,
-    overflow: 'hidden',
+    elevation: 20,
   },
   handleContainer: {
     paddingTop: 12,
@@ -858,39 +758,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   handle: {
-    width: 40,
+    width: 36,
     height: 4,
-    backgroundColor: '#ddd',
+    backgroundColor: '#e0e0e0',
     borderRadius: 2,
   },
-  
-  // SHEET CONTENT
   sheetContent: {
+    flex: 1,
+  },
+  sheetContentContainer: {
+    paddingBottom: 30,
+  },
+  sheetHeader: {
     paddingHorizontal: 20,
+    paddingBottom: 20,
   },
-  header: {
-    paddingTop: 8,
-    paddingBottom: 24,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
+  sheetTitle: {
+    fontSize: 28,
+    fontWeight: '700',
     color: '#000',
-    lineHeight: 38,
+    textAlign: 'center',
   },
-  
-  // QUICK ACTIONS
-  actionsContainer: {
+  quickActionsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
     marginBottom: 24,
   },
-  actionCard: {
+  quickActionCard: {
     width: (width - 60) / 3,
     alignItems: 'center',
-    padding: 8,
   },
-  actionIcon: {
+  quickActionIcon: {
     width: 56,
     height: 56,
     borderRadius: 16,
@@ -898,256 +797,144 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  actionTitle: {
+  quickActionTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: '#000',
     marginBottom: 2,
     textAlign: 'center',
   },
-  actionSubtitle: {
-    fontSize: 11,
+  quickActionSubtitle: {
+    fontSize: 12,
     color: '#666',
     textAlign: 'center',
   },
-  
-  // DIVIDER
-  divider: {
-    height: 1,
-    backgroundColor: '#f0f0f0',
-    marginBottom: 20,
-  },
-  
-  // SEARCH SECTION
-  searchSection: {
+  searchContainer: {
     paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    marginBottom: 24,
   },
-  searchTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 12,
-  },
-  searchButton: {
+  searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
-    paddingVertical: 14,
     paddingHorizontal: 16,
-  },
-  searchButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#000',
-    marginLeft: 12,
-    padding: 0,
-  },
-  laterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingVertical: 16,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
+  searchLeftPart: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchPlaceholder: {
+    flex: 1,
+    fontSize: 16,
+    color: '#666',
+    marginLeft: 12,
+  },
+  laterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 8,
+    paddingVertical: 8,
+  },
+  laterIcon: {
+    marginLeft: 8,
+  },
   laterText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#000',
+    color: '#666',
     marginLeft: 4,
   },
-  
-  // SEARCH RESULTS
-  searchResultsContainer: {
-    maxHeight: height * 0.5,
+  suggestedContainer: {
     paddingHorizontal: 20,
-    paddingTop: 16,
   },
-  searchResultsList: {
-    flex: 1,
-  },
-  searchResultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  searchResultInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  searchResultName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 2,
-  },
-  searchResultAddress: {
-    fontSize: 14,
-    color: '#666',
-  },
-  distanceContainer: {
-    marginLeft: 12,
-  },
-  distanceText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  
-  // NO RESULTS
-  noResults: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  noResultsText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#666',
-    marginTop: 16,
-  },
-  noResultsSubtext: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 4,
-  },
-  
-  // DESTINATIONS
-  destinationsSection: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 100,
-  },
-  suggestionsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 12,
-  },
-  destinationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  destinationNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  numberText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  destinationInfo: {
-    flex: 1,
-  },
-  destinationName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 2,
-  },
-  destinationAddress: {
-    fontSize: 14,
-    color: '#666',
-  },
-  destinationIcon: {
-    marginRight: 16,
-  },
-  recentDestination: {
+  locationItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  
-  // RIDE OPTIONS
-  rideOptionsSection: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 100,
-  },
-  panelHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  panelTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  rideOptionsList: {
-    marginBottom: 20,
-  },
-  rideOption: {
-    width: 130,
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    alignItems: 'center',
+  locationIcon: {
     marginRight: 12,
   },
-  rideIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+  locationInfo: {
+    flex: 1,
+  },
+  locationName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000',
+    marginBottom: 2,
+  },
+  locationAddress: {
+    fontSize: 14,
+    color: '#666',
+  },
+  searchResultsContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  searchResultsList: {
+    maxHeight: 300,
+  },
+  rideOptionsContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  rideOptionsRow: {
+    justifyContent: 'space-between',
     marginBottom: 12,
   },
-  rideName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 4,
-  },
-  ridePrice: {
-    fontSize: 14,
-    color: '#666',
-  },
-  scheduleButton: {
-    backgroundColor: '#f0f9f0',
+  rideOptionCard: {
+    width: (width - 60) / 3,
+    alignItems: 'center',
+    padding: 12,
     borderRadius: 16,
-    padding: 20,
-    marginTop: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
-  scheduleContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  rideOptionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  rideOptionInfo: {
     alignItems: 'center',
   },
-  scheduleTitle: {
-    fontSize: 18,
+  rideOptionName: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#000',
     marginBottom: 4,
   },
-  scheduleSubtitle: {
-    fontSize: 14,
+  rideOptionPrice: {
+    fontSize: 12,
+    color: '#00a82d',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  rideOptionMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaText: {
+    fontSize: 11,
     color: '#666',
+    marginLeft: 2,
+  },
+  bottomSpacing: {
+    height: 40,
   },
 });

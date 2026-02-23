@@ -12,7 +12,7 @@ import {
   Switch,
   Image,
 } from 'react-native';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import { useNavigation } from '@react-navigation/native';
 
 export default function PackageDeliveryScreen() {
@@ -200,11 +200,7 @@ export default function PackageDeliveryScreen() {
             ]}
             onPress={() => setPackageDetails({...packageDetails, packageType: type.id})}
           >
-            <MaterialIcon 
-              name={type.icon} 
-              size={24} 
-              color={packageDetails.packageType === type.id ? '#00a82d' : '#666'} 
-            />
+            <MaterialIcon name={type.icon} size={24} color={packageDetails.packageType === type.id ? '#00a82d' : '#666'} />
             <Text style={[
               styles.packageTypeLabel,
               packageDetails.packageType === type.id && styles.packageTypeLabelSelected
