@@ -10,6 +10,7 @@ import {
   TextInput,
   FlatList,
   Alert,
+  Animated,
 } from 'react-native';
 import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -94,15 +95,45 @@ export default function BookAheadScreen({ navigation }) {
     }
   };
 
-  const handleBookNow = () => {
+  const getLocationDotStyle = (isPickup) => ({
+    backgroundColor: isPickup ? '#00a82d' : '#ccc'
+  });
+
+  const getRideIconColor = (isSelected) => isSelected ? '#00a82d' : '#666';
+
+  const getToggleStyle = (isActive) => ({
+    backgroundColor: isActive ? '#00a82d' : '#e0e0e0'
+  });
+
+  const getNextButtonStyle = () => {
+    return bookingDetails.pickupLocation && bookingDetails.dropoffLocation 
+      ? styles.nextButton 
+      : styles.nextButtonDisabled;
+  };
+
+  const navigateToRideConfirmation = () => {
     if (!bookingDetails.pickupLocation || !bookingDetails.dropoffLocation) {
       Alert.alert('Error', 'Please enter pickup and dropoff locations');
       return;
     }
 
+    const selectedRide = rideTypes.find((ride) => ride.id === bookingDetails.rideType);
+
     navigation.navigate('RideConfirmation', {
-      isBookAhead: true,
-      bookingDetails: bookingDetails,
+      ride: selectedRide,
+      destination: bookingDetails.dropoffLocation,
+      destinationAddress: bookingDetails.dropoffLocation,
+      pickupLocation: bookingDetails.pickupLocation,
+      pickupCoords: { latitude: -13.9626, longitude: 33.7741 },
+      destinationCoords: { latitude: -13.9897, longitude: 33.7777 },
+      riderInfo: {
+        paymentMethod: 'cash',
+        usePromo: false,
+        promoDiscount: 0,
+        userId: 'user_1771924083518',
+        userName: 'Rider',
+      },
+      socketRequestId: `ride_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     });
   };
 
@@ -122,7 +153,7 @@ export default function BookAheadScreen({ navigation }) {
           })
         })}
       >
-        <View style={[styles.locationDot, { backgroundColor: '#00a82d' }]} />
+        <View style={[styles.locationDot, { backgroundColor: bookingDetails.pickupLocation ? '#00a82d' : '#ccc' }]} />
         <View style={styles.locationContent}>
           <Text style={styles.locationLabel}>PICKUP</Text>
           <Text style={bookingDetails.pickupLocation ? styles.locationText : styles.locationPlaceholder}>
@@ -143,7 +174,7 @@ export default function BookAheadScreen({ navigation }) {
           })
         })}
       >
-        <View style={[styles.locationDot, { backgroundColor: '#ff4444' }]} />
+        <View style={[styles.locationDot, { backgroundColor: bookingDetails.dropoffLocation ? '#ff4444' : '#ccc' }]} />
         <View style={styles.locationContent}>
           <Text style={styles.locationLabel}>DROPOFF</Text>
           <Text style={bookingDetails.dropoffLocation ? styles.locationText : styles.locationPlaceholder}>
@@ -191,10 +222,7 @@ export default function BookAheadScreen({ navigation }) {
       </ScrollView>
 
       <TouchableOpacity 
-        style={[
-          styles.nextButton,
-          (!bookingDetails.pickupLocation || !bookingDetails.dropoffLocation) && styles.nextButtonDisabled
-        ]}
+        style={bookingDetails.pickupLocation && bookingDetails.dropoffLocation ? styles.nextButton : styles.nextButtonDisabled}
         onPress={() => setStep(2)}
         disabled={!bookingDetails.pickupLocation || !bookingDetails.dropoffLocation}
       >
@@ -312,38 +340,37 @@ export default function BookAheadScreen({ navigation }) {
   const renderStep3 = () => (
     <View style={styles.stepContainer}>
       <Text style={styles.stepTitle}>Choose your ride</Text>
-      <Text style={styles.stepSubtitle}>Select vehicle type</Text>
+      <Text style={styles.stepSubtitle}>Select your preferred ride type</Text>
 
-      {rideTypes.map((ride) => (
-        <TouchableOpacity
-          key={ride.id}
-          style={[
-            styles.rideTypeCard,
-            bookingDetails.rideType === ride.id && styles.rideTypeCardSelected
-          ]}
-          onPress={() => setBookingDetails({...bookingDetails, rideType: ride.id})}
-        >
-          <View style={styles.rideIcon}>
-            <MaterialIcon name={ride.icon} size={32} color={bookingDetails.rideType === ride.id ? '#00a82d' : '#666'} />
-          </View>
-          <View style={styles.rideInfo}>
-            <View style={styles.rideHeader}>
-              <Text style={styles.rideName}>{ride.name}</Text>
-              <Text style={styles.ridePrice}>MK {ride.basePrice}</Text>
+      {/* Ride Options */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.rideContainer}>
+        {rideTypes.map((ride) => (
+          <TouchableOpacity
+            key={ride.id}
+            style={[
+              styles.rideTypeCard,
+              bookingDetails.rideType === ride.id && styles.rideTypeCardSelected
+            ]}
+            onPress={() => setBookingDetails({...bookingDetails, rideType: ride.id})}
+          >
+            <View style={styles.rideIconContainer}>
+              <MaterialIcon name={ride.icon} size={32} color={bookingDetails.rideType === ride.id ? '#00a82d' : '#666'} />
             </View>
-            <View style={styles.rideDetails}>
+            <View style={styles.rideInfo}>
+              <Text style={styles.rideName}>{ride.name}</Text>
+              <Text style={styles.ridePrice}>MK {ride.basePrice.toLocaleString()}</Text>
               <View style={styles.rideDetail}>
                 <MaterialIcon name="person" size={14} color="#666" />
-                <Text style={styles.rideDetailText}>x{ride.capacity}</Text>
+                <Text style={styles.rideDetailText}>{ride.capacity} seats</Text>
               </View>
               <View style={styles.rideDetail}>
-                <MaterialIcon name="speed" size={14} color="#666" />
+                <MaterialIcon name="schedule" size={14} color="#666" />
                 <Text style={styles.rideDetailText}>{ride.time}</Text>
               </View>
             </View>
-          </View>
-        </TouchableOpacity>
-      ))}
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       {/* Passenger & Luggage */}
       <View style={styles.optionsContainer}>
@@ -442,7 +469,7 @@ export default function BookAheadScreen({ navigation }) {
           <Text style={styles.summaryTitle}>Trip Details</Text>
           
           <View style={styles.summaryRow}>
-            <Icon name="location-on" size={16} color="#00a82d" />
+            <MaterialIcon name="location-on" size={16} color="#00a82d" />
             <View style={styles.summaryTextContainer}>
               <Text style={styles.summaryLabel}>FROM</Text>
               <Text style={styles.summaryValue}>{bookingDetails.pickupLocation}</Text>
@@ -450,7 +477,7 @@ export default function BookAheadScreen({ navigation }) {
           </View>
 
           <View style={styles.summaryRow}>
-            <Icon name="location-on" size={16} color="#ff4444" />
+            <MaterialIcon name="location-on" size={16} color="#ff4444" />
             <View style={styles.summaryTextContainer}>
               <Text style={styles.summaryLabel}>TO</Text>
               <Text style={styles.summaryValue}>{bookingDetails.dropoffLocation}</Text>
@@ -460,7 +487,7 @@ export default function BookAheadScreen({ navigation }) {
           <View style={styles.divider} />
 
           <View style={styles.summaryRow}>
-            <Icon name="calendar-today" size={16} color="#666" />
+            <MaterialIcon name="calendar-today" size={16} color="#666" />
             <Text style={styles.summaryDetail}>
               {formatDate(bookingDetails.date)} at {formatTime(bookingDetails.time)}
             </Text>
@@ -468,7 +495,7 @@ export default function BookAheadScreen({ navigation }) {
 
           {bookingDetails.returnTrip && (
             <View style={styles.summaryRow}>
-              <Icon name="repeat" size={16} color="#666" />
+              <MaterialIcon name="repeat" size={16} color="#666" />
               <Text style={styles.summaryDetail}>
                 Return: {formatDate(bookingDetails.returnDate)} at {formatTime(bookingDetails.returnTime)}
               </Text>
@@ -481,7 +508,7 @@ export default function BookAheadScreen({ navigation }) {
           <Text style={styles.summaryTitle}>Ride Details</Text>
           
           <View style={styles.rideSummary}>
-            <Icon name={selectedRide?.icon} size={24} color="#00a82d" />
+            <MaterialIcon name={selectedRide?.icon} size={24} color="#00a82d" />
             <View style={styles.rideSummaryInfo}>
               <Text style={styles.rideSummaryName}>{selectedRide?.name}</Text>
               <Text style={styles.rideSummaryCapacity}>
@@ -547,7 +574,7 @@ export default function BookAheadScreen({ navigation }) {
 
           <TouchableOpacity 
             style={styles.confirmButton}
-            onPress={handleBookNow}
+            onPress={navigateToRideConfirmation}
           >
             <Text style={styles.confirmButtonText}>Confirm Booking</Text>
             <MaterialIcon name="check" size={20} color="#fff" />
@@ -562,7 +589,7 @@ export default function BookAheadScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="#000" />
+          <MaterialIcon name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Book Ahead</Text>
         <View style={{ width: 24 }} />
@@ -669,6 +696,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
+    transform: [],
   },
   progressStepActive: {
     backgroundColor: '#00a82d',
@@ -686,6 +714,7 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: '#f0f0f0',
     marginHorizontal: 5,
+    transform: [],
   },
   progressLineActive: {
     backgroundColor: '#00a82d',
@@ -719,6 +748,7 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     marginRight: 12,
+    transform: [],
   },
   locationContent: {
     flex: 1,
@@ -776,6 +806,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+    transform: [],
   },
   popularName: {
     fontSize: 14,
@@ -805,6 +836,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    transform: [],
   },
   dateTimeInfo: {
     flex: 1,
@@ -854,6 +886,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#e0e0e0',
     padding: 2,
+    transform: [],
   },
   toggleActive: {
     backgroundColor: '#00a82d',
@@ -863,9 +896,10 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     backgroundColor: '#fff',
+    transform: [],
   },
   toggleCircleActive: {
-    transform: [{ translateX: 24 }],
+    marginLeft: 24,
   },
   returnContainer: {
     marginTop: 8,
@@ -892,6 +926,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    transform: [],
   },
   rideInfo: {
     flex: 1,
@@ -961,6 +996,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#e0e0e0',
+    transform: [],
   },
   counterValue: {
     fontSize: 16,

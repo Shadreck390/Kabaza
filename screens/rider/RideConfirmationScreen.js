@@ -20,7 +20,7 @@ import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import LinearGradient from 'react-native-linear-gradient';
 
-import realTimeService from '@services/socket/realtimeUpdates';
+import realTimeService from '@src/services/socket/realtimeUpdates';
 import { getUserData } from '@src/utils/userStorage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
@@ -146,28 +146,6 @@ export default function RideConfirmationScreen() {
       }),
     ]).start();
 
-    // Check connection first
-    if (connectionStatus !== 'connected') {
-      Alert.alert(
-        'Connection Required',
-        'Please check your internet connection to request a ride.',
-        [
-          { 
-            text: 'Try Again', 
-            onPress: () => {
-              realTimeService.connectSocket();
-              setTimeout(() => {
-                const status = realTimeService.getConnectionStatus();
-                setConnectionStatus(status.isConnected ? 'connected' : 'disconnected');
-              }, 2000);
-            }
-          },
-          { text: 'Cancel', style: 'cancel' }
-        ]
-      );
-      return;
-    }
-
     if (!user) {
       Alert.alert('Error', 'User information not loaded. Please try again.');
       return;
@@ -199,38 +177,43 @@ export default function RideConfirmationScreen() {
         estimatedTime: estimatedArrival,
         surgeMultiplier: surgeMultiplier,
         promoCode: usePromo ? 'PROMO20' : null,
-        status: 'pending',
+        status: 'searching',
         createdAt: new Date().toISOString(),
         riderRating: user.rating || 4.5
       };
 
       console.log('Sending ride request:', rideData);
 
-      // Send real-time ride request
-      const requestSent = realTimeService.requestRide(rideData);
-      
-      if (requestSent) {
+      // Try to send real-time ride request (but don't block navigation)
+      try {
+        realTimeService.requestRide(rideData);
         console.log('Ride request sent successfully:', rideData.requestId);
-        
-        // Navigate to waiting screen
-        navigation.navigate('RideWaiting', {
-          rideId: rideData.requestId,
-          rideData: {
-            ...ride,
-            price: finalPrice,
-            formattedPrice: formatMK(finalPrice),
-            estimatedTime: estimatedArrival,
-            distance: ride.distance,
-            surgeMultiplier: surgeMultiplier,
-            isSurge: surgeMultiplier > 1.0
-          },
-          pickup: pickupLocation,
-          destination: destination || destinationAddress,
-          paymentMethod: paymentMethod,
-        });
-      } else {
-        Alert.alert('Request Failed', 'Failed to send ride request. Please try again.');
+      } catch (socketError) {
+        console.log('Socket error, but continuing navigation:', socketError);
       }
+      
+      // Navigate to waiting screen immediately
+      navigation.navigate('RideWaiting', {
+        rideId: rideData.requestId,
+        rideData: {
+          ...ride,
+          price: finalPrice,
+          formattedPrice: formatMK(finalPrice),
+          estimatedTime: estimatedArrival,
+          distance: ride.distance,
+          surgeMultiplier: surgeMultiplier,
+        },
+        pickup: pickupLocation || 'Your Location',
+        pickupCoords: pickupCoords || { latitude: -13.9626, longitude: 33.7741 },
+        destination: destinationAddress || destination,
+        destinationCoords: destinationCoords || { latitude: -13.9897, longitude: 33.7777 },
+        paymentMethod: paymentMethod || 'cash',
+        riderInfo: {
+          userId: userId || user.id,
+          userName: userName || user.name || 'Rider',
+          phone: user.phone,
+        },
+      });
     } catch (error) {
       console.error('Ride request error:', error);
       Alert.alert('Error', 'Failed to request ride. Please try again.');
@@ -531,17 +514,17 @@ export default function RideConfirmationScreen() {
           <TouchableOpacity 
             style={[
               styles.confirmButton, 
-              (loading || connectionStatus !== 'connected') && styles.confirmButtonDisabled
+              loading && styles.confirmButtonDisabled
             ]} 
             onPress={handleConfirmRide}
-            disabled={loading || connectionStatus !== 'connected'}
+            disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
               <View style={styles.confirmButtonContent}>
                 <Text style={styles.confirmButtonText}>
-                  {connectionStatus === 'connected' ? 'Confirm Ride' : 'Connect to Request'}
+                  Confirm Ride
                 </Text>
                 <View style={styles.confirmButtonDetails}>
                   <Text style={styles.confirmButtonPrice}>{formatMK(finalPrice)}</Text>

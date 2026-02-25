@@ -78,6 +78,14 @@ const socketService = {
     this.socket.on('driver-location', (data) => this.emitToCallbacks('driver-location', data));
     this.socket.on('notification', (data) => this.emitToCallbacks('notification', data));
     this.socket.on('chat-message', (data) => this.emitToCallbacks('chat-message', data));
+
+    // Add SOS/emergency event listeners
+    this.socket.on('sos-response', (data) => this.emitToCallbacks('sos-response', data));
+    this.socket.on('emergency-update', (data) => this.emitToCallbacks('emergency-update', data));
+    this.socket.on('sos-alert-received', (data) => {
+      console.log('✅ SOS alert acknowledged by server:', data);
+      this.emitToCallbacks('sos-alert-received', data);
+    });
   },
 
   handleConnect() {
@@ -257,6 +265,22 @@ subscribeToNearbyDrivers(location, radius, vehicleTypes, callback) {
         }
       });
     }
+    
+    // Also check for ride-specific callbacks if data has rideId
+    if (data && (data.rideId || data.ride_id)) {
+      const rideId = data.rideId || data.ride_id;
+      const rideEvent = `ride-${rideId}`;
+      
+      if (this.eventCallbacks.has(rideEvent)) {
+        this.eventCallbacks.get(rideEvent).forEach(callback => {
+          try {
+            callback(data);
+          } catch (error) {
+            console.error(`❌ Error in ${rideEvent} callback:`, error);
+          }
+        });
+      }
+    }
   },
 
   addConnectionListener(listener) {
@@ -292,12 +316,123 @@ subscribeToNearbyDrivers(location, radius, vehicleTypes, callback) {
     }
   },
 
-  // RealTimeService methods that might be expected
-  initialize(userData) {
-    return this.initializeSocket(userData);
+// RealTimeService methods that might be expected
+initialize(userData) {
+return this.initializeSocket(userData);
+},
+
+requestRide(rideData) {
+if (this.socket && this.isConnected) {
+console.log('🚗 Requesting ride:', rideData);
+this.socket.emit('request_ride', rideData);
+return true;
+} else {
+console.warn('⚠️ Cannot request ride - socket not connected');
+return false;
+}
+},
+
+subscribeToRideUpdates(rideId, callback) {
+    if (this.socket && this.isConnected) {
+      console.log('👂 Subscribing to ride updates for:', rideId);
+      
+      // Listen to all ride-related events for this ride
+      const events = [
+        'ride-matched',
+        'ride-accepted', 
+        'driver-enroute',
+        'driver-arrived',
+        'ride-started',
+        'ride-completed',
+        'ride-cancelled',
+        'ride-update',
+        'driver-location'
+      ];
+
+      events.forEach(event => {
+        this.socket.on(event, (data) => {
+          if (data.rideId === rideId || data.ride_id === rideId) {
+            callback(event, data);
+          }
+        });
+      });
+
+      // Return unsubscribe function
+      return () => {
+        events.forEach(event => {
+          this.socket.off(event, callback);
+        });
+      };
+    } else {
+      console.warn('⚠️ Cannot subscribe to ride updates - socket not connected');
+      return () => {}; // Return empty cleanup function
+    }
   },
 
-  // Cleanup
+  subscribeToSOSResponse(rideId, callback) {
+    if (this.socket && this.isConnected) {
+      console.log('🆘 Subscribing to SOS responses for ride:', rideId);
+      
+      const handleSOSResponse = (data) => {
+        if (data.rideId === rideId || data.ride_id === rideId) {
+          callback(data);
+        }
+      };
+      
+      const handleEmergencyUpdate = (data) => {
+        if (data.rideId === rideId || data.ride_id === rideId) {
+          callback({ type: 'emergency-update', ...data });
+        }
+      };
+      
+      this.socket.on('sos-response', handleSOSResponse);
+      this.socket.on('emergency-update', handleEmergencyUpdate);
+      
+      // Store for cleanup
+      const subscriptionId = `sos-${rideId}-${Date.now()}`;
+      this.activeSubscriptions.add(subscriptionId);
+      
+      // Return unsubscribe function
+      return () => {
+        this.socket.off('sos-response', handleSOSResponse);
+        this.socket.off('emergency-update', handleEmergencyUpdate);
+        this.activeSubscriptions.delete(subscriptionId);
+      };
+    } else {
+      console.warn('⚠️ Cannot subscribe to SOS responses - socket not connected');
+      return () => {}; // Return empty cleanup function
+    }
+  },
+
+  sendSOSAlert(rideId, location, message, type = 'emergency') {
+    if (this.socket && this.isConnected) {
+      console.log('🚨 Sending SOS alert for ride:', rideId);
+      
+      this.socket.emit('sos-alert', {
+        rideId,
+        location,
+        message,
+        type,
+        timestamp: Date.now(),
+      });
+      
+      return true;
+    } else {
+      console.warn('⚠️ Cannot send SOS alert - socket not connected');
+      
+      // Fallback for mock mode
+      if (__DEV__) {
+        Alert.alert(
+          'SOS Alert (DEV MODE)',
+          `SOS alert would be sent:\nRide: ${rideId}\nLocation: ${JSON.stringify(location)}\nMessage: ${message}`,
+          [{ text: 'OK' }]
+        );
+      }
+      
+      return false;
+    }
+  },
+
   cleanup() {
     this.disconnectSocket();
     this.eventCallbacks.clear();
@@ -306,7 +441,6 @@ subscribeToNearbyDrivers(location, radius, vehicleTypes, callback) {
     this.socket = null;
   },
 
-  // Utility methods
   getConnectionStatus() {
     return {
       isConnected: this.isConnected,

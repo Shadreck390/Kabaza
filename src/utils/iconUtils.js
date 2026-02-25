@@ -247,6 +247,36 @@ const ICON_MAP = {
   },
   
   // Settings & Actions
+  'confirmation-number': { 
+    material: 'pin', 
+    fa: 'hashtag', 
+    community: 'numeric', 
+    ion: 'pricetag' 
+  },
+  'verified-user': { 
+    material: 'verified-user', 
+    fa: 'user-check', 
+    community: 'account-check', 
+    ion: 'person-checkmark' 
+  },
+  'support-agent': { 
+    material: 'support-agent', 
+    fa: 'headset', 
+    community: 'account-tie', 
+    ion: 'help-circle' 
+  },
+  'my-location': { 
+    material: 'my-location', 
+    fa: 'location-arrow', 
+    community: 'map-marker', 
+    ion: 'locate' 
+  },
+  'place': { 
+    material: 'place', 
+    fa: 'map-marker-alt', 
+    community: 'map-marker', 
+    ion: 'location' 
+  },
   'settings': { 
     material: 'settings', 
     fa: 'cog', 

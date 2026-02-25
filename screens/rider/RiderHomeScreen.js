@@ -1,4 +1,4 @@
-// screens/rider/RiderHomeScreen.js - FIXED VERSION (Bottom Nav Removed)
+// screens/rider/RiderHomeScreen.js - FIXED VERSION WITH DRAWER MENU
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -17,12 +17,14 @@ import {
   ActivityIndicator,
   Easing,
   SafeAreaView,
+  Modal,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
 import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import LinearGradient from 'react-native-linear-gradient';
 import { getUserData } from '@src/utils/userStorage';
+import { useNavigation } from '@react-navigation/native'; // ADD THIS IMPORT
 
 const { width, height } = Dimensions.get('window');
 
@@ -85,9 +87,10 @@ const MALAWI_LOCATIONS = [
 const AnimatedView = Animated.createAnimatedComponent(View);
 const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
-export default function RiderHomeScreen({ navigation, route }) {
+export default function RiderHomeScreen({ route, navigation }) {
   // ✅ Add route parameter to get userData
   const userDataFromParams = route.params?.userData || {};
+  const drawerNavigation = useNavigation(); // ADD THIS for drawer navigation
   
   // States
   const [region, setRegion] = useState({
@@ -105,6 +108,7 @@ export default function RiderHomeScreen({ navigation, route }) {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [loading, setLoading] = useState(false);
   const [dynamicRideOptions, setDynamicRideOptions] = useState([]);
+  const [menuVisible, setMenuVisible] = useState(false); // ADD THIS for menu modal
   
   // Animation values
   const sheetHeight = useRef(new Animated.Value(SHEET_MIN_HEIGHT)).current;
@@ -471,10 +475,189 @@ export default function RiderHomeScreen({ navigation, route }) {
     setShowRideOptions(false);
   };
 
+  // ADD THIS: Menu Modal Render Function
+  const renderMenuModal = () => (
+    <Modal
+      visible={menuVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setMenuVisible(false)}
+    >
+      <TouchableOpacity 
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setMenuVisible(false)}
+      >
+        <View style={styles.menuModal}>
+          <View style={styles.menuHeader}>
+            <View style={styles.menuHeaderLeft}>
+              <View style={styles.menuUserAvatar}>
+                <Text style={styles.menuUserInitial}>
+                  {userData?.name?.charAt(0)?.toUpperCase() || 'R'}
+                </Text>
+              </View>
+              <View>
+                <Text style={styles.menuUserName}>{userData?.name || 'Rider'}</Text>
+                <Text style={styles.menuUserPhone}>{userData?.phone || '+265 *** ***'}</Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => setMenuVisible(false)}>
+              <MaterialIcon name="close" size={24} color="#000" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.menuList}>
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                navigation.navigate('Profile');
+              }}
+            >
+              <View style={[styles.menuIconContainer, { backgroundColor: '#00a82d20' }]}>
+                <MaterialIcon name="account-circle" size={22} color="#00a82d" />
+              </View>
+              <Text style={styles.menuItemText}>Profile</Text>
+              <MaterialIcon name="chevron-right" size={20} color="#999" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                navigation.navigate('RidesHistory');
+              }}
+            >
+              <View style={[styles.menuIconContainer, { backgroundColor: '#3B82F620' }]}>
+                <MaterialIcon name="history" size={22} color="#3B82F6" />
+              </View>
+              <Text style={styles.menuItemText}>My Rides</Text>
+              <MaterialIcon name="chevron-right" size={20} color="#999" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                navigation.navigate('Notifications');
+              }}
+            >
+              <View style={[styles.menuIconContainer, { backgroundColor: '#F59E0B20' }]}>
+                <MaterialIcon name="notifications" size={22} color="#F59E0B" />
+              </View>
+              <Text style={styles.menuItemText}>Notifications</Text>
+              <MaterialIcon name="chevron-right" size={20} color="#999" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                navigation.navigate('PaymentMethods');
+              }}
+            >
+              <View style={[styles.menuIconContainer, { backgroundColor: '#8B5CF620' }]}>
+                <MaterialIcon name="payment" size={22} color="#8B5CF6" />
+              </View>
+              <Text style={styles.menuItemText}>Payment Methods</Text>
+              <MaterialIcon name="chevron-right" size={20} color="#999" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                navigation.navigate('Settings');
+              }}
+            >
+              <View style={[styles.menuIconContainer, { backgroundColor: '#EC489920' }]}>
+                <MaterialIcon name="settings" size={22} color="#EC4899" />
+              </View>
+              <Text style={styles.menuItemText}>Settings</Text>
+              <MaterialIcon name="chevron-right" size={20} color="#999" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                navigation.navigate('HelpSupport');
+              }}
+            >
+              <View style={[styles.menuIconContainer, { backgroundColor: '#10B98120' }]}>
+                <MaterialIcon name="help" size={22} color="#10B981" />
+              </View>
+              <Text style={styles.menuItemText}>Help & Support</Text>
+              <MaterialIcon name="chevron-right" size={20} color="#999" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                navigation.navigate('Privacy');
+              }}
+            >
+              <View style={[styles.menuIconContainer, { backgroundColor: '#6B728020' }]}>
+                <MaterialIcon name="privacy-tip" size={22} color="#6B7280" />
+              </View>
+              <Text style={styles.menuItemText}>Privacy Policy</Text>
+              <MaterialIcon name="chevron-right" size={20} color="#999" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                navigation.navigate('About');
+              }}
+            >
+              <View style={[styles.menuIconContainer, { backgroundColor: '#3B82F620' }]}>
+                <MaterialIcon name="info" size={22} color="#3B82F6" />
+              </View>
+              <Text style={styles.menuItemText}>About</Text>
+              <MaterialIcon name="chevron-right" size={20} color="#999" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.menuItem, styles.sosMenuItem]}
+              onPress={() => {
+                setMenuVisible(false);
+                navigation.navigate('SOS');
+              }}
+            >
+              <View style={[styles.menuIconContainer, { backgroundColor: '#EF444420' }]}>
+                <MaterialIcon name="emergency" size={22} color="#EF4444" />
+              </View>
+              <Text style={[styles.menuItemText, styles.sosText]}>SOS Emergency</Text>
+              <MaterialIcon name="chevron-right" size={20} color="#EF4444" />
+            </TouchableOpacity>
+          </ScrollView>
+          
+          <View style={styles.menuFooter}>
+            <Text style={styles.versionText}>Kabaza v1.0.0</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
   // RENDER FUNCTIONS
-  const renderTopStatus = () => (
-    <View style={styles.topTimeContainer}>
-      <Text style={styles.timeText}>15:20</Text>
+  // UPDATED: Top header with hamburger menu
+  const renderTopHeader = () => (
+    <View style={styles.headerContainer}>
+      <TouchableOpacity 
+        style={styles.menuButton}
+        onPress={() => setMenuVisible(true)}
+      >
+        <MaterialIcon name="menu" size={24} color="#000" />
+      </TouchableOpacity>
+      
+      <View style={styles.timeContainer}>
+        <Text style={styles.timeText}>15:20</Text>
+      </View>
+      
+      <View style={styles.placeholder} />
     </View>
   );
 
@@ -570,8 +753,8 @@ export default function RiderHomeScreen({ navigation, route }) {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      {/* TOP TIME */}
-      {renderTopStatus()}
+      {/* TOP HEADER WITH HAMBURGER MENU */}
+      {renderTopHeader()}
 
       {/* MAP VIEW */}
       <Animated.View style={[styles.mapContainer, { opacity: mapOpacity }]}>
@@ -620,7 +803,7 @@ export default function RiderHomeScreen({ navigation, route }) {
             {quickActions.map((action, index) => renderQuickAction(action, index))}
           </View>
 
-          {/* SEARCH BAR - FIXED with clickable Later */}
+          {/* SEARCH BAR */}
           <View style={styles.searchContainer}>
             <View style={styles.searchBox}>
               <TouchableOpacity 
@@ -628,7 +811,6 @@ export default function RiderHomeScreen({ navigation, route }) {
                 onPress={() => navigation.navigate('SearchLocation', {
                   initialType: 'destination',
                   onLocationSelect: (selectedLocation) => {
-                    // When user selects a location from SearchLocationScreen
                     navigation.navigate('RideSelection', {
                       destination: selectedLocation.name,
                       destinationAddress: selectedLocation.address || 'Malawi Location',
@@ -710,27 +892,55 @@ export default function RiderHomeScreen({ navigation, route }) {
           <View style={styles.bottomSpacing} />
         </ScrollView>
       </Animated.View>
+
+      {/* MENU MODAL */}
+      {renderMenuModal()}
     </SafeAreaView>
   );
 }
 
+// UPDATED STYLES with menu modal styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
   },
-  topTimeContainer: {
+  // NEW: Header with hamburger menu
+  headerContainer: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 50 : 30,
     left: 0,
     right: 0,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
     zIndex: 1000,
+  },
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  timeContainer: {
+    flex: 1,
+    alignItems: 'center',
   },
   timeText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#000',
+  },
+  placeholder: {
+    width: 40,
   },
   mapContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -936,5 +1146,104 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 40,
+  },
+  
+  // NEW: Menu Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-start',
+  },
+  menuModal: {
+    width: '80%',
+    height: '100%',
+    backgroundColor: '#FFFFFF',
+    borderTopRightRadius: 20,
+    borderBottomRightRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  menuHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  menuHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuUserAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#00a82d',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  menuUserInitial: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  menuUserName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 2,
+  },
+  menuUserPhone: {
+    fontSize: 12,
+    color: '#666',
+  },
+  menuList: {
+    flex: 1,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  menuIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  menuItemText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '500',
+  },
+  sosMenuItem: {
+    marginTop: 10,
+    borderBottomWidth: 0,
+  },
+  sosText: {
+    color: '#EF4444',
+    fontWeight: '700',
+  },
+  menuFooter: {
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    alignItems: 'center',
+  },
+  versionText: {
+    fontSize: 12,
+    color: '#999',
   },
 });
