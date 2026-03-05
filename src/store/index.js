@@ -4,7 +4,7 @@ import { persistStore, persistReducer } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { combineReducers } from 'redux';
 import autoMergeLevel2 from 'redux-persist/lib/stateReconciler/autoMergeLevel2';
-// import createSagaMiddleware from 'redux-saga'; // ❌ TEMPORARILY DISABLED
+import createSagaMiddleware from 'redux-saga'; // ✅ RE-ENABLED
 
 // Import your slices - FIXED: Use relative paths to avoid alias issues during initialization
 import authReducer from './slices/authSlice';
@@ -16,8 +16,8 @@ import notificationReducer from './slices/notificationSlice';
 import chatReducer from './slices/chatSlice';
 import paymentReducer from './slices/paymentSlice';
 
-// ❌ TEMPORARILY DISABLED - Comment out saga import
-// import rootSaga from './sagas/index';
+// ✅ RE-ENABLED - Import saga
+import rootSaga from './sagas/index';
 
 // ====================
 // PERSIST CONFIGURATION
@@ -177,32 +177,32 @@ const rootReducer = combineReducers({
 });
 
 // ====================
-// SAGA SETUP - TEMPORARILY DISABLED
+// SAGA SETUP - RE-ENABLED
 // ====================
 
-// ❌ COMMENT OUT SAGA SETUP FOR NOW
-// const sagaMiddleware = createSagaMiddleware({
-//   onError: (error, errorInfo) => {
-//     const errorMessage = error?.message || 'Unknown saga error';
-//     const errorStack = error?.stack || 'No stack trace';
-//     const sagaStack = errorInfo?.sagaStack || '';
+//  SAGA MIDDLEWARE
+const sagaMiddleware = createSagaMiddleware({
+  onError: (error, errorInfo) => {
+    const errorMessage = error?.message || 'Unknown saga error';
+    const errorStack = error?.stack || 'No stack trace';
+    const sagaStack = errorInfo?.sagaStack || '';
     
-//     console.error('🔥 SAGA ERROR:', errorMessage);
+    console.error(' SAGA ERROR:', errorMessage);
     
-//     if ((sagaStack && sagaStack.includes('notificationSaga')) || 
-//         (errorStack && errorStack.includes('notificationSaga'))) {
-//       console.warn('⚠️ Notification saga error - continuing without notifications');
-//       return;
-//     }
+    if ((sagaStack && sagaStack.includes('notificationSaga')) || 
+        (errorStack && errorStack.includes('notificationSaga'))) {
+      console.warn(' Notification saga error - continuing without notifications');
+      return;
+    }
     
-//     console.log('Error details:', {
-//       message: errorMessage,
-//       stack: errorStack,
-//       sagaStack: sagaStack,
-//       sagaLocation: errorInfo?.sagaLocation || 'Unknown location'
-//     });
-//   },
-// });
+    console.log('Error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      sagaStack: sagaStack,
+      sagaLocation: errorInfo?.sagaLocation || 'Unknown location'
+    });
+  },
+});
 
 // ====================
 // STORE CONFIGURATION
@@ -235,8 +235,8 @@ export const store = configureStore({
       // No thunk: false since we're not using saga
     });
     
-    // ❌ DON'T ADD SAGA MIDDLEWARE FOR NOW
-    // middlewares.push(sagaMiddleware);
+    // ✅ ADD SAGA MIDDLEWARE
+    middlewares.push(sagaMiddleware);
     
     // Add custom middleware for real-time logging (development only)
     if (__DEV__) {
@@ -336,22 +336,22 @@ export const subscribeToStore = (selector, callback) => {
 };
 
 // ====================
-// SAGA STARTUP - TEMPORARILY DISABLED
+// SAGA STARTUP - RE-ENABLED
 // ====================
 
-// ❌ DON'T RUN SAGAS FOR NOW
-// try {
-//   sagaMiddleware.run(rootSaga);
-//   console.log('✅ Sagas started successfully');
-// } catch (error) {
-//   console.error('❌ Failed to start sagas:', error);
-//   // Create a dummy saga if the real one fails
-//   const dummySaga = function* () {
-//     console.log('⚠️ Running with dummy saga (Firebase disabled)');
-//     yield;
-//   };
-//   sagaMiddleware.run(dummySaga);
-// }
+// ✅ RUN SAGAS
+try {
+  sagaMiddleware.run(rootSaga);
+  console.log('✅ Sagas started successfully');
+} catch (error) {
+  console.error('❌ Failed to start sagas:', error);
+  // Create a dummy saga if the real one fails
+  const dummySaga = function* () {
+    console.log('⚠️ Running with dummy saga (some features may be limited)');
+    yield;
+  };
+  sagaMiddleware.run(dummySaga);
+}
 
 // ====================
 // STORE READY CHECK

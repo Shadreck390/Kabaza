@@ -386,6 +386,7 @@ const RiderStack = () => (
   >
     <Stack.Screen name="RiderTabs" component={RiderTabs} />
     <Stack.Screen name="RideSelection" component={RideSelectionScreen} />
+    <Stack.Screen name="RideConfirmation" component={RideConfirmationScreen} />
     <Stack.Screen name="SearchLocation" component={SearchLocationScreen} />
     <Stack.Screen name="Profile" component={ProfileScreen} />
     <Stack.Screen name="Settings" component={SettingsScreen} />

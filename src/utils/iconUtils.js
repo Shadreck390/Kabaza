@@ -1347,6 +1347,134 @@ const ICON_MAP = {
     community: 'check', 
     ion: 'checkmark' 
   },
+  
+  // Additional missing icons from logs
+  'straighten': { 
+    material: 'straighten', 
+    fa: 'ruler-horizontal', 
+    community: 'ruler', 
+    ion: 'resize' 
+  },
+  'timer': { 
+    material: 'timer', 
+    fa: 'clock', 
+    community: 'timer', 
+    ion: 'time' 
+  },
+  'star-border': { 
+    material: 'star-border', 
+    fa: 'star', 
+    community: 'star-outline', 
+    ion: 'star-outline' 
+  },
+  'cancel': { 
+    material: 'cancel', 
+    fa: 'times', 
+    community: 'close', 
+    ion: 'close' 
+  },
+  'receipt': { 
+    material: 'receipt', 
+    fa: 'receipt', 
+    community: 'receipt', 
+    ion: 'receipt' 
+  },
+  'chat': { 
+    material: 'chat', 
+    fa: 'comments', 
+    community: 'message', 
+    ion: 'chatbubble' 
+  },
+  'favorite-border': { 
+    material: 'favorite-border', 
+    fa: 'heart', 
+    community: 'heart-outline', 
+    ion: 'heart-outline' 
+  },
+  'work': { 
+    material: 'work', 
+    fa: 'briefcase', 
+    community: 'briefcase', 
+    ion: 'briefcase' 
+  },
+  'sort': { 
+    material: 'sort', 
+    fa: 'sort', 
+    community: 'sort', 
+    ion: 'funnel' 
+  },
+  'shopping-cart': { 
+    material: 'shopping-cart', 
+    fa: 'shopping-cart', 
+    community: 'cart', 
+    ion: 'cart' 
+  },
+  'local-hospital': { 
+    material: 'local-hospital', 
+    fa: 'hospital', 
+    community: 'hospital', 
+    ion: 'medical' 
+  },
+  'apartment': { 
+    material: 'apartment', 
+    fa: 'building', 
+    community: 'office-building', 
+    ion: 'business' 
+  },
+  'nature-people': { 
+    material: 'nature-people', 
+    fa: 'hiking', 
+    community: 'hiking', 
+    ion: 'walk' 
+  },
+  'school': { 
+    material: 'school', 
+    fa: 'graduation-cap', 
+    community: 'school', 
+    ion: 'school' 
+  },
+  'local-police': { 
+    material: 'local-police', 
+    fa: 'shield-alt', 
+    community: 'police', 
+    ion: 'shield' 
+  },
+  'store': { 
+    material: 'store', 
+    fa: 'store', 
+    community: 'store', 
+    ion: 'storefront' 
+  },
+  'directions': { 
+    material: 'directions', 
+    fa: 'directions', 
+    community: 'directions', 
+    ion: 'navigate' 
+  },
+  'local-taxi': { 
+    material: 'local-taxi', 
+    fa: 'taxi', 
+    community: 'taxi', 
+    ion: 'car' 
+  },
+  'wifi-off': { 
+    material: 'wifi-off', 
+    fa: 'wifi', 
+    community: 'wifi-off', 
+    ion: 'wifi' 
+  },
+  'person-search': { 
+    material: 'person-search', 
+    fa: 'user-search', 
+    community: 'account-search', 
+    ion: 'person' 
+  },
+  'keyboard-arrow-down': { 
+    material: 'keyboard-arrow-down', 
+    fa: 'chevron-down', 
+    community: 'chevron-down', 
+    ion: 'chevron-down' 
+  },
   'checkmark-circle': { 
     material: 'check-circle', 
     fa: 'check-circle', 

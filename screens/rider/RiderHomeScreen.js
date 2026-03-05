@@ -399,7 +399,8 @@ export default function RiderHomeScreen({ route, navigation }) {
       },
       pickupLocation: 'Your Location',
       pickupCoordinates: currentLocation || region,
-      rideType: 'kabaza',
+      rideType: 'lifo',
+      preselectedRide: 'lifo',
     });
     
     if (destination.coordinates) {
@@ -441,6 +442,7 @@ export default function RiderHomeScreen({ route, navigation }) {
       pickupLocation: 'Your Location',
       pickupCoordinates: currentLocation || region,
       rideType: rideType,
+      preselectedRide: rideType,
     });
   };
 
@@ -703,7 +705,8 @@ export default function RiderHomeScreen({ route, navigation }) {
             destinationCoordinates: item.coordinates,
             pickupLocation: 'Your Location',
             pickupCoordinates: currentLocation || region,
-            rideType: 'kabaza',
+            rideType: 'lifo',
+            preselectedRide: 'lifo',
           });
         }}
         activeOpacity={0.7}
@@ -817,7 +820,8 @@ export default function RiderHomeScreen({ route, navigation }) {
                       destinationCoordinates: selectedLocation.coordinates,
                       pickupLocation: 'Your Location',
                       pickupCoordinates: currentLocation || region,
-                      rideType: 'kabaza',
+                      rideType: 'lifo',
+                      preselectedRide: 'lifo',
                     });
                   }
                 })}

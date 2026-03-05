@@ -550,6 +550,52 @@ export const getActiveRide = async () => {
   }
 };
 
+export const getRideHistory = async (userId, page = 1, limit = 20) => {
+  try {
+    // Get ride history from storage
+    const historyKey = `${STORAGE_KEYS.RIDE_HISTORY}_${userId}`;
+    const data = await AsyncStorage.getItem(historyKey);
+    
+    if (!data) {
+      console.log('📚 [getRideHistory] No ride history found');
+      return {
+        rides: [],
+        totalCount: 0,
+        page,
+        limit,
+        hasMore: false
+      };
+    }
+    
+    const history = JSON.parse(data);
+    const rides = history.rides || [];
+    
+    // Pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedRides = rides.slice(startIndex, endIndex);
+    
+    console.log(`📚 [getRideHistory] Retrieved ${paginatedRides.length} rides (page ${page})`);
+    
+    return {
+      rides: paginatedRides,
+      totalCount: rides.length,
+      page,
+      limit,
+      hasMore: endIndex < rides.length
+    };
+  } catch (error) {
+    console.error('❌ [getRideHistory] Error:', error);
+    return {
+      rides: [],
+      totalCount: 0,
+      page,
+      limit,
+      hasMore: false
+    };
+  }
+};
+
 // ====================
 // DRIVER FUNCTIONS (For Driver screens)
 // ====================
@@ -699,6 +745,7 @@ export default {
   clearCurrentRide,
   saveActiveRide,
   getActiveRide,
+  getRideHistory,
   
   // Driver
   saveDriverProfile,

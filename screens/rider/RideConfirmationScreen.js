@@ -154,21 +154,30 @@ export default function RideConfirmationScreen() {
     try {
       setLoading(true);
 
+      if (!pickupCoords || !destinationCoords) {
+        Alert.alert('Error', 'Pickup or destination coordinates missing');
+        setLoading(false);
+        return;
+      }
+
+      // Generate unique request ID
+      const requestId = `ride_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
       // Prepare ride data
       const rideData = {
-        requestId: socketRequestId || `ride_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        requestId: requestId,
         riderId: userId || user.id,
         riderName: userName || user.name || 'Rider',
-        riderPhone: user.phone,
+        riderPhone: user.phone || '',
         rideType: ride.name,
         vehicleType: ride.vehicleType,
         pickupLocation: {
           address: pickupLocation || 'Your Location',
-          coordinates: pickupCoords || { latitude: -13.9626, longitude: 33.7741 }
+          coordinates: pickupCoords 
         },
         destination: {
           address: destinationAddress || destination,
-          coordinates: destinationCoords || { latitude: -13.9897, longitude: 33.7777 }
+          coordinates: destinationCoords
         },
         paymentMethod: paymentMethod || 'cash',
         estimatedPrice: finalPrice,
@@ -185,38 +194,48 @@ export default function RideConfirmationScreen() {
       console.log('Sending ride request:', rideData);
 
       // Try to send real-time ride request (but don't block navigation)
+      let socketSuccess = false;
       try {
-        realTimeService.requestRide(rideData);
-        console.log('Ride request sent successfully:', rideData.requestId);
+        const result = await realTimeService.requestRide(rideData);
+        socketSuccess = result?.success || false;
+        console.log('Ride request sent successfully:', requestId);
       } catch (socketError) {
-        console.log('Socket error, but continuing navigation:', socketError);
+        console.log('Socket error (continuing with navigation):', socketError);
       }
       
       // Navigate to waiting screen immediately
-      navigation.navigate('RideWaiting', {
-        rideId: rideData.requestId,
-        rideData: {
-          ...ride,
-          price: finalPrice,
-          formattedPrice: formatMK(finalPrice),
-          estimatedTime: estimatedArrival,
-          distance: ride.distance,
-          surgeMultiplier: surgeMultiplier,
-        },
-        pickup: pickupLocation || 'Your Location',
-        pickupCoords: pickupCoords || { latitude: -13.9626, longitude: 33.7741 },
-        destination: destinationAddress || destination,
-        destinationCoords: destinationCoords || { latitude: -13.9897, longitude: 33.7777 },
-        paymentMethod: paymentMethod || 'cash',
-        riderInfo: {
-          userId: userId || user.id,
-          userName: userName || user.name || 'Rider',
-          phone: user.phone,
-        },
+      navigation.navigate('Riders', {
+        screen: 'RideWaiting',
+        params: {
+          rideId: requestId,
+          rideData: {
+            ...ride,
+            price: finalPrice,
+            formattedPrice: formatMK(finalPrice),
+            estimatedTime: estimatedArrival,
+            distance: ride.distance,
+            surgeMultiplier: surgeMultiplier,
+          },
+          pickup: pickupLocation || 'Your Location',
+           pickupCoords: pickupCoords,
+           destination: destinationAddress || destination,
+           destinationCoords: destinationCoords,
+           paymentMethod: paymentMethod || 'cash',
+           riderInfo: {
+              userId: userId || user.id,
+              name: userName || user.name || 'Rider',
+              phone: user.phone || '',
+           },
+           isMock: !socketSuccess,
+        }
       });
+
     } catch (error) {
       console.error('Ride request error:', error);
-      Alert.alert('Error', 'Failed to request ride. Please try again.');
+      Alert.alert(
+        'Error',
+        'Failed to request ride. Please check your connection and try again.'
+      );
     } finally {
       setLoading(false);
     }

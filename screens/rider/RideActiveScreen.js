@@ -1,4 +1,6 @@
-// screens/rider/RideActiveScreen.js
+// screens/rider/RideActiveScreen.js - UPDATED VERSION
+// SOS removed, full map view, minimal overlays
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -10,73 +12,75 @@ import {
   Dimensions,
   ScrollView,
   Animated,
-  Image,
   Alert,
   ActivityIndicator,
   Modal,
   TextInput,
   SafeAreaView,
   Easing,
-  PanResponder,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapViewDirections from 'react-native-maps-directions';
 import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
-import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { getUserData } from '@utils/userStorage';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
-
-const AnimatedMapView = Animated.createAnimatedComponent(MapView);
-const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
+const GOOGLE_MAPS_APIKEY = 'AIzaSyAft39RTF1LB_GTSYqy-I2tswzakC4fT3Q'; // Replace with your actual API key
 
 export default function RideActiveScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { rideData } = route.params || {};
+  const { 
+    rideId,
+    driver: driverData,
+    pickup,
+    destination,
+    pickupCoords,
+    destinationCoords,
+    paymentMethod,
+    rideData,
+    riderInfo,
+    isMock 
+  } = route.params || {};
   
-  const [rideStatus, setRideStatus] = useState('arriving');
-  const [currentLocation, setCurrentLocation] = useState({
+  const [rideStatus, setRideStatus] = useState('arriving'); // arriving, ongoing, completed
+  const [currentLocation, setCurrentLocation] = useState(pickupCoords || {
     latitude: -13.9626,
     longitude: 33.7741,
   });
-  const [driverLocation, setDriverLocation] = useState({
-    latitude: -13.9681,
-    longitude: 33.7702,
-  });
-  const [pickupLocation, setPickupLocation] = useState({
+  const [driverLocation, setDriverLocation] = useState(null);
+  const [pickupLocation] = useState(pickupCoords || {
     latitude: -13.9626,
     longitude: 33.7741,
-    name: 'Current Location',
-    address: 'Your current location',
+    address: pickup || 'Your current location',
   });
-  const [destination, setDestination] = useState({
+  const [destinationLocation] = useState(destinationCoords || {
     latitude: -13.9583,
     longitude: 33.7689,
-    name: 'Area 3 Shopping Complex',
-    address: 'Lilongwe, Malawi',
+    address: destination || 'Destination',
   });
-  const [eta, setEta] = useState(8);
-  const [distance, setDistance] = useState(2.5);
-  const [fare, setFare] = useState(850);
+  const [eta, setEta] = useState(rideData?.estimatedTime ? parseInt(rideData.estimatedTime) : 8);
+  const [distance, setDistance] = useState(rideData?.distance || 2.5);
+  const [fare] = useState(rideData?.price || 850);
   const [showChat, setShowChat] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
-  const [chatMessages, setChatMessages] = useState([
-    { id: 1, sender: 'driver', message: 'I\'m arriving in 2 minutes', time: '10:45 AM' },
-    { id: 2, sender: 'you', message: 'Okay, I\'m waiting at the gate', time: '10:46 AM' },
-  ]);
+  const [chatMessages, setChatMessages] = useState([]);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showSOSModal, setShowSOSModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(5);
+  const [directionsReady, setDirectionsReady] = useState(false);
+  const [routeDistance, setRouteDistance] = useState('');
+  const [routeDuration, setRouteDuration] = useState('');
   const [userData, setUserData] = useState(null);
+  const [mapExpanded, setMapExpanded] = useState(false);
   
-  // Driver mock data
-  const [driver, setDriver] = useState({
+  // Driver data
+  const [driver, setDriver] = useState(driverData || {
     name: 'John Banda',
     phone: '+265 88 123 4567',
-    vehicle: 'Toyota Corolla',
+    vehicle: rideData?.vehicleType === 'bike' ? 'Honda CG 125' : 'Toyota Corolla',
     plate: 'LL 2345 A',
     rating: 4.8,
     trips: 1247,
@@ -94,27 +98,18 @@ export default function RideActiveScreen() {
   const modalSlide = useRef(new Animated.Value(height)).current;
   const ratingScale = useRef(new Animated.Value(0)).current;
   const mapZoom = useRef(new Animated.Value(0.02)).current;
-  const routeOpacity = useRef(new Animated.Value(0)).current;
-  const sosPulse = useRef(new Animated.Value(1)).current;
+  const infoCardOpacity = useRef(new Animated.Value(1)).current;
+  
+  // Map reference
+  const mapRef = useRef(null);
   
   // Map region
   const [region, setRegion] = useState({
-    latitude: -13.9650,
-    longitude: 33.7720,
+    latitude: pickupCoords?.latitude || -13.9650,
+    longitude: pickupCoords?.longitude || 33.7720,
     latitudeDelta: 0.02,
     longitudeDelta: 0.02,
   });
-  
-  // Route coordinates (mock polyline)
-  const routeCoordinates = [
-    { latitude: -13.9681, longitude: 33.7702 },
-    { latitude: -13.9660, longitude: 33.7710 },
-    { latitude: -13.9640, longitude: 33.7720 },
-    { latitude: -13.9626, longitude: 33.7741 },
-    { latitude: -13.9610, longitude: 33.7725 },
-    { latitude: -13.9595, longitude: 33.7700 },
-    { latitude: -13.9583, longitude: 33.7689 },
-  ];
 
   useEffect(() => {
     // Initial animations
@@ -143,12 +138,6 @@ export default function RideActiveScreen() {
         useNativeDriver: true,
         delay: 200,
       }),
-      Animated.timing(routeOpacity, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-        delay: 400,
-      }),
     ]).start();
 
     // Driver marker pulse animation
@@ -169,120 +158,95 @@ export default function RideActiveScreen() {
       ])
     ).start();
 
-    // SOS button pulse animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(sosPulse, {
-          toValue: 1.1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(sosPulse, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
     const loadUserData = async () => {
       const data = await getUserData();
       setUserData(data);
     };
     loadUserData();
     
-    // Simulate ride progression
-    const timer = setInterval(() => {
-      if (rideStatus === 'arriving' && eta > 0) {
-        setEta(prev => Math.max(0, prev - 1));
-        
-        // Move driver closer with animation
-        if (driverLocation.latitude < pickupLocation.latitude) {
-          Animated.timing(driverMarkerScale, {
-            toValue: 1.1,
-            duration: 500,
-            useNativeDriver: true,
-          }).start(() => {
-            setDriverLocation(prev => ({
-              latitude: prev.latitude + 0.0005,
-              longitude: prev.longitude + 0.0005,
-            }));
-            Animated.timing(driverMarkerScale, {
-              toValue: 1,
-              duration: 500,
-              useNativeDriver: true,
-            }).start();
-          });
-        }
-        
-        // ETA update animation
-        Animated.sequence([
-          Animated.timing(etaScale, {
-            toValue: 1.2,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(etaScale, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]).start();
-        
-        // Auto-transition to ongoing when arrived
-        if (eta <= 1) {
-          setTimeout(() => {
-            setRideStatus('ongoing');
-            setEta(15);
-            // Zoom out map for trip view
-            Animated.timing(mapZoom, {
-              toValue: 0.04,
-              duration: 1000,
-              useNativeDriver: false,
-            }).start();
-          }, 2000);
-        }
-      } else if (rideStatus === 'ongoing' && eta > 0) {
-        setEta(prev => Math.max(0, prev - 1));
-        
-        // Move driver toward destination
-        if (driverLocation.latitude > destination.latitude) {
-          Animated.sequence([
-            Animated.timing(driverMarkerScale, {
-              toValue: 1.1,
-              duration: 300,
-              useNativeDriver: true,
-            }),
-            Animated.timing(driverMarkerScale, {
-              toValue: 1,
-              duration: 300,
-              useNativeDriver: true,
-            }),
-          ]).start(() => {
-            setDriverLocation(prev => ({
-              latitude: prev.latitude - 0.0003,
-              longitude: prev.longitude - 0.0003,
-            }));
-          });
-        }
-        
-        // Update distance
-        setDistance(prev => Math.max(0, prev - 0.1));
-        
-        // Auto-complete ride
-        if (eta <= 1) {
-          setTimeout(() => {
-            setRideStatus('completed');
-            setTimeout(() => {
-              openRatingModal();
-            }, 1000);
-          }, 2000);
-        }
-      }
-    }, 60000); // Update every minute (simulated)
+    // Initialize driver location based on status
+    if (rideStatus === 'arriving') {
+      // Driver is coming from nearby
+      setDriverLocation({
+        latitude: (pickupLocation.latitude || -13.9626) + 0.005,
+        longitude: (pickupLocation.longitude || 33.7741) + 0.005,
+      });
+    } else if (rideStatus === 'ongoing') {
+      // Driver is at pickup going to destination
+      setDriverLocation(pickupLocation);
+    }
     
-    return () => clearInterval(timer);
-  }, [rideStatus, eta]);
+    // Simulate ride progression for mock mode
+    if (isMock) {
+      const timer = setInterval(() => {
+        if (rideStatus === 'arriving' && eta > 0) {
+          setEta(prev => Math.max(0, prev - 1));
+          
+          // Move driver closer
+          if (driverLocation && driverLocation.latitude < pickupLocation.latitude) {
+            setDriverLocation(prev => ({
+              latitude: (prev?.latitude || 0) + 0.0005,
+              longitude: (prev?.longitude || 0) + 0.0005,
+            }));
+          }
+          
+          // Auto-transition to ongoing when arrived
+          if (eta <= 1) {
+            setTimeout(() => {
+              setRideStatus('ongoing');
+              setDriverLocation(pickupLocation);
+              setEta(parseInt(rideData?.estimatedTime) || 15);
+              // Zoom out map for trip view
+              Animated.timing(mapZoom, {
+                toValue: 0.04,
+                duration: 1000,
+                useNativeDriver: false,
+              }).start();
+            }, 2000);
+          }
+        } else if (rideStatus === 'ongoing' && eta > 0) {
+          setEta(prev => Math.max(0, prev - 1));
+          setDistance(prev => Math.max(0, prev - 0.1));
+          
+          // Move driver toward destination
+          if (driverLocation && driverLocation.latitude > destinationLocation.latitude) {
+            setDriverLocation(prev => ({
+              latitude: (prev?.latitude || 0) - 0.0003,
+              longitude: (prev?.longitude || 0) - 0.0003,
+            }));
+          }
+          
+          // Auto-complete ride
+          if (eta <= 1) {
+            setTimeout(() => {
+              setRideStatus('completed');
+              setTimeout(() => {
+                openRatingModal();
+              }, 1000);
+            }, 2000);
+          }
+        }
+      }, 60000); // Update every minute (simulated)
+      
+      return () => clearInterval(timer);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Update ETA animation when eta changes
+    Animated.sequence([
+      Animated.timing(etaScale, {
+        toValue: 1.2,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(etaScale, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [eta]);
 
   const openRatingModal = () => {
     setShowRatingModal(true);
@@ -335,33 +299,14 @@ export default function RideActiveScreen() {
   };
 
   const handleCallDriver = () => {
-    // Button press animation
-    const buttonScale = new Animated.Value(1);
-    Animated.sequence([
-      Animated.spring(buttonScale, {
-        toValue: 0.9,
-        useNativeDriver: true,
-        tension: 150,
-        friction: 3,
-      }),
-      Animated.spring(buttonScale, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 150,
-        friction: 3,
-      }),
-    ]).start();
-
-    setTimeout(() => {
-      Alert.alert(
-        'Call Driver',
-        `Call ${driver.name} at ${driver.phone}?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Call', onPress: () => console.log('Calling driver...') },
-        ]
-      );
-    }, 150);
+    Alert.alert(
+      'Call Driver',
+      `Call ${driver.name} at ${driver.phone}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Call', onPress: () => console.log('Calling driver...') },
+      ]
+    );
   };
 
   const handleCancelRide = () => {
@@ -387,8 +332,6 @@ export default function RideActiveScreen() {
 
   const confirmCancelRide = (reason) => {
     closeCancelModal();
-    
-    // Fade out animation before navigation
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -404,56 +347,7 @@ export default function RideActiveScreen() {
       Alert.alert(
         'Ride Cancelled',
         `Your ride has been cancelled${reason ? `: ${reason}` : ''}.`,
-        [
-          { 
-            text: 'OK', 
-            onPress: () => navigation.goBack() 
-          },
-        ]
-      );
-    });
-  };
-
-  const handleSOS = () => {
-    setShowSOSModal(true);
-    Animated.timing(modalSlide, {
-      toValue: 0,
-      duration: 400,
-      useNativeDriver: true,
-      easing: Easing.out(Easing.cubic),
-    }).start();
-  };
-
-  const closeSOSModal = () => {
-    Animated.timing(modalSlide, {
-      toValue: height,
-      duration: 300,
-      useNativeDriver: true,
-      easing: Easing.in(Easing.cubic),
-    }).start(() => {
-      setShowSOSModal(false);
-    });
-  };
-
-  const sendSOSAlert = () => {
-    // Pulse animation before sending
-    Animated.sequence([
-      Animated.timing(sosPulse, {
-        toValue: 1.5,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(sosPulse, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      closeSOSModal();
-      Alert.alert(
-        'SOS Alert Sent',
-        'Emergency services and your emergency contacts have been notified.',
-        [{ text: 'OK' }]
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     });
   };
@@ -468,60 +362,41 @@ export default function RideActiveScreen() {
       };
       setChatMessages([...chatMessages, newMessage]);
       setChatMessage('');
-      
-      // Simulate driver response after 2 seconds with animation
-      setTimeout(() => {
-        const driverResponse = {
-          id: chatMessages.length + 2,
-          sender: 'driver',
-          message: 'Got it, thank you!',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-        setChatMessages(prev => {
-          const updated = [...prev, driverResponse];
-          // Scroll to bottom animation
-          if (this.chatScrollView) {
-            setTimeout(() => {
-              this.chatScrollView.scrollToEnd({ animated: true });
-            }, 100);
-          }
-          return updated;
-        });
-      }, 2000);
     }
   };
 
   const handleRatingSubmit = () => {
-    // Button press animation
-    const buttonScale = new Animated.Value(1);
-    Animated.sequence([
-      Animated.spring(buttonScale, {
-        toValue: 0.9,
-        useNativeDriver: true,
-        tension: 150,
-        friction: 3,
-      }),
-      Animated.spring(buttonScale, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 150,
-        friction: 3,
-      }),
-    ]).start();
+    closeRatingModal();
+    Alert.alert(
+      'Thank You!',
+      `You rated ${driver.name} ${rating} stars.`,
+      [{ text: 'OK', onPress: () => navigation.navigate('RideHistory') }]
+    );
+  };
 
-    setTimeout(() => {
-      closeRatingModal();
-      Alert.alert(
-        'Thank You!',
-        `You rated ${driver.name} ${rating} stars.`,
-        [
-          { 
-            text: 'OK', 
-            onPress: () => navigation.navigate('RideHistory') 
-          },
-        ]
-      );
-    }, 150);
+  const handleStartTrip = () => {
+    setRideStatus('ongoing');
+    setDriverLocation(pickupLocation);
+    setEta(parseInt(rideData?.estimatedTime) || 15);
+    Animated.timing(mapZoom, {
+      toValue: 0.04,
+      duration: 1000,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleCompleteRide = () => {
+    setRideStatus('completed');
+    setTimeout(() => openRatingModal(), 1000);
+  };
+
+  const toggleMapExpanded = () => {
+    setMapExpanded(!mapExpanded);
+    Animated.timing(infoCardOpacity, {
+      toValue: mapExpanded ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
   };
 
   const getStatusText = () => {
@@ -552,202 +427,175 @@ export default function RideActiveScreen() {
   };
 
   const getActionButton = () => {
-    const buttonScale = useRef(new Animated.Value(1)).current;
-    
     switch (rideStatus) {
       case 'arriving':
         return (
-          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => {
-                Animated.sequence([
-                  Animated.spring(buttonScale, {
-                    toValue: 0.95,
-                    useNativeDriver: true,
-                    tension: 150,
-                    friction: 3,
-                  }),
-                  Animated.spring(buttonScale, {
-                    toValue: 1,
-                    useNativeDriver: true,
-                    tension: 150,
-                    friction: 3,
-                  }),
-                ]).start(() => {
-                  setRideStatus('ongoing');
-                  Animated.timing(mapZoom, {
-                    toValue: 0.04,
-                    duration: 1000,
-                    useNativeDriver: false,
-                  }).start();
-                });
-              }}
-              activeOpacity={0.7}
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={handleStartTrip}
+            activeOpacity={0.7}
+          >
+            <LinearGradient
+              colors={['#22C55E', '#16A34A']}
+              style={styles.actionButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
             >
-              <LinearGradient
-                colors={['#22C55E', '#16A34A']}
-                style={styles.actionButtonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <MaterialIcon name="check" size={24} color="#FFFFFF" />
-                <Text style={styles.actionButtonText}>I'm in the vehicle</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
+              <MaterialIcon name="check" size={24} color="#FFFFFF" />
+              <Text style={styles.actionButtonText}>I'm in the vehicle</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         );
       case 'ongoing':
         return (
-          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => {
-                Animated.sequence([
-                  Animated.spring(buttonScale, {
-                    toValue: 0.95,
-                    useNativeDriver: true,
-                    tension: 150,
-                    friction: 3,
-                  }),
-                  Animated.spring(buttonScale, {
-                    toValue: 1,
-                    useNativeDriver: true,
-                    tension: 150,
-                    friction: 3,
-                  }),
-                ]).start(() => {
-                  setRideStatus('completed');
-                  setTimeout(() => openRatingModal(), 1000);
-                });
-              }}
-              activeOpacity={0.7}
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={handleCompleteRide}
+            activeOpacity={0.7}
+          >
+            <LinearGradient
+              colors={['#22C55E', '#16A34A']}
+              style={styles.actionButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
             >
-              <LinearGradient
-                colors={['#22C55E', '#16A34A']}
-                style={styles.actionButtonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <MaterialIcon name="check-circle" size={24} color="#FFFFFF" />
-                <Text style={styles.actionButtonText}>Complete Ride</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
+              <MaterialIcon name="check-circle" size={24} color="#FFFFFF" />
+              <Text style={styles.actionButtonText}>Complete Ride</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         );
       default:
         return null;
     }
   };
 
-  const renderChatMessage = ({ item, index }) => {
-    const translateX = item.sender === 'you' ? 20 : -20;
-    return (
-      <Animated.View
-        style={[
-          styles.chatMessage, 
-          item.sender === 'you' ? styles.chatMessageSent : styles.chatMessageReceived,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateX: slideAnim }],
-          },
-        ]}
-      >
-        <LinearGradient
-          colors={item.sender === 'you' ? ['#22C55E', '#16A34A'] : ['#F3F4F6', '#E5E7EB']}
-          style={styles.chatMessageBubble}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <Text style={[
-            styles.chatMessageText,
-            item.sender === 'you' ? styles.chatMessageTextSent : styles.chatMessageTextReceived
-          ]}>
-            {item.message}
-          </Text>
-          <Text style={styles.chatMessageTime}>{item.time}</Text>
-        </LinearGradient>
-      </Animated.View>
-    );
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* ANIMATED MAP */}
-      <Animated.View style={[styles.mapContainer, { opacity: fadeAnim }]}>
+      {/* FULL MAP - takes all available space */}
+      <View style={StyleSheet.absoluteFillObject}>
         <MapView
+          ref={mapRef}
           provider={PROVIDER_GOOGLE}
           style={styles.map}
           region={{
-            ...region,
-            latitudeDelta: mapZoom,
-            longitudeDelta: mapZoom,
+            latitude: pickupLocation.latitude,
+            longitude: pickupLocation.longitude,
+            latitudeDelta: mapZoom._value,
+            longitudeDelta: mapZoom._value,
           }}
           showsUserLocation={true}
+          showsMyLocationButton={false}
+          showsCompass={true}
+          zoomEnabled={true}
+          scrollEnabled={true}
+          onPress={toggleMapExpanded}
         >
           {/* Pickup Marker */}
-          <Marker coordinate={pickupLocation} title="Pickup">
-            <Animated.View style={styles.pickupMarker}>
-              <LinearGradient
-                colors={['#3B82F6', '#2563EB']}
-                style={styles.pickupMarkerInner}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <MaterialIcon name="location-pin" size={24} color="#FFFFFF" />
-              </LinearGradient>
-            </Animated.View>
-          </Marker>
+          {pickupLocation && (
+            <Marker coordinate={pickupLocation} title="Pickup">
+              <Animated.View style={styles.pickupMarker}>
+                <LinearGradient
+                  colors={['#3B82F6', '#2563EB']}
+                  style={styles.pickupMarkerInner}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcon name="location-pin" size={24} color="#FFFFFF" />
+                </LinearGradient>
+              </Animated.View>
+            </Marker>
+          )}
 
           {/* Destination Marker */}
-          <Marker coordinate={destination} title="Destination">
-            <Animated.View style={styles.destinationMarker}>
-              <LinearGradient
-                colors={['#EF4444', '#DC2626']}
-                style={styles.destinationMarkerInner}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <MaterialIcon name="place" size={24} color="#FFFFFF" />
-              </LinearGradient>
-            </Animated.View>
-          </Marker>
+          {destinationLocation && (
+            <Marker coordinate={destinationLocation} title="Destination">
+              <Animated.View style={styles.destinationMarker}>
+                <LinearGradient
+                  colors={['#EF4444', '#DC2626']}
+                  style={styles.destinationMarkerInner}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcon name="place" size={24} color="#FFFFFF" />
+                </LinearGradient>
+              </Animated.View>
+            </Marker>
+          )}
 
-          {/* Driver Marker with Animation */}
-          <Marker coordinate={driverLocation} title={driver.name} description={driver.vehicle}>
-            <Animated.View style={[styles.driverMarker, { transform: [{ scale: driverMarkerScale }] }]}>
-              <LinearGradient
-                colors={['#22C55E', '#16A34A']}
-                style={styles.driverMarkerInner}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <MaterialIcon name="directions-car" size={20} color="#FFFFFF" />
-              </LinearGradient>
-            </Animated.View>
-          </Marker>
+          {/* Driver Marker */}
+          {driverLocation && (
+            <Marker 
+              coordinate={driverLocation} 
+              title={driver.name} 
+              description={driver.vehicle}
+            >
+              <Animated.View style={[styles.driverMarker, { transform: [{ scale: driverMarkerScale }] }]}>
+                <LinearGradient
+                  colors={['#22C55E', '#16A34A']}
+                  style={styles.driverMarkerInner}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcon name="directions-car" size={20} color="#FFFFFF" />
+                </LinearGradient>
+              </Animated.View>
+            </Marker>
+          )}
 
-          {/* Animated Route Polyline */}
-          <AnimatedPolyline
-            coordinates={routeCoordinates}
-            strokeColor="#22C55E"
-            strokeWidth={4}
-            lineDashPattern={[10, 10]}
-            opacity={routeOpacity}
-          />
+          {/* ACTUAL ROAD ROUTE using Directions API */}
+          {driverLocation && (
+            <MapViewDirections
+              origin={driverLocation}
+              destination={rideStatus === 'arriving' ? pickupLocation : destinationLocation}
+              apikey={GOOGLE_MAPS_APIKEY}
+              strokeWidth={4}
+              strokeColor="#22C55E"
+              mode="DRIVING"
+              optimizeWaypoints={true}
+              onReady={(result) => {
+                console.log('Directions ready:', result);
+                setDirectionsReady(true);
+                setRouteDistance(result.distance);
+                setRouteDuration(result.duration);
+                
+                // Update ETA with actual route duration
+                if (rideStatus === 'arriving') {
+                  setEta(Math.ceil(result.duration));
+                } else {
+                  setEta(Math.ceil(result.duration));
+                  setDistance(parseFloat(result.distance));
+                }
+                
+                // Fit map to show entire route
+                if (mapRef.current) {
+                  mapRef.current.fitToCoordinates(result.coordinates, {
+                    edgePadding: {
+                      top: 100,
+                      right: 50,
+                      bottom: 200,
+                      left: 50,
+                    },
+                    animated: true,
+                  });
+                }
+              }}
+              onError={(errorMessage) => {
+                console.log('Directions error:', errorMessage);
+              }}
+              resetOnChange={false}
+              timePrecision="now"
+            />
+          )}
         </MapView>
-      </Animated.View>
+      </View>
 
-      {/* TOP BAR WITH ANIMATION */}
+      {/* MINIMAL TOP BAR - only back button and status (SOS removed) */}
       <Animated.View 
         style={[
           styles.topBar,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: cardSlide }],
-          },
+          { opacity: fadeAnim, transform: [{ translateY: cardSlide }] }
         ]}
       >
         <TouchableOpacity 
@@ -756,7 +604,7 @@ export default function RideActiveScreen() {
           activeOpacity={0.6}
         >
           <LinearGradient
-            colors={['#F1F5F9', '#E2E8F0']}
+            colors={['#FFFFFF', '#F8FAFC']}
             style={styles.backButtonGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -765,14 +613,7 @@ export default function RideActiveScreen() {
           </LinearGradient>
         </TouchableOpacity>
         
-        <Animated.View 
-          style={[
-            styles.statusBadge,
-            {
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
-        >
+        <Animated.View style={[styles.statusBadge, { transform: [{ scale: scaleAnim }] }]}>
           <LinearGradient
             colors={getStatusGradient()}
             style={styles.statusBadgeGradient}
@@ -786,200 +627,140 @@ export default function RideActiveScreen() {
           </LinearGradient>
         </Animated.View>
         
-        <Animated.View style={{ transform: [{ scale: sosPulse }] }}>
-          <TouchableOpacity 
-            style={styles.sosButton}
-            onPress={handleSOS}
-            activeOpacity={0.6}
-          >
-            <LinearGradient
-              colors={['#EF4444', '#DC2626']}
-              style={styles.sosButtonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <MaterialIcon name="emergency" size={18} color="#FFFFFF" />
-              <Text style={styles.sosText}>SOS</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
+        {/* Empty view for balance - SOS removed */}
+        <View style={{ width: 44 }} />
       </Animated.View>
 
-      {/* DRIVER INFO CARD WITH ANIMATION */}
+      {/* FLOATING INFO CARD - compact, doesn't block map */}
       <Animated.View 
         style={[
-          styles.driverCard,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: cardSlide }],
-          },
+          styles.floatingInfoCard,
+          { opacity: fadeAnim, transform: [{ translateY: cardSlide }] }
         ]}
       >
         <LinearGradient
           colors={['#FFFFFF', '#F8FAFC']}
-          style={styles.driverCardGradient}
+          style={styles.floatingCardGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <View style={styles.driverInfo}>
+          {/* Driver quick info */}
+          <View style={styles.floatingDriverRow}>
             <LinearGradient
               colors={['#22C55E', '#16A34A']}
-              style={styles.driverAvatar}
+              style={styles.floatingDriverAvatar}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Text style={styles.driverInitials}>
+              <Text style={styles.floatingDriverInitials}>
                 {driver.name.split(' ').map(n => n[0]).join('')}
               </Text>
             </LinearGradient>
-            <View style={styles.driverDetails}>
-              <Text style={styles.driverName}>{driver.name}</Text>
-              <View style={styles.driverMeta}>
-                <MaterialIcon name="star" size={14} color="#F59E0B" />
-                <Text style={styles.driverRating}>{driver.rating}</Text>
-                <Text style={styles.driverDivider}>•</Text>
-                <Text style={styles.driverTrips}>{driver.trips.toLocaleString()} trips</Text>
+            
+            <View style={styles.floatingDriverInfo}>
+              <Text style={styles.floatingDriverName}>{driver.name}</Text>
+              <View style={styles.floatingDriverRating}>
+                <MaterialIcon name="star" size={12} color="#F59E0B" />
+                <Text style={styles.floatingRatingText}>{driver.rating}</Text>
+                <Text style={styles.floatingVehicleText}> • {driver.vehicle}</Text>
               </View>
-              <Text style={styles.driverVehicle}>
-                {driver.vehicle} • {driver.plate}
+            </View>
+            
+            <View style={styles.floatingActions}>
+              <TouchableOpacity 
+                style={styles.floatingActionButton}
+                onPress={handleCallDriver}
+                activeOpacity={0.6}
+              >
+                <LinearGradient
+                  colors={['#22C55E', '#16A34A']}
+                  style={styles.floatingActionIcon}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcon name="phone" size={16} color="#FFFFFF" />
+                </LinearGradient>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.floatingActionButton}
+                onPress={openChat}
+                activeOpacity={0.6}
+              >
+                <LinearGradient
+                  colors={['#22C55E', '#16A34A']}
+                  style={styles.floatingActionIcon}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcon name="chat" size={16} color="#FFFFFF" />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          {/* ETA and Fare row */}
+          <View style={styles.floatingStatsRow}>
+            <View style={styles.floatingStat}>
+              <Text style={styles.floatingStatLabel}>ETA</Text>
+              <Animated.Text style={[styles.floatingStatValue, { transform: [{ scale: etaScale }] }]}>
+                {eta} min
+              </Animated.Text>
+            </View>
+            
+            <View style={styles.floatingStatDivider} />
+            
+            <View style={styles.floatingStat}>
+              <Text style={styles.floatingStatLabel}>Distance</Text>
+              <Text style={styles.floatingStatValue}>{distance.toFixed(1)} km</Text>
+            </View>
+            
+            <View style={styles.floatingStatDivider} />
+            
+            <View style={styles.floatingStat}>
+              <Text style={styles.floatingStatLabel}>Fare</Text>
+              <Text style={styles.floatingStatValue}>MK {fare}</Text>
+            </View>
+          </View>
+          
+          {/* Location summary */}
+          <View style={styles.floatingLocationRow}>
+            <View style={styles.floatingLocationItem}>
+              <LinearGradient
+                colors={['#3B82F6', '#2563EB']}
+                style={styles.floatingLocationDot}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
+              <Text style={styles.floatingLocationText} numberOfLines={1}>
+                {pickup || 'Your location'}
+              </Text>
+            </View>
+            
+            <View style={styles.floatingLocationArrow}>
+              <MaterialIcon name="arrow-forward" size={16} color="#9CA3AF" />
+            </View>
+            
+            <View style={styles.floatingLocationItem}>
+              <LinearGradient
+                colors={['#EF4444', '#DC2626']}
+                style={styles.floatingLocationDot}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
+              <Text style={styles.floatingLocationText} numberOfLines={1}>
+                {destination || 'Destination'}
               </Text>
             </View>
           </View>
-          
-          <View style={styles.driverActions}>
-            <TouchableOpacity 
-              style={styles.driverActionButton}
-              onPress={handleCallDriver}
-              activeOpacity={0.6}
-            >
-              <LinearGradient
-                colors={['#22C55E', '#16A34A']}
-                style={styles.driverActionIcon}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <MaterialIcon name="phone" size={18} color="#FFFFFF" />
-              </LinearGradient>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.driverActionButton}
-              onPress={openChat}
-              activeOpacity={0.6}
-            >
-              <LinearGradient
-                colors={['#22C55E', '#16A34A']}
-                style={styles.driverActionIcon}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <MaterialIcon name="chat" size={18} color="#FFFFFF" />
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
         </LinearGradient>
       </Animated.View>
 
-      {/* RIDE INFO CARD WITH ANIMATION */}
-      <Animated.View 
-        style={[
-          styles.rideInfoCard,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: cardSlide }],
-          },
-        ]}
-      >
-        <LinearGradient
-          colors={['#FFFFFF', '#F8FAFC']}
-          style={styles.rideInfoGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.rideInfoRow}>
-            <View style={styles.rideInfoItem}>
-              <MaterialIcon name="access-time" size={24} color="#666" />
-              <Animated.Text style={[
-                styles.rideInfoValue,
-                { transform: [{ scale: etaScale }] }
-              ]}>
-                {eta} min
-              </Animated.Text>
-              <Text style={styles.rideInfoLabel}>ETA</Text>
-            </View>
-            
-            <View style={styles.rideInfoDivider} />
-            
-            <View style={styles.rideInfoItem}>
-              <MaterialIcon name="map" size={24} color="#666" />
-              <Text style={styles.rideInfoValue}>{distance.toFixed(1)} km</Text>
-              <Text style={styles.rideInfoLabel}>Distance</Text>
-            </View>
-            
-            <View style={styles.rideInfoDivider} />
-            
-            <View style={styles.rideInfoItem}>
-              <MaterialIcon name="attach-money" size={24} color="#666" />
-              <Text style={styles.rideInfoValue}>MK {fare}</Text>
-              <Text style={styles.rideInfoLabel}>Fare</Text>
-            </View>
-          </View>
-        </LinearGradient>
-      </Animated.View>
-
-      {/* LOCATION INFO WITH ANIMATION */}
-      <Animated.View 
-        style={[
-          styles.locationCard,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: cardSlide }],
-          },
-        ]}
-      >
-        <LinearGradient
-          colors={['#FFFFFF', '#F8FAFC']}
-          style={styles.locationCardGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.locationRow}>
-            <LinearGradient
-              colors={['#3B82F6', '#2563EB']}
-              style={styles.locationDot}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            />
-            <View style={styles.locationInfo}>
-              <Text style={styles.locationLabel}>Pickup</Text>
-              <Text style={styles.locationText}>{pickupLocation.address}</Text>
-            </View>
-          </View>
-          
-          <View style={styles.routeLine} />
-          
-          <View style={styles.locationRow}>
-            <LinearGradient
-              colors={['#EF4444', '#DC2626']}
-              style={styles.locationDot}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            />
-            <View style={styles.locationInfo}>
-              <Text style={styles.locationLabel}>Destination</Text>
-              <Text style={styles.locationText}>{destination.address}</Text>
-            </View>
-          </View>
-        </LinearGradient>
-      </Animated.View>
-
-      {/* ACTION BUTTONS WITH ANIMATION */}
+      {/* ACTION BUTTONS - minimal at bottom */}
       <Animated.View 
         style={[
           styles.actionContainer,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
         ]}
       >
         {getActionButton()}
@@ -1002,22 +783,8 @@ export default function RideActiveScreen() {
         transparent={true}
         onRequestClose={closeChat}
       >
-        <Animated.View 
-          style={[
-            styles.modalOverlay,
-            {
-              opacity: fadeAnim,
-            },
-          ]}
-        >
-          <Animated.View 
-            style={[
-              styles.chatModal,
-              {
-                transform: [{ translateY: modalSlide }],
-              },
-            ]}
-          >
+        <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+          <Animated.View style={[styles.chatModal, { transform: [{ translateY: modalSlide }] }]}>
             <LinearGradient
               colors={['#FFFFFF', '#F8FAFC']}
               style={styles.chatModalGradient}
@@ -1030,23 +797,31 @@ export default function RideActiveScreen() {
               
               <View style={styles.chatHeader}>
                 <Text style={styles.chatTitle}>Chat with {driver.name}</Text>
-                <TouchableOpacity 
-                  onPress={closeChat}
-                  activeOpacity={0.6}
-                  style={styles.closeChatButton}
-                >
+                <TouchableOpacity onPress={closeChat} style={styles.closeChatButton}>
                   <MaterialIcon name="close" size={24} color="#000" />
                 </TouchableOpacity>
               </View>
               
-              <ScrollView 
-                style={styles.chatMessages}
-                ref={ref => this.chatScrollView = ref}
-                onContentSizeChange={() => this.chatScrollView?.scrollToEnd({ animated: true })}
-              >
-                {chatMessages.map((msg, index) => (
-                  <View key={msg.id}>
-                    {renderChatMessage({ item: msg, index })}
+              <ScrollView style={styles.chatMessages}>
+                {chatMessages.map((msg) => (
+                  <View key={msg.id} style={[
+                    styles.chatMessage,
+                    msg.sender === 'you' ? styles.chatMessageSent : styles.chatMessageReceived
+                  ]}>
+                    <LinearGradient
+                      colors={msg.sender === 'you' ? ['#22C55E', '#16A34A'] : ['#F3F4F6', '#E5E7EB']}
+                      style={styles.chatMessageBubble}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Text style={[
+                        styles.chatMessageText,
+                        msg.sender === 'you' ? styles.chatMessageTextSent : styles.chatMessageTextReceived
+                      ]}>
+                        {msg.message}
+                      </Text>
+                      <Text style={styles.chatMessageTime}>{msg.time}</Text>
+                    </LinearGradient>
                   </View>
                 ))}
               </ScrollView>
@@ -1087,22 +862,8 @@ export default function RideActiveScreen() {
         transparent={true}
         onRequestClose={closeCancelModal}
       >
-        <Animated.View 
-          style={[
-            styles.modalOverlay,
-            {
-              opacity: fadeAnim,
-            },
-          ]}
-        >
-          <Animated.View 
-            style={[
-              styles.modalContent,
-              {
-                transform: [{ translateY: modalSlide }],
-              },
-            ]}
-          >
+        <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+          <Animated.View style={[styles.modalContent, { transform: [{ translateY: modalSlide }] }]}>
             <LinearGradient
               colors={['#FFFFFF', '#F8FAFC']}
               style={styles.modalGradient}
@@ -1114,22 +875,15 @@ export default function RideActiveScreen() {
                 You may be charged a cancellation fee if you cancel now.
               </Text>
               
-              {['Driver taking too long', 'Change of plans', 'Found another ride', 'Emergency'].map((reason, index) => (
-                <Animated.View
+              {['Driver taking too long', 'Change of plans', 'Found another ride', 'Emergency'].map((reason) => (
+                <TouchableOpacity 
                   key={reason}
-                  style={{
-                    opacity: fadeAnim,
-                    transform: [{ translateY: slideAnim }],
-                  }}
+                  style={styles.cancelReason}
+                  onPress={() => confirmCancelRide(reason)}
+                  activeOpacity={0.7}
                 >
-                  <TouchableOpacity 
-                    style={styles.cancelReason}
-                    onPress={() => confirmCancelRide(reason)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.cancelReasonText}>{reason}</Text>
-                  </TouchableOpacity>
-                </Animated.View>
+                  <Text style={styles.cancelReasonText}>{reason}</Text>
+                </TouchableOpacity>
               ))}
               
               <TouchableOpacity 
@@ -1144,86 +898,6 @@ export default function RideActiveScreen() {
         </Animated.View>
       </Modal>
 
-      {/* SOS MODAL */}
-      <Modal
-        visible={showSOSModal}
-        animationType="none"
-        transparent={true}
-        onRequestClose={closeSOSModal}
-      >
-        <Animated.View 
-          style={[
-            styles.modalOverlay,
-            {
-              opacity: fadeAnim,
-            },
-          ]}
-        >
-          <Animated.View 
-            style={[
-              styles.modalContent,
-              {
-                transform: [{ translateY: modalSlide }],
-              },
-            ]}
-          >
-            <LinearGradient
-              colors={['#FEF2F2', '#FEE2E2']}
-              style={styles.modalGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Animated.View 
-                style={[
-                  styles.sosIcon,
-                  {
-                    transform: [{ scale: sosPulse }],
-                  },
-                ]}
-              >
-                <LinearGradient
-                  colors={['#EF4444', '#DC2626']}
-                  style={styles.sosIconGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <MaterialIcon name="emergency" size={36} color="#FFFFFF" />
-                </LinearGradient>
-              </Animated.View>
-              
-              <Text style={[styles.modalTitle, { color: '#DC2626' }]}>Emergency SOS</Text>
-              <Text style={styles.modalSubtitle}>
-                This will notify emergency services and your emergency contacts.
-                Only use in case of a real emergency.
-              </Text>
-              
-              <TouchableOpacity 
-                style={styles.sosConfirmButton}
-                onPress={sendSOSAlert}
-                activeOpacity={0.7}
-              >
-                <LinearGradient
-                  colors={['#EF4444', '#DC2626']}
-                  style={styles.sosConfirmGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.sosConfirmText}>SEND SOS ALERT</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.modalCancelButton}
-                onPress={closeSOSModal}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalCancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </LinearGradient>
-          </Animated.View>
-        </Animated.View>
-      </Modal>
-
       {/* RATING MODAL */}
       <Modal
         visible={showRatingModal}
@@ -1231,33 +905,15 @@ export default function RideActiveScreen() {
         transparent={true}
         onRequestClose={closeRatingModal}
       >
-        <Animated.View 
-          style={[
-            styles.modalOverlay,
-            {
-              opacity: fadeAnim,
-            },
-          ]}
-        >
-          <Animated.View 
-            style={[
-              styles.modalContent,
-              {
-                transform: [{ translateY: modalSlide }],
-              },
-            ]}
-          >
+        <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+          <Animated.View style={[styles.modalContent, { transform: [{ translateY: modalSlide }] }]}>
             <LinearGradient
               colors={['#FFFFFF', '#F8FAFC']}
               style={styles.modalGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Animated.View 
-                style={{
-                  transform: [{ scale: ratingScale }],
-                }}
-              >
+              <Animated.View style={{ transform: [{ scale: ratingScale }] }}>
                 <Text style={styles.modalTitle}>Rate Your Driver</Text>
                 <Text style={styles.modalSubtitle}>
                   How was your ride with {driver.name}?
@@ -1265,11 +921,7 @@ export default function RideActiveScreen() {
                 
                 <View style={styles.ratingStars}>
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <TouchableOpacity 
-                      key={star}
-                      onPress={() => setRating(star)}
-                      activeOpacity={0.7}
-                    >
+                    <TouchableOpacity key={star} onPress={() => setRating(star)}>
                       <LinearGradient
                         colors={star <= rating ? ['#F59E0B', '#D97706'] : ['#F3F4F6', '#E5E7EB']}
                         style={styles.starContainer}
@@ -1320,42 +972,40 @@ export default function RideActiveScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  mapContainer: {
-    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF',
   },
   map: {
     ...StyleSheet.absoluteFillObject,
   },
   
-  // TOP BAR
+  // TOP BAR - SOS removed
   topBar: {
     position: 'absolute',
-    top: 60,
+    top: Platform.OS === 'ios' ? 60 : 40,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     zIndex: 10,
   },
   backButton: {
     width: 44,
     height: 44,
-  },
-  backButtonGradient: {
-    width: '100%',
-    height: '100%',
     borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+  },
+  backButtonGradient: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   statusBadge: {
     borderRadius: 20,
@@ -1385,269 +1035,147 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  sosButton: {
-    width: 44,
-    height: 44,
-  },
-  sosButtonGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  sosText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginLeft: 4,
-  },
   
-  // DRIVER CARD
-  driverCard: {
+  // FLOATING INFO CARD - compact design
+  floatingInfoCard: {
     position: 'absolute',
-    top: 120,
-    left: 24,
-    right: 24,
+    top: Platform.OS === 'ios' ? 120 : 100,
+    left: 16,
+    right: 16,
     borderRadius: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 8,
+    zIndex: 5,
   },
-  driverCardGradient: {
+  floatingCardGradient: {
     borderRadius: 24,
-    padding: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    padding: 16,
   },
-  driverInfo: {
+  floatingDriverRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    marginBottom: 12,
   },
-  driverAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
+  floatingDriverAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  driverInitials: {
-    fontSize: 20,
+  floatingDriverInitials: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  driverDetails: {
+  floatingDriverInfo: {
     flex: 1,
   },
-  driverName: {
-    fontSize: 18,
+  floatingDriverName: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#000',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  driverMeta: {
+  floatingDriverRating: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
   },
-  driverRating: {
-    fontSize: 14,
+  floatingRatingText: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#666',
     marginLeft: 4,
   },
-  driverDivider: {
-    fontSize: 14,
-    color: '#D1D5DB',
-    marginHorizontal: 6,
-  },
-  driverTrips: {
-    fontSize: 14,
+  floatingVehicleText: {
+    fontSize: 13,
     color: '#666',
+    marginLeft: 2,
   },
-  driverVehicle: {
-    fontSize: 14,
-    color: '#666',
-  },
-  driverActions: {
+  floatingActions: {
     flexDirection: 'row',
   },
-  driverActionButton: {
-    marginLeft: 12,
+  floatingActionButton: {
+    marginLeft: 8,
   },
-  driverActionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+  floatingActionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#22C55E',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  
-  // RIDE INFO CARD
-  rideInfoCard: {
-    position: 'absolute',
-    top: 210,
-    left: 24,
-    right: 24,
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  rideInfoGradient: {
-    borderRadius: 24,
-    padding: 24,
-  },
-  rideInfoRow: {
+  floatingStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    marginBottom: 12,
   },
-  rideInfoItem: {
-    alignItems: 'center',
+  floatingStat: {
     flex: 1,
+    alignItems: 'center',
   },
-  rideInfoValue: {
-    fontSize: 28,
+  floatingStatLabel: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  floatingStatValue: {
+    fontSize: 18,
     fontWeight: '800',
     color: '#000',
-    marginTop: 8,
-    marginBottom: 4,
   },
-  rideInfoLabel: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  rideInfoDivider: {
+  floatingStatDivider: {
     width: 1,
-    height: 50,
+    height: 30,
     backgroundColor: '#E5E7EB',
   },
-  
-  // LOCATION CARD
-  locationCard: {
-    position: 'absolute',
-    bottom: 160,
-    left: 24,
-    right: 24,
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  locationCardGradient: {
-    borderRadius: 24,
-    padding: 24,
-  },
-  locationRow: {
+  floatingLocationRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  locationDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    marginRight: 16,
-    marginTop: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
+  floatingLocationItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  locationInfo: {
+  floatingLocationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  floatingLocationText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#333',
     flex: 1,
   },
-  locationLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  locationText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#000',
-    lineHeight: 20,
-  },
-  routeLine: {
-    width: 2,
-    height: 24,
-    backgroundColor: '#D1D5DB',
-    marginLeft: 11,
-    marginVertical: 8,
-  },
-  
-  // ACTION CONTAINER
-  actionContainer: {
-    position: 'absolute',
-    bottom: 60,
-    left: 24,
-    right: 24,
-    alignItems: 'center',
-  },
-  actionButton: {
-    width: '100%',
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#22C55E',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-    marginBottom: 16,
-  },
-  actionButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
-    borderRadius: 20,
-  },
-  actionButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginLeft: 12,
-  },
-  cancelButton: {
-    paddingVertical: 12,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+  floatingLocationArrow: {
+    marginHorizontal: 8,
   },
   
   // MAP MARKERS
@@ -1699,7 +1227,50 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   
-  // CHAT MODAL
+  // ACTION CONTAINER
+  actionContainer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+    zIndex: 5,
+  },
+  actionButton: {
+    width: '100%',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+    marginBottom: 12,
+  },
+  actionButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 20,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  cancelButton: {
+    paddingVertical: 8,
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  
+  // MODALS (unchanged)
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
@@ -1823,13 +1394,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  
-  // MODALS
   modalContent: {
     borderRadius: 32,
     overflow: 'hidden',
     width: width * 0.85,
     maxWidth: 400,
+    alignSelf: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
@@ -1875,37 +1445,6 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
-  sosIcon: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  sosIconGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  sosConfirmButton: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginTop: 24,
-  },
-  sosConfirmGradient: {
-    paddingVertical: 18,
-    borderRadius: 20,
-    alignItems: 'center',
-  },
-  sosConfirmText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
   modalButton: {
     borderRadius: 20,
     overflow: 'hidden',
@@ -1948,5 +1487,6 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: 20,
     minHeight: 100,
+    color: '#000',
   },
 });

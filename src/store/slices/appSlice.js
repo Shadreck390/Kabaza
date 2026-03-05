@@ -1,4 +1,5 @@
-// src/store/slices/appSlice.js
+// src/store/slices/appSlice.js - COMPLETE FIXED VERSION
+
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
@@ -17,13 +18,17 @@ const initialState = {
   socketStatus: 'disconnected', // 'disconnected', 'connecting', 'connected', 'reconnecting'
   lastSocketConnection: null,
   connectionType: null, // 'wifi', 'cellular', 'ethernet', 'unknown'
-  
+  connectionQuality: {
+    status: 'unknown', // 'unknown', 'good', 'fair', 'poor'
+    lastUpdated: null,
+  },
+
   // Real-time Features
   realTimeEnabled: true,
   backgroundUpdates: false,
   locationTracking: true,
   pushNotifications: false,
-  
+
   // Loading States
   loadingStates: {
     auth: { loading: false, message: '' },
@@ -32,11 +37,11 @@ const initialState = {
     location: { loading: false, message: '' },
     driver: { loading: false, message: '' },
   },
-  
+
   // Errors
   errors: [],
   lastError: null,
-  
+
   // Notifications (System notifications)
   notifications: [],
   unreadNotificationCount: 0,
@@ -49,7 +54,7 @@ const initialState = {
     paymentUpdates: true,
     promotions: false,
   },
-  
+
   // App Settings
   appSettings: {
     theme: 'light', // 'light', 'dark', 'system'
@@ -63,7 +68,7 @@ const initialState = {
     analyticsEnabled: true,
     crashReporting: true,
   },
-  
+
   // User Preferences
   preferences: {
     favoriteLocations: [],
@@ -82,7 +87,7 @@ const initialState = {
       preferredAreas: [],
     },
   },
-  
+
   // Cache & Timestamps
   lastUpdates: {
     location: null,
@@ -91,7 +96,7 @@ const initialState = {
     notifications: null,
     messages: null,
   },
-  
+
   // Performance Metrics
   metrics: {
     appStartTime: null,
@@ -100,7 +105,7 @@ const initialState = {
     totalRideTime: 0,
     totalDistance: 0,
   },
-  
+
   // Session Management
   session: {
     startTime: null,
@@ -108,7 +113,7 @@ const initialState = {
     screensVisited: [],
     actionsPerformed: [],
   },
-  
+
   // Feature Flags
   featureFlags: {
     enableSOS: true,
@@ -119,7 +124,7 @@ const initialState = {
     enablePromotions: true,
     enableReferrals: true,
   },
-  
+
   // Debug & Development
   debug: {
     enabled: __DEV__,
@@ -138,19 +143,19 @@ const appSlice = createSlice({
     setLoading: (state, action) => {
       state.isLoading = action.payload;
     },
-    
+
     setAppReady: (state, action) => {
       state.isAppReady = action.payload;
     },
-    
+
     setInitialized: (state, action) => {
       state.isInitialized = action.payload;
     },
-    
+
     setCurrentScreen: (state, action) => {
       state.previousScreen = state.currentScreen;
       state.currentScreen = action.payload;
-      
+
       // Track screen visits in session
       if (action.payload) {
         state.session.screensVisited.push({
@@ -159,24 +164,24 @@ const appSlice = createSlice({
         });
       }
     },
-    
+
     setAppState: (state, action) => {
       state.appState = action.payload;
     },
-    
+
     // Network & Connection
     setNetworkStatus: (state, action) => {
       state.networkStatus = action.payload.status;
       state.connectionType = action.payload.type || state.connectionType;
-      
+
       if (action.payload.status === 'connected') {
         state.lastSocketConnection = Date.now();
       }
     },
-    
+
     setSocketStatus: (state, action) => {
       state.socketStatus = action.payload.status;
-      
+
       if (action.payload.status === 'connected') {
         state.lastSocketConnection = Date.now();
         state.realTimeEnabled = true;
@@ -184,7 +189,32 @@ const appSlice = createSlice({
         state.realTimeEnabled = false;
       }
     },
-    
+
+    // ✅ NEW SOCKET ACTIONS - PROPERLY PLACED INSIDE reducers
+    setSocketConnected: (state, action) => {
+      state.socketStatus = action.payload ? 'connected' : 'disconnected';
+      state.realTimeEnabled = action.payload;
+      if (action.payload) {
+        state.lastSocketConnection = Date.now();
+      }
+    },
+
+    setSocketReconnecting: (state, action) => {
+      if (action.payload) {
+        state.socketStatus = 'reconnecting';
+      } else {
+        state.socketStatus = state.socketStatus === 'reconnecting' ? 'disconnected' : state.socketStatus;
+      }
+    },
+
+    updateConnectionQuality: (state, action) => {
+      if (!state.connectionQuality) {
+        state.connectionQuality = {};
+      }
+      state.connectionQuality.status = action.payload;
+      state.connectionQuality.lastUpdated = Date.now();
+    },
+
     // Loading States Management
     setLoadingState: (state, action) => {
       const { key, loading, message = '' } = action.payload;
@@ -192,13 +222,13 @@ const appSlice = createSlice({
         state.loadingStates[key] = { loading, message };
       }
     },
-    
+
     clearAllLoadingStates: (state) => {
       Object.keys(state.loadingStates).forEach(key => {
         state.loadingStates[key] = { loading: false, message: '' };
       });
     },
-    
+
     // Error Management
     setError: (state, action) => {
       const error = {
@@ -206,26 +236,26 @@ const appSlice = createSlice({
         timestamp: new Date().toISOString(),
         ...action.payload,
       };
-      
+
       state.errors.push(error);
       state.lastError = error;
-      
+
       // Keep only last 50 errors
       if (state.errors.length > 50) {
         state.errors = state.errors.slice(-50);
       }
     },
-    
+
     clearError: (state, action) => {
       const { id } = action.payload;
       state.errors = state.errors.filter(error => error.id !== id);
     },
-    
+
     clearAllErrors: (state) => {
       state.errors = [];
       state.lastError = null;
     },
-    
+
     // Notifications Management
     addNotification: (state, action) => {
       const notification = {
@@ -234,16 +264,16 @@ const appSlice = createSlice({
         read: false,
         ...action.payload,
       };
-      
+
       state.notifications.unshift(notification);
       state.unreadNotificationCount++;
-      
+
       // Keep only last 100 notifications
       if (state.notifications.length > 100) {
         state.notifications = state.notifications.slice(0, 100);
       }
     },
-    
+
     markNotificationAsRead: (state, action) => {
       const { id } = action.payload;
       const notification = state.notifications.find(n => n.id === id);
@@ -252,14 +282,18 @@ const appSlice = createSlice({
         state.unreadNotificationCount = Math.max(0, state.unreadNotificationCount - 1);
       }
     },
-    
+
     markAllNotificationsAsRead: (state) => {
-      state.notifications.forEach(notification => {
-        notification.read = true;
-      });
+      if (Array.isArray(state.notifications)) {
+        state.notifications.forEach(notification => {
+          if (notification) {
+            notification.read = true;
+          }
+        });
+      }
       state.unreadNotificationCount = 0;
     },
-    
+
     removeNotification: (state, action) => {
       const { id } = action.payload;
       const notification = state.notifications.find(n => n.id === id);
@@ -268,19 +302,19 @@ const appSlice = createSlice({
       }
       state.notifications = state.notifications.filter(n => n.id !== id);
     },
-    
+
     clearNotifications: (state) => {
       state.notifications = [];
       state.unreadNotificationCount = 0;
     },
-    
+
     updateNotificationSettings: (state, action) => {
       state.notificationSettings = {
         ...state.notificationSettings,
         ...action.payload,
       };
     },
-    
+
     // App Settings Management
     updateAppSettings: (state, action) => {
       state.appSettings = {
@@ -288,11 +322,11 @@ const appSlice = createSlice({
         ...action.payload,
       };
     },
-    
+
     resetAppSettings: (state) => {
       state.appSettings = initialState.appSettings;
     },
-    
+
     // User Preferences
     updatePreferences: (state, action) => {
       state.preferences = {
@@ -300,7 +334,7 @@ const appSlice = createSlice({
         ...action.payload,
       };
     },
-    
+
     addFavoriteLocation: (state, action) => {
       const { location } = action.payload;
       // Remove if already exists
@@ -314,7 +348,7 @@ const appSlice = createSlice({
         state.preferences.favoriteLocations = state.preferences.favoriteLocations.slice(0, 10);
       }
     },
-    
+
     addRecentSearch: (state, action) => {
       const { search } = action.payload;
       // Remove if already exists
@@ -328,13 +362,13 @@ const appSlice = createSlice({
         state.preferences.recentSearches = state.preferences.recentSearches.slice(0, 20);
       }
     },
-    
+
     // Cache & Timestamps
     updateLastUpdate: (state, action) => {
       const { key, timestamp = Date.now() } = action.payload;
       state.lastUpdates[key] = timestamp;
     },
-    
+
     clearCache: (state, action) => {
       const { key } = action.payload;
       if (key) {
@@ -346,7 +380,7 @@ const appSlice = createSlice({
         });
       }
     },
-    
+
     // Real-time Features
     toggleRealTimeFeature: (state, action) => {
       const { feature, enabled } = action.payload;
@@ -354,15 +388,15 @@ const appSlice = createSlice({
         state[feature] = enabled;
       }
     },
-    
+
     setBackgroundUpdates: (state, action) => {
       state.backgroundUpdates = action.payload;
     },
-    
+
     setLocationTracking: (state, action) => {
       state.locationTracking = action.payload;
     },
-    
+
     // Performance Metrics
     updateMetrics: (state, action) => {
       state.metrics = {
@@ -370,17 +404,17 @@ const appSlice = createSlice({
         ...action.payload,
       };
     },
-    
+
     incrementSessionCount: (state) => {
       state.metrics.sessionCount += 1;
     },
-    
+
     addRideMetrics: (state, action) => {
       const { duration, distance } = action.payload;
       state.metrics.totalRideTime += duration;
       state.metrics.totalDistance += distance;
     },
-    
+
     // Session Management
     startSession: (state) => {
       state.session.startTime = Date.now();
@@ -389,13 +423,13 @@ const appSlice = createSlice({
       state.session.actionsPerformed = [];
       state.metrics.appStartTime = Date.now();
     },
-    
+
     updateSession: (state) => {
       if (state.session.startTime) {
         state.session.duration = Date.now() - state.session.startTime;
       }
     },
-    
+
     trackAction: (state, action) => {
       state.session.actionsPerformed.push({
         action: action.payload.action,
@@ -403,7 +437,7 @@ const appSlice = createSlice({
         timestamp: Date.now(),
       });
     },
-    
+
     // Feature Flags
     updateFeatureFlag: (state, action) => {
       const { flag, enabled } = action.payload;
@@ -411,20 +445,20 @@ const appSlice = createSlice({
         state.featureFlags[flag] = enabled;
       }
     },
-    
+
     // Debug & Development
     setDebugMode: (state, action) => {
       state.debug.enabled = action.payload;
     },
-    
+
     setLogLevel: (state, action) => {
       state.debug.logLevel = action.payload;
     },
-    
+
     toggleReduxLogging: (state) => {
       state.debug.reduxLogging = !state.debug.reduxLogging;
     },
-    
+
     // Reset App State (for logout)
     resetAppState: () => {
       return {
@@ -439,7 +473,7 @@ const appSlice = createSlice({
         },
       };
     },
-    
+
     // Batch Update
     batchUpdateAppState: (state, action) => {
       return {
@@ -448,7 +482,7 @@ const appSlice = createSlice({
       };
     },
   },
-  
+
   // Extra reducers for async actions
   extraReducers: (builder) => {
     // You can add extra reducers here for async thunks
@@ -463,20 +497,25 @@ export const {
   setInitialized,
   setCurrentScreen,
   setAppState,
-  
+
   // Network & Connection
   setNetworkStatus,
   setSocketStatus,
-  
+
+  // ✅ NEW SOCKET ACTIONS - EXPORTED
+  setSocketConnected,
+  setSocketReconnecting,
+  updateConnectionQuality,
+
   // Loading States
   setLoadingState,
   clearAllLoadingStates,
-  
+
   // Error Management
   setError,
   clearError,
   clearAllErrors,
-  
+
   // Notifications
   addNotification,
   markNotificationAsRead,
@@ -484,43 +523,43 @@ export const {
   removeNotification,
   clearNotifications,
   updateNotificationSettings,
-  
+
   // App Settings
   updateAppSettings,
   resetAppSettings,
-  
+
   // User Preferences
   updatePreferences,
   addFavoriteLocation,
   addRecentSearch,
-  
+
   // Cache & Timestamps
   updateLastUpdate,
   clearCache,
-  
+
   // Real-time Features
   toggleRealTimeFeature,
   setBackgroundUpdates,
   setLocationTracking,
-  
+
   // Performance Metrics
   updateMetrics,
   incrementSessionCount,
   addRideMetrics,
-  
+
   // Session Management
   startSession,
   updateSession,
   trackAction,
-  
+
   // Feature Flags
   updateFeatureFlag,
-  
+
   // Debug
   setDebugMode,
   setLogLevel,
   toggleReduxLogging,
-  
+
   // Reset
   resetAppState,
   batchUpdateAppState,
@@ -574,28 +613,5 @@ export const selectSessionMetrics = (state) => ({
   totalRideTime: state.app.metrics.totalRideTime,
   totalDistance: state.app.metrics.totalDistance,
 });
-
-// Async Thunks (example - you can add more)
-// export const initializeApp = createAsyncThunk(
-//   'app/initialize',
-//   async (_, { dispatch }) => {
-//     dispatch(setLoading(true));
-//     try {
-//       // Initialize app logic here
-//       await Promise.all([
-//         // Load settings, check auth, etc.
-//       ]);
-//       dispatch(setAppReady(true));
-//       dispatch(setInitialized(true));
-//     } catch (error) {
-//       dispatch(setError({ 
-//         message: 'Failed to initialize app', 
-//         code: 'INIT_ERROR' 
-//       }));
-//     } finally {
-//       dispatch(setLoading(false));
-//     }
-//   }
-// );
 
 export default appSlice.reducer;

@@ -26,6 +26,11 @@ module.exports = {
       https: 'react-native-https-polyfill',
       stream: 'readable-stream',
       buffer: '@craftzdog/react-native-buffer',
+      '@src': './src',
+      '@store': './src/store',
+      '@components': './src/components',
+      '@screens': './screens',
+      '@navigation': './navigation',
     },
   },
 };

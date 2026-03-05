@@ -4,14 +4,37 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import socketIO from 'socket.io-client';
 
-// Base URL - Update with your actual API URL
-const API_BASE_URL = Platform.select({
-  ios: 'http://192.168.8.2:3000/api',
-  android: 'http://192.168.8.2:3000/api',
-  default: 'http://192.168.8.2:3000/api',
-});
-// SOCKET_URL (can be same as API or different)
-const SOCKET_URL = API_BASE_URL.replace('/api', ''); // Remove /api for socket
+// Load configuration from environment variables
+const Config = require('react-native-config');
+
+// Dynamic API and Socket URLs based on environment
+const getApiBaseUrl = () => {
+  const envUrl = Config.API_BASE_URL;
+  if (envUrl && envUrl !== '') {
+    return envUrl;
+  }
+  
+  // Fallback to platform-specific URLs for development
+  return Platform.select({
+    ios: 'http://192.168.8.2:3000/api',
+    android: 'http://192.168.8.2:3000/api',
+    default: 'http://192.168.8.2:3000/api',
+  });
+};
+
+const getSocketUrl = () => {
+  const envUrl = Config.SOCKET_URL;
+  if (envUrl && envUrl !== '') {
+    return envUrl;
+  }
+  
+  // Fallback to API base URL without /api
+  return getApiBaseUrl().replace('/api', '');
+};
+
+// Export URLs for use in other parts of the app
+export const API_BASE_URL = getApiBaseUrl();
+export const SOCKET_URL = getSocketUrl();
 
 class APIClient {
   constructor() {
@@ -406,6 +429,6 @@ export const API = {
   },
 };
 
-// Export everything
-export { apiClient, API_BASE_URL };
+// FIXED: Export everything - removed duplicate SOCKET_URL from here
+export { apiClient };
 export default apiClient;

@@ -21,20 +21,20 @@ import AppNavigator from './navigation/AppNavigator';
 // import ConfigTest from './src/test-config';
 
 // ======================
-// SAFE FIREBASE INITIALIZATION (COMMENTED OUT)
+// FIREBASE INITIALIZATION (ENABLED)
 // ======================
 
-/*
 const initializeFirebase = async () => {
   try {
+    // Check if Firebase is available
     const firebaseApp = require('@react-native-firebase/app').default;
     
     if (!firebaseApp.apps.length) {
-      // CRITICAL: Get config from environment variables
+      // Get config from environment variables
       const Config = require('react-native-config');
       
       const firebaseConfig = {
-        apiKey: Config.FIREBASE_API_KEY || '', // Will be empty if not set
+        apiKey: Config.FIREBASE_API_KEY || '',
         authDomain: Config.FIREBASE_AUTH_DOMAIN || '',
         projectId: Config.FIREBASE_PROJECT_ID || '',
         storageBucket: Config.FIREBASE_STORAGE_BUCKET || '',
@@ -44,13 +44,13 @@ const initializeFirebase = async () => {
       };
       
       // Only initialize if we have at least apiKey
-      if (firebaseConfig.apiKey) {
+      if (firebaseConfig.apiKey && firebaseConfig.apiKey !== '') {
         firebaseApp.initializeApp(firebaseConfig);
         console.log('✅ Firebase initialized successfully');
         return { success: true, firebase: firebaseApp };
       } else {
-        console.log('⚠️ Firebase not configured - running without it');
-        return { success: false, message: 'Firebase API key not found' };
+        console.warn('⚠️ Firebase API key not found - running without Firebase');
+        return { success: false, message: 'Firebase API key not found in environment' };
       }
     } else {
       console.log('✅ Firebase already initialized');
@@ -58,10 +58,10 @@ const initializeFirebase = async () => {
     }
   } catch (error) {
     console.warn('⚠️ Firebase initialization error:', error.message);
+    // Continue without Firebase rather than crash the app
     return { success: false, error: error.message };
   }
 };
-*/
 
 // ======================
 // SAFE CONFIG LOADING (Without Firebase)
@@ -163,10 +163,18 @@ export default function App() {
       try {
         console.log('🚀 Initializing app...');
         
-        // Load config from .env (safe)
+        // Initialize Firebase first
+        const firebaseResult = await initializeFirebase();
+        if (firebaseResult.success) {
+          console.log('✅ Firebase initialized successfully');
+        } else {
+          console.warn('⚠️ Firebase initialization failed:', firebaseResult.message || 'Unknown error');
+        }
+        
+        // Load config from .env
         const config = await loadConfig();
         console.log('✅ Environment:', config.ENVIRONMENT);
-        console.log('ℹ️ Firebase disabled for now');
+        console.log('✅ App initialization completed');
         
       } catch (error) {
         console.error('❌ App initialization error:', error);

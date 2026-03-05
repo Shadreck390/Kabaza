@@ -2,10 +2,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { Alert } from 'react-native';
 
-// Real-time service imports - FIXED with aliases:
-import realTimeService from '@services/socket/realtimeUpdates';
-import LocationService from '@services/location/LocationService';
-import RideService from '@services/ride/RideService';
+// Real-time service imports - FIXED with consistent @ aliases:
+import realTimeService from '@src/services/socket/realtimeUpdates';
+import LocationService from '@src/services/location/LocationService';
+import RideService from '@src/services/ride/RideService';
 
 // ====================
 // ASYNC THUNKS

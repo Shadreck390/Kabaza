@@ -2,11 +2,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { Alert } from 'react-native';
 
-// Service imports - FIXED with @ aliases:
-import RideService from '@services/ride/RideService'; // Added @ prefix
-import LocationService from '@services/location/LocationService'; // Fixed case, added @
-import PaymentService from '@services/payment/PaymentService'; // Added @ prefix
-import realTimeService from '@services/socket/realtimeUpdates'; // Added @ prefix
+// Service imports - FIXED with consistent @ aliases:
+import RideService from '@src/services/ride/RideService';
+import LocationService from '@src/services/location/LocationService';
+import PaymentService from '@src/services/payment/PaymentService';
+import realTimeService from '@src/services/socket/realtimeUpdates';
 
 // ====================
 // ASYNC THUNKS

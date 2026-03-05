@@ -15,6 +15,7 @@ import {
   StatusBar,
   ScrollView
 } from 'react-native';
+import MapViewDirections from 'react-native-maps-directions';
 import MapView, { Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'react-native-maps'; // ✅ ADDED PROVIDER_GOOGLE
 import Geolocation from 'react-native-geolocation-service';
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -524,18 +525,36 @@ export default function MapScreen({ route, navigation }) {
   };
 
   const startRideNavigation = (ride) => {
+    const pickupLocation = {
+      latitude: ride.pickupLocation.latitude || ride.pickupLocation.lat,
+      longitude: ride.pickupLocation.longitude || ride.pickupLocation.lng,
+    };
+    
+    const dropoffLocation = {
+      latitude: ride.dropoffLocation.latitude || ride.dropoffLocation.lat,
+      longitude: ride.dropoffLocation.longitude || ride.dropoffLocation.lng,
+    };
+
     setNavigationRoute({
-      pickup: ride.pickupLocation,
-      dropoff: ride.dropoffLocation,
+      pickup: pickupLocation,
+      dropoff: dropoffLocation,
       rideId: ride.id,
     });
-    
+
     if (mapRef.current) {
-      mapRef.current.animateToRegion({
-        ...ride.pickupLocation,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 1000);
+      // Fit map to show both locations
+      mapRef.current.fitToCoordinates(
+        [pickupLocation, dropoffLocation],
+        {
+          edgePadding: {
+            top: 100,
+            right: 50,
+            bottom: 300,
+            left: 50,
+          },
+          animated: true,
+        }
+      );
     }
   };
 
@@ -851,10 +870,37 @@ export default function MapScreen({ route, navigation }) {
             ))}
 
             {navigationRoute && (
-              <Polyline
-                coordinates={[navigationRoute.pickup, navigationRoute.dropoff]}
+              <MapViewDirections
+                origin={navigationRoute.pickup}
+                destination={navigationRoute.dropoff}
+                apikey={'AIzaSyAft39RTF1LB_GTSYqy-I2tswzakC4fT3Q'}
                 strokeWidth={4}
                 strokeColor="#00B894"
+                mode="DRIVING"
+                optimizeWaypoints={true}
+                onStart={(params) => {
+                  console.log('Directions started: ', params);
+                }}
+                onReady={(result) => {
+                  console.log('Directions ready: ', result);
+                  // Optional: Fit map to show entire route
+                  mapRef.current.fitToCoordinates(result.coordinates, {
+                    edgePadding:{
+                      top: 100,
+                      right: 50,
+                      bottom: 200,
+                      left: 50,
+                    },
+                    animated: true,
+                  });
+                }}
+                onError={(errorMessage) => {
+                  console.log('Directions error: ', errorMessage);
+                  Alert.alert('Navigation Error', 'Could not calculate route. Please try again.');
+                }}
+                resetOnChange={false}
+                timePrecision="now"
+                language="en"
               />
             )}
 

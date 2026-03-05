@@ -541,16 +541,16 @@ export default function RideWaitingScreen({ route, navigation }) {
       // Navigate to active ride screen
       setTimeout(() => {
         navigation.navigate('ActiveRide', {
-          rideId,
+          rideId: rideId,
           driver: driver || update.driver,
-          pickup,
-          destination,
-          pickupCoords,
-          destinationCoords,
-          paymentMethod,
-          rideData,
-          riderInfo,
-          isMock: false,
+          pickup: pickup,
+          destination: destination,
+          pickupCoords: pickupCoords,
+          destinationCoords: destinationCoords,
+          paymentMethod: paymentMethod,
+          rideData: rideData,
+          riderInfo: riderInfo,
+          isMock: isMock,
         });
       }, 2000);
     }

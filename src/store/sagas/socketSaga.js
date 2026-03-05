@@ -7,12 +7,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // FIXED IMPORTS - using aliases:
 import {
+addRealTimeUpdate,
+addNotification,
+} from '@store/slices/notificationSlice';
+
+import {
   setSocketConnected,
   setSocketReconnecting,
   updateConnectionQuality,
-  addRealTimeUpdate,
-  addNotification,
-} from '@store/slices/notificationSlice';
+} from '@store/slices/appSlice';
 
 import {
   addMessage,
@@ -562,30 +565,32 @@ function* listenToSocketEvents(socketChannel) {
           break;
           
         case 'NEARBY_RIDES_UPDATE':
-          // ✅ FIXED: Proper null check and array validation
-          const rides = event.payload;
-          
-          if (rides && Array.isArray(rides)) {
-            console.log(`🚗 Processing ${rides.length} nearby rides`);
-            
-            // Process valid rides only
-            const validRides = rides.filter(ride => ride && ride.id);
-            
-            if (validRides.length > 0) {
-              // Use all effect to process rides in parallel
-              yield all(
-                validRides.map(ride => 
-                  put(addNearbyRide(ride))
-                )
-              );
-              console.log(`✅ Added ${validRides.length} nearby rides`);
-            } else {
-              console.warn('⚠️ No valid rides in NEARBY_RIDES_UPDATE');
-            }
+          // ✅ PROPER NULL CHECK
+          const rides = event?.payload;
+          if (!rides) {
+            console.warn('⚠️ Received NEARBY_RIDES_UPDATE with null payload');
+            break;
+          }
+          if (!Array.isArray(rides)) {
+            console.warn('⚠️ Received NEARBY_RIDES_UPDATE with non-array payload:', rides);
+            break;
+          }
+          console.log(`🚗 Processing ${rides.length} nearby rides`);
+          // Process valid rides only - with null check
+          const validRides = rides.filter(ride => ride && ride.id);
+          if (validRides.length > 0) {
+            // Use all effect to process rides in parallel
+            yield all(
+              validRides.map(ride => 
+                put(addNearbyRide(ride))
+              )
+            );
+            console.log(`✅ Added ${validRides.length} nearby rides`);
           } else {
-            console.warn('⚠️ Received NEARBY_RIDES_UPDATE with invalid data:', rides);
+            console.warn('⚠️ No valid rides in NEARBY_RIDES_UPDATE');
           }
           break;
+
           
         default:
           console.log('📡 Unhandled socket event:', event.type);

@@ -77,7 +77,8 @@ export default function RideSelectionScreen({ route, navigation }) {
     destinationAddress, 
     destinationCoordinates, 
     pickupLocation, 
-    pickupCoordinates 
+    pickupCoordinates,
+    preselectedRide
   } = route.params || {};
   
   const [selectedRide, setSelectedRide] = useState(null);
@@ -260,8 +261,13 @@ const rideOptions = [
     fetchCurrentLocation();
     calculateRouteDistance();
     
+    // Auto-select preselected ride if provided
+    if (preselectedRide) {
+      setSelectedRide(preselectedRide);
+    }
+    
     return () => {};
-  }, []);
+  }, [preselectedRide]);
 
   const animateIn = () => {
     Animated.parallel([
