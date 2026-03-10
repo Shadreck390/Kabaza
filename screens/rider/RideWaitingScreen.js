@@ -25,6 +25,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { BlurView } from '@react-native-community/blur';
 
 import realTimeService from '@src/services/socket/realtimeUpdates';
+import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 const { width, height } = Dimensions.get('window');
 
@@ -76,8 +77,6 @@ export default function RideWaitingScreen({ route, navigation }) {
   const mapOpacity = useRef(new Animated.Value(1)).current;
   const driverScale = useRef(new Animated.Value(0.9)).current;
   const driverOpacity = useRef(new Animated.Value(0)).current;
-  const statusCardScale = useRef(new Animated.Value(0.95)).current;
-  const statusCardOpacity = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const searchPulseAnim = useRef(new Animated.Value(1)).current;
@@ -86,6 +85,11 @@ export default function RideWaitingScreen({ route, navigation }) {
   const routeLineAnim = useRef(new Animated.Value(0)).current;
   const modalScale = useRef(new Animated.Value(0.8)).current;
   const modalOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Bottom sheet states
+  const bottomSheetRef = useRef(null);
+  const [snapPoints, setSnapPoints] = useState(['15%', '40%', '80%']); // Minimized, medium, expanded
+  const [sheetIndex, setSheetIndex] = useState(1); // Start at medium
   
   // Map reference
   const mapRef = useRef(null);
@@ -132,6 +136,11 @@ export default function RideWaitingScreen({ route, navigation }) {
     arrived: 'Your driver is waiting for you at the pickup point',
     cancelled: 'The ride has been cancelled',
     no_drivers: 'No drivers are currently available in your area',
+  };
+
+  // Handle sheet changes
+  const handleSheetChanges = (index) => {
+    setSheetIndex(index);
   };
 
   // Animation on mount
@@ -209,19 +218,6 @@ export default function RideWaitingScreen({ route, navigation }) {
         duration: 800,
         useNativeDriver: true,
         easing: Easing.out(Easing.cubic),
-      }),
-      Animated.spring(statusCardScale, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 60,
-        friction: 8,
-        delay: 200,
-      }),
-      Animated.timing(statusCardOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-        delay: 200,
       }),
       Animated.spring(driverScale, {
         toValue: 1,
@@ -925,148 +921,169 @@ Track my ride in real-time!`;
     </Modal>
   );
 
-  const renderDriverCard = () => {
-    if (!driver || !showDriverInfo) return null;
-    
-    return (
-      <AnimatedView 
-        style={[
-          styles.driverCard,
-          {
-            opacity: driverOpacity,
-            transform: [{ scale: driverScale }],
-          },
-        ]}
-      >
-        <LinearGradient
-          colors={['#F8F9FA', '#F1F3F4']}
-          style={styles.driverCardGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+  const renderBottomSheetContent = () => (
+    <BottomSheetScrollView 
+      contentContainerStyle={styles.bottomSheetContent}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Status Header */}
+      <View style={styles.statusHeader}>
+        <View style={styles.statusIconContainer}>
+          {status === 'searching' ? (
+            <ActivityIndicator size="large" color={STATUS_COLORS[status]} />
+          ) : (
+            <MaterialIcon 
+              name={STATUS_ICONS[status]} 
+              size={28} 
+              color={STATUS_COLORS[status]} 
+            />
+          )}
+        </View>
+        
+        <View style={styles.statusTextContainer}>
+          <Text style={styles.statusTitle}>{STATUS_MESSAGES[status]}</Text>
+          <Text style={styles.statusDescription}>
+            {STATUS_DESCRIPTIONS[status]}
+          </Text>
+        </View>
+      </View>
+
+      {/* Driver Card - Only show when driver is assigned */}
+      {driver && showDriverInfo && (
+        <TouchableOpacity 
+          style={styles.driverCard}
+          onPress={() => setShowDriverDetails(!showDriverDetails)}
+          activeOpacity={0.8}
         >
-          <TouchableOpacity 
-            style={styles.driverCardContent}
-            onPress={() => setShowDriverDetails(!showDriverDetails)}
-            activeOpacity={0.8}
-          >
-            <View style={styles.driverHeader}>
-              <View style={styles.driverAvatar}>
-                <LinearGradient
-                  colors={[driver.color || '#06C167', '#10B981']}
-                  style={styles.driverAvatarGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.driverInitial}>
-                    {driver.name?.charAt(0)?.toUpperCase() || 'D'}
-                  </Text>
-                </LinearGradient>
-              </View>
-              
-              <View style={styles.driverInfo}>
-                <Text style={styles.driverName}>{driver.name}</Text>
-                <View style={styles.driverMeta}>
-                  <View style={styles.ratingContainer}>
-                    <MaterialIcon name="star" size={14} color="#F59E0B" />
-                    <Text style={styles.rating}>{driver.rating || '4.5'}</Text>
-                  </View>
-                  <Text style={styles.ridesCount}>• {driver.totalRides || '100+'} rides</Text>
-                  {driver.vehicleType && (
-                    <Text style={styles.vehicleType}>• {driver.vehicleType.includes('bike') ? 'Bike' : 'Car'}</Text>
-                  )}
-                </View>
-              </View>
-              
-              <MaterialIcon 
-                name={showDriverDetails ? "keyboard-arrow-up" : "keyboard-arrow-down"} 
-                size={24} 
-                color="#666" 
-              />
+          <View style={styles.driverHeader}>
+            <View style={[styles.driverAvatar, { backgroundColor: driver.color || '#06C167' }]}>
+              <Text style={styles.driverInitial}>
+                {driver.name?.charAt(0)?.toUpperCase() || 'D'}
+              </Text>
             </View>
             
-            {showDriverDetails && (
-              <View style={styles.driverDetails}>
-                <View style={styles.driverDetailRow}>
-                  <MaterialCommunityIcon 
-                    name={driver.vehicleType?.includes('bike') ? 'motorcycle' : 'car'} 
-                    size={16} 
-                    color="#666" 
-                  />
-                  <Text style={styles.driverDetailText}>{driver.vehicleModel || 'Vehicle'}</Text>
-                  <Text style={styles.driverDetailPlate}>{driver.vehiclePlate || 'BL XXX'}</Text>
+            <View style={styles.driverInfo}>
+              <Text style={styles.driverName}>{driver.name}</Text>
+              <View style={styles.driverMeta}>
+                <View style={styles.ratingContainer}>
+                  <MaterialIcon name="star" size={14} color="#F59E0B" />
+                  <Text style={styles.rating}>{driver.rating || '4.8'}</Text>
                 </View>
-                
-                <View style={styles.driverActions}>
-                  <TouchableOpacity 
-                    style={styles.driverActionButton}
-                    onPress={handleCallDriver}
-                  >
-                    <LinearGradient
-                      colors={['#4285F4', '#3B82F6']}
-                      style={styles.actionButtonGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                    >
-                      <MaterialIcon name="phone" size={18} color="#FFF" />
-                      <Text style={styles.actionButtonText}>Call</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.driverActionButton}
-                    onPress={handleChatWithDriver}
-                  >
-                    <LinearGradient
-                      colors={['#34A853', '#10B981']}
-                      style={styles.actionButtonGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                    >
-                      <MaterialIcon name="chat" size={18} color="#FFF" />
-                      <Text style={styles.actionButtonText}>Message</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.driverActionButton}
-                    onPress={handleShareStatus}
-                  >
-                    <LinearGradient
-                      colors={['#8B5CF6', '#7C3AED']}
-                      style={styles.actionButtonGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                    >
-                      <MaterialIcon name="share" size={18} color="#FFF" />
-                      <Text style={styles.actionButtonText}>Share</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
+                <Text style={styles.ridesCount}>• {driver.totalRides || '245'} rides</Text>
+                <Text style={styles.vehicleType}>• {driver.vehicleType || 'Car'}</Text>
               </View>
-            )}
-          </TouchableOpacity>
-        </LinearGradient>
-      </AnimatedView>
-    );
-  };
+            </View>
+            
+            <MaterialIcon 
+              name={showDriverDetails ? "keyboard-arrow-up" : "keyboard-arrow-down"} 
+              size={24} 
+              color="#666" 
+            />
+          </View>
 
-  const renderRouteLine = () => {
-    if (!driverLocation || !pickupCoords || status !== 'enroute') return null;
-    
-    const lineLength = routeLineAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, 100],
-    });
-    
-    return (
-      <Polyline
-        coordinates={[driverLocation, pickupCoords]}
-        strokeColor="#06C167"
-        strokeWidth={3}
-        lineDashPattern={[5, 5]}
-      />
-    );
-  };
+          {showDriverDetails && (
+            <View style={styles.driverDetails}>
+              <View style={styles.driverDetailRow}>
+                <MaterialCommunityIcon 
+                  name={driver.vehicleType?.includes('bike') ? 'motorcycle' : 'car'} 
+                  size={16} 
+                  color="#666" 
+                />
+                <Text style={styles.driverDetailText}>{driver.vehicleModel || 'Toyota Corolla'}</Text>
+                <Text style={styles.driverDetailPlate}>{driver.vehiclePlate || 'LL 1234 A'}</Text>
+              </View>
+              
+              <View style={styles.driverActions}>
+                <TouchableOpacity style={styles.driverActionButton} onPress={handleCallDriver}>
+                  <MaterialIcon name="phone" size={18} color="#4285F4" />
+                  <Text style={styles.driverActionText}>Call</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.driverActionButton} onPress={handleChatWithDriver}>
+                  <MaterialIcon name="chat" size={18} color="#34A853" />
+                  <Text style={styles.driverActionText}>Message</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.driverActionButton} onPress={handleShareStatus}>
+                  <MaterialIcon name="share" size={18} color="#8B5CF6" />
+                  <Text style={styles.driverActionText}>Share</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </TouchableOpacity>
+      )}
+
+      {/* Ride Details */}
+      <View style={styles.rideDetails}>
+        <View style={styles.rideDetailRow}>
+          <View style={styles.rideDetailIcon}>
+            <MaterialIcon name="my-location" size={18} color="#4285F4" />
+          </View>
+          <View style={styles.rideDetailText}>
+            <Text style={styles.rideDetailLabel}>PICKUP</Text>
+            <Text style={styles.rideDetailValue} numberOfLines={1}>
+              {pickup || 'Your Location'}
+            </Text>
+          </View>
+        </View>
+        
+        <View style={styles.routeLine} />
+        
+        <View style={styles.rideDetailRow}>
+          <View style={styles.rideDetailIcon}>
+            <MaterialIcon name="place" size={18} color="#EA4335" />
+          </View>
+          <View style={styles.rideDetailText}>
+            <Text style={styles.rideDetailLabel}>DESTINATION</Text>
+            <Text style={styles.rideDetailValue} numberOfLines={1}>
+              {destination || 'Destination'}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Ride Info Cards */}
+      <View style={styles.rideInfoContainer}>
+        <View style={styles.rideInfoCard}>
+          <MaterialIcon name="access-time" size={20} color="#06C167" />
+          <Text style={styles.rideInfoLabel}>Est. arrival</Text>
+          <Text style={styles.rideInfoValue}>{driverETA || estimatedArrival}</Text>
+        </View>
+        
+        <View style={styles.rideInfoCard}>
+          <MaterialIcon name="attach-money" size={20} color="#06C167" />
+          <Text style={styles.rideInfoLabel}>Fare</Text>
+          <Text style={styles.rideInfoValue}>
+            {rideData?.formattedPrice || 'MK 15,000'}
+          </Text>
+        </View>
+        
+        <View style={styles.rideInfoCard}>
+          <MaterialIcon 
+            name={paymentMethod === 'cash' ? 'attach-money' : paymentMethod === 'card' ? 'credit-card' : 'smartphone'} 
+            size={20} 
+            color="#06C167" 
+          />
+          <Text style={styles.rideInfoLabel}>Payment</Text>
+          <Text style={styles.rideInfoValue}>
+            {paymentMethod === 'cash' ? 'Cash' : 
+             paymentMethod === 'card' ? 'Card' : 'Mobile'}
+          </Text>
+        </View>
+      </View>
+
+      {/* Cancel Button */}
+      <TouchableOpacity 
+        style={styles.cancelButton}
+        onPress={() => animateModalIn('cancel')}
+      >
+        <Text style={styles.cancelButtonText}>
+          {status === 'searching' ? 'Cancel Search' : 'Cancel Ride'}
+        </Text>
+      </TouchableOpacity>
+    </BottomSheetScrollView>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1216,7 +1233,14 @@ Track my ride in real-time!`;
           )}
           
           {/* Route Line */}
-          {renderRouteLine()}
+          {driverLocation && pickupCoords && status === 'enroute' && (
+            <Polyline
+              coordinates={[driverLocation, pickupCoords]}
+              strokeColor="#06C167"
+              strokeWidth={3}
+              lineDashPattern={[5, 5]}
+            />
+          )}
           
           {/* Search Radius (when searching) */}
           {status === 'searching' && pickupCoords && (
@@ -1259,7 +1283,10 @@ Track my ride in real-time!`;
             styles.statusBadgeText,
             { color: STATUS_COLORS[status] }
           ]}>
-            {status.toUpperCase()}
+            {status === 'searching' ? 'SEARCHING' : 
+             status === 'enroute' ? 'ENROUTE' : 
+             status === 'arrived' ? 'ARRIVED' : 
+             status.toUpperCase()}
           </Text>
         </AnimatedView>
 
@@ -1267,167 +1294,20 @@ Track my ride in real-time!`;
         {status === 'searching' && showSearchAnimation && renderSearchAnimation()}
       </AnimatedView>
 
-      {/* STATUS CARD */}
-      <AnimatedView 
-        style={[
-          styles.statusCard,
-          {
-            opacity: statusCardOpacity,
-            transform: [{ scale: statusCardScale }],
-          },
-        ]}
+      {/* Bottom Sheet */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={sheetIndex}
+        snapPoints={snapPoints}
+        onChange={handleSheetChanges}
+        enablePanDownToClose={false}
+        backgroundStyle={styles.bottomSheetBackground}
+        handleIndicatorStyle={styles.bottomSheetIndicator}
+        handleStyle={styles.bottomSheetHandle}
+        animateOnMount={true}
       >
-        <LinearGradient
-          colors={['#FFFFFF', '#F9FAFB']}
-          style={styles.statusCardGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          {/* Status Header */}
-          <View style={styles.statusHeader}>
-            <View style={styles.statusIconContainer}>
-              <ActivityIndicator 
-                size="large" 
-                color={STATUS_COLORS[status]} 
-                animating={status === 'searching'}
-              />
-              {status !== 'searching' && (
-                <MaterialIcon 
-                  name={STATUS_ICONS[status]} 
-                  size={28} 
-                  color={STATUS_COLORS[status]} 
-                />
-              )}
-            </View>
-            
-            <View style={styles.statusTextContainer}>
-              <Text style={styles.statusTitle}>{STATUS_MESSAGES[status]}</Text>
-              <Text style={styles.statusDescription}>
-                {STATUS_DESCRIPTIONS[status]}
-              </Text>
-            </View>
-          </View>
-
-          {/* Driver Card */}
-          {renderDriverCard()}
-
-          {/* Ride Details */}
-          <View style={styles.rideDetails}>
-            <View style={styles.rideDetailRow}>
-              <View style={styles.rideDetailIcon}>
-                <MaterialIcon name="my-location" size={18} color="#4285F4" />
-              </View>
-              <View style={styles.rideDetailText}>
-                <Text style={styles.rideDetailLabel}>PICKUP</Text>
-                <Text style={styles.rideDetailValue} numberOfLines={2}>
-                  {pickup || 'Your Location'}
-                </Text>
-              </View>
-            </View>
-            
-            <View style={styles.routeLine} />
-            
-            <View style={styles.rideDetailRow}>
-              <View style={styles.rideDetailIcon}>
-                <MaterialIcon name="place" size={18} color="#EA4335" />
-              </View>
-              <View style={styles.rideDetailText}>
-                <Text style={styles.rideDetailLabel}>DESTINATION</Text>
-                <Text style={styles.rideDetailValue} numberOfLines={2}>
-                  {destination || 'Destination'}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Ride Info */}
-          <View style={styles.rideInfo}>
-            <View style={styles.infoItem}>
-              <MaterialIcon name="access-time" size={18} color="#666" />
-              <Text style={styles.infoLabel}>Est. arrival</Text>
-              <Text style={styles.infoValue}>{driverETA || estimatedArrival}</Text>
-            </View>
-            
-            <View style={styles.infoDivider} />
-            
-            <View style={styles.infoItem}>
-              <MaterialIcon name="attach-money" size={18} color="#666" />
-              <Text style={styles.infoLabel}>Fare</Text>
-              <Text style={styles.infoValue}>
-                {rideData?.formattedPrice || 'Calculating...'}
-              </Text>
-            </View>
-            
-            <View style={styles.infoDivider} />
-            
-            <View style={styles.infoItem}>
-              <MaterialIcon name={paymentMethod === 'cash' ? 'attach-money' : paymentMethod === 'card' ? 'credit-card' : 'smartphone'} size={18} color="#666" />
-              <Text style={styles.infoLabel}>Payment</Text>
-              <Text style={styles.infoValue}>
-                {paymentMethod === 'cash' ? 'Cash' : 
-                 paymentMethod === 'card' ? 'Card' : 'Mobile'}
-              </Text>
-            </View>
-          </View>
-        </LinearGradient>
-      </AnimatedView>
-
-      {/* ACTION BUTTONS */}
-      <AnimatedView 
-        style={[
-          styles.actionButtons,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideUpAnim }],
-          },
-        ]}
-      >
-        <AnimatedTouchable 
-          style={[
-            styles.cancelButton,
-            {
-              transform: [{ scale: buttonScale }],
-            },
-          ]} 
-          onPress={() => animateModalIn('cancel')}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={status === 'searching' ? ['#F3F4F6', '#E5E7EB'] : ['#FEF2F2', '#FEE2E2']}
-            style={styles.cancelButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <MaterialIcon 
-              name="close" 
-              size={20} 
-              color={status === 'searching' ? '#666' : '#EF4444'} 
-            />
-            <Text style={[
-              styles.cancelButtonText,
-              { color: status === 'searching' ? '#666' : '#EF4444' }
-            ]}>
-              {status === 'searching' ? 'Cancel Search' : 'Cancel Ride'}
-            </Text>
-          </LinearGradient>
-        </AnimatedTouchable>
-        
-        <TouchableOpacity 
-          style={styles.sosButton} 
-          onPress={() => animateModalIn('sos')}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={['#EA4335', '#DC2626']}
-            style={styles.sosButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <MaterialIcon name="emergency" size={24} color="#FFF" />
-            <Text style={styles.sosButtonText}>SOS</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </AnimatedView>
+        {renderBottomSheetContent()}
+      </BottomSheet>
 
       {/* MODALS */}
       {renderCancelModal()}
@@ -1605,23 +1485,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   
-  // STATUS CARD
-  statusCard: {
-    position: 'absolute',
-    bottom: 120,
-    left: 20,
-    right: 20,
-    borderRadius: 24,
-    elevation: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    overflow: 'hidden',
-  },
-  statusCardGradient: {
-    padding: 24,
-  },
+  // STATUS HEADER (for bottom sheet)
   statusHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1656,26 +1520,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     marginBottom: 20,
-  },
-  driverCardGradient: {
+    backgroundColor: '#F8F9FA',
     padding: 16,
-  },
-  driverCardContent: {
-    // For touchable opacity
   },
   driverHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   driverAvatar: {
-    marginRight: 16,
-  },
-  driverAvatarGradient: {
     width: 56,
     height: 56,
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 16,
   },
   driverInitial: {
     fontSize: 20,
@@ -1746,20 +1604,15 @@ const styles = StyleSheet.create({
   },
   driverActionButton: {
     flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
     marginHorizontal: 4,
   },
-  actionButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  actionButtonText: {
-    fontSize: 14,
+  driverActionText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#666',
+    marginTop: 4,
   },
   
   // RIDE DETAILS
@@ -1800,95 +1653,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#D1D5DB',
     marginLeft: 11,
     marginVertical: 8,
-  },
-  
-  // RIDE INFO
-  rideInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 16,
-    padding: 16,
-  },
-  infoItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 6,
-  },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#000',
-    marginTop: 2,
-  },
-  infoDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: '#E5E7EB',
-  },
-  
-  // ACTION BUTTONS
-  actionButtons: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  cancelButton: {
-    flex: 2,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginRight: 12,
-  },
-  cancelButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    borderRadius: 16,
-    gap: 8,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  sosButton: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  sosButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    borderRadius: 16,
-    gap: 8,
-    elevation: 4,
-    shadowColor: '#EA4335',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  sosButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
   
   // MODAL STYLES
@@ -1995,5 +1759,85 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 12,
     flex: 1,
+  },
+  sosButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EF4444',
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  sosButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  
+  // BOTTOM SHEET STYLES
+  bottomSheetBackground: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 20,
+  },
+  bottomSheetIndicator: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+  },
+  bottomSheetHandle: {
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  bottomSheetContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  rideInfoContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 20,
+  },
+  rideInfoCard: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 4,
+  },
+  rideInfoLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  rideInfoValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000',
+  },
+  cancelButton: {
+    backgroundColor: '#FEF2F2',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EF4444',
   },
 });

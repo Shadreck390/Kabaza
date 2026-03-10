@@ -117,21 +117,43 @@ export default function BookAheadScreen({ navigation }) {
       return;
     }
 
+    if (!bookingDetails.pickupCoordinates || !bookingDetails.dropoffCoordinates) {
+      Alert.alert('Error', 'Location coordinates missing. Please select locations again.');
+      return;
+    }
+
     const selectedRide = rideTypes.find((ride) => ride.id === bookingDetails.rideType);
 
     navigation.navigate('RideConfirmation', {
-      ride: selectedRide,
+      ride: {
+        name: selectedRide?.name || 'Kabaza',
+        vehicleType: bookingDetails.rideType,
+        basePrice: selectedRide?.basePrice || 4500,
+        estimatedTime: '5-10 min',
+        distance: '0 km',
+      },
       destination: bookingDetails.dropoffLocation,
-      destinationAddress: bookingDetails.dropoffLocation,
+      destinationAddress: bookingDetails.dropoffAddress || bookingDetails.dropoffLocation,
+      destinationCoords: bookingDetails.dropoffCoordinates,
       pickupLocation: bookingDetails.pickupLocation,
-      pickupCoords: { latitude: -13.9626, longitude: 33.7741 },
-      destinationCoords: { latitude: -13.9897, longitude: 33.7777 },
+      pickupCoords: bookingDetails.pickupCoordinates,
       riderInfo: {
         paymentMethod: 'cash',
         usePromo: false,
         promoDiscount: 0,
         userId: 'user_1771924083518',
         userName: 'Rider',
+      },
+      isScheduled: true,
+      scheduleDetails: {
+        date: bookingDetails.date,
+        time: bookingDetails.time,
+        returnTrip: bookingDetails.returnTrip,
+        returnDate: bookingDetails.returnDate,
+        returnTime: bookingDetails.returnTime,
+        passengers: bookingDetails.passengers,
+        luggage: bookingDetails.luggage,
+        specialRequests: bookingDetails.specialRequests,
       },
       socketRequestId: `ride_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     });
@@ -146,11 +168,15 @@ export default function BookAheadScreen({ navigation }) {
       <TouchableOpacity 
         style={styles.locationCard}
         onPress={() => navigation.navigate('SearchLocation', {
-          onLocationSelect: (location) => setBookingDetails({
-            ...bookingDetails,
-            pickupLocation: location.name,
-            pickupCoordinates: location.coordinates
-          })
+          onLocationSelect: (location) => {
+            setBookingDetails({
+              ...bookingDetails,
+              pickupLocation: location.name,
+              pickupCoordinates: location.coordinates,
+              pickupAddress: location.address
+            });
+          },
+          type: 'pickup'
         })}
       >
         <View style={[styles.locationDot, { backgroundColor: bookingDetails.pickupLocation ? '#00a82d' : '#ccc' }]} />
@@ -158,6 +184,9 @@ export default function BookAheadScreen({ navigation }) {
           <Text style={styles.locationLabel}>PICKUP</Text>
           <Text style={bookingDetails.pickupLocation ? styles.locationText : styles.locationPlaceholder}>
             {bookingDetails.pickupLocation || 'Select pickup location'}
+          </Text>
+          <Text style={bookingDetails.pickupAddress ? styles.locationAddress : styles.locationPlaceholder}>
+            {bookingDetails.pickupAddress || 'Select pickup address'}
           </Text>
         </View>
         <MaterialIcon name="search" size={20} color="#666" />
@@ -167,11 +196,15 @@ export default function BookAheadScreen({ navigation }) {
       <TouchableOpacity 
         style={styles.locationCard}
         onPress={() => navigation.navigate('SearchLocation', {
-          onLocationSelect: (location) => setBookingDetails({
-            ...bookingDetails,
-            dropoffLocation: location.name,
-            dropoffCoordinates: location.coordinates
-          })
+          onLocationSelect: (location) => {
+            setBookingDetails({
+              ...bookingDetails,
+              dropoffLocation: location.name,
+              dropoffCoordinates: location.coordinates,
+              dropoffAddress: location.address
+            });
+          },
+          type: 'dropoff'
         })}
       >
         <View style={[styles.locationDot, { backgroundColor: bookingDetails.dropoffLocation ? '#ff4444' : '#ccc' }]} />

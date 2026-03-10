@@ -168,13 +168,38 @@ export default function SearchLocationScreen() {
 
   const handleSelectLocation = (location) => {
     // Navigate to ride confirmation with selected destination
+    const { onLocationSelect, pickupLocation, pickupCoords, type } = route.params || {};
+    if (onLocationSelect) {
+      onLocationSelect({
+        name: location.address,
+        area: location.area,
+        coordinates: {
+          latitude: -13.9626,
+          longitude: 33.7741
+        },
+      });
+      navigation.goBack();
+      return;
+    }
+    if (!pickupCoords) {
+      Alert.alert(
+        'Missing Pickup Location',
+        'Please select a pickup location first',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Navigate to ride selection with proper pickup and destination
     navigation.navigate('RideSelection', {
       destination: location.address,
-      destinationAddress: location.area,
-      destinationCoords: { latitude: -13.9626, longitude: 33.7741 }, // Lilongwe coordinates
-      pickupLocation: 'Bwaila Hospital', // This should be changed to a Malawi location too
-      pickupCoords: { latitude: -13.9626, longitude: 33.7741 },
-      
+      destinationArea: location.area,
+      destinationCoords: {
+        latitude: -13.9626,
+        longitude: 33.7741
+      },
+      pickup: pickupLocation,
+      pickupCoords: pickupCoords,
     });
   };
 

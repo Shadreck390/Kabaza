@@ -106,10 +106,28 @@ export default function ScheduleScreen({ navigation }) {
       return;
     }
 
+    if (!scheduleDetails.pickupCoordinates || !scheduleDetails.dropoffCoordinates) {
+      Alert.alert('Error', 'Location coordinates missing. Please select locations again.');
+      return;
+    }
+
     // Navigate to confirmation screen with schedule details
     navigation.navigate('RideConfirmation', {
       isScheduled: true,
       scheduleDetails: scheduleDetails,
+      pickupLocation: scheduleDetails.pickupLocation,
+      pickupCoords: scheduleDetails.pickupCoordinates,
+      destination: scheduleDetails.dropoffLocation,
+      destinationCoords: scheduleDetails.dropoffCoordinates,
+      ride: {
+        name: scheduleDetails.rideType === 'kabaza' ? 'Life Bike' : 
+              scheduleDetails.rideType === 'comfort' ? 'Lion King Bike' : 'Kiwasaki Bike',
+        vehicleType: scheduleDetails.rideType,
+        basePrice: scheduleDetails.rideType === 'kabaza' ? 4500 : 
+                   scheduleDetails.rideType === 'comfort' ? 6500 : 5500,
+        estimatedTime: '5-10 min',
+        distance: '0 km',
+      }
     });
   };
 
@@ -286,11 +304,15 @@ export default function ScheduleScreen({ navigation }) {
       <TouchableOpacity 
         style={styles.locationCard}
         onPress={() => navigation.navigate('SearchLocation', {
-          onLocationSelect: (location) => setScheduleDetails({
-            ...scheduleDetails,
-            pickupLocation: location.name,
-            pickupCoordinates: location.coordinates
-          })
+          onLocationSelect: (location) => {
+            setScheduleDetails({
+              ...scheduleDetails,
+              pickupLocation: location.name,
+              pickupCoordinates: location.coordinates,
+              pickupAddress: location.address
+            });
+          },
+          type: 'pickup'
         })}
       >
         <View style={[styles.locationDot, { backgroundColor: '#00a82d' }]} />
@@ -304,11 +326,15 @@ export default function ScheduleScreen({ navigation }) {
       <TouchableOpacity 
         style={styles.locationCard}
         onPress={() => navigation.navigate('SearchLocation', {
-          onLocationSelect: (location) => setScheduleDetails({
-            ...scheduleDetails,
-            dropoffLocation: location.name,
-            dropoffCoordinates: location.coordinates
-          })
+          onLocationSelect: (location) => {
+            setScheduleDetails({
+              ...scheduleDetails,
+              dropoffLocation: location.name,
+              dropoffCoordinates: location.coordinates,
+              dropoffAddress: location.address
+            });
+          },
+          type: 'dropoff'
         })}
       >
         <View style={[styles.locationDot, { backgroundColor: '#ff4444' }]} />

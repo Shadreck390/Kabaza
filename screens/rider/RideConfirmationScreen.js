@@ -204,30 +204,28 @@ export default function RideConfirmationScreen() {
       }
       
       // Navigate to waiting screen immediately
-      navigation.navigate('Riders', {
-        screen: 'RideWaiting',
-        params: {
-          rideId: requestId,
-          rideData: {
-            ...ride,
-            price: finalPrice,
-            formattedPrice: formatMK(finalPrice),
-            estimatedTime: estimatedArrival,
-            distance: ride.distance,
-            surgeMultiplier: surgeMultiplier,
-          },
-          pickup: pickupLocation || 'Your Location',
-           pickupCoords: pickupCoords,
-           destination: destinationAddress || destination,
-           destinationCoords: destinationCoords,
-           paymentMethod: paymentMethod || 'cash',
-           riderInfo: {
-              userId: userId || user.id,
-              name: userName || user.name || 'Rider',
-              phone: user.phone || '',
-           },
-           isMock: !socketSuccess,
-        }
+      navigation.navigate('RideWaiting', {
+        rideId: requestId,
+        rideData: {
+          ...ride,
+          price: finalPrice,
+          formattedPrice: formatMK(finalPrice),
+          estimatedTime: estimatedArrival,
+          distance: ride.distance,
+          surgeMultiplier: surgeMultiplier,
+        },
+        pickup: pickupLocation || 'Your Location',
+        pickupCoords: pickupCoords,
+        destination: destinationAddress || destination,
+        destinationCoords: destinationCoords,
+        paymentMethod: paymentMethod || 'cash',
+        riderInfo: {
+          userId: userId || user.id,
+          userName: userName || user.name || 'Rider',
+          userPhone: user.phone || '',
+        },
+        isMock: !socketSuccess,
+        socketRequestId: requestId,
       });
 
     } catch (error) {
