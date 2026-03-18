@@ -3,10 +3,16 @@
  /**
  * Static values that don't change between environments
  */
+import Config from 'react-native-config';
 
+console.log('🔑 Config loaded:');
+console.log('  - googleMapsApiKey:', Config.googleMapsApiKey ? '✅ Present' : '❌ Missing');
+console.log('  - googlePlacesApiKey:', Config.googlePlacesApiKey ? '✅ Present' : '❌ Missing');
 // ====================
 // ENVIRONMENT CONFIGURATION
 // ====================
+export const GOOGLE_PLACES_API_KEY = Config.googlePlacesApiKey;
+export const GOOGLE_MAPS_API_KEY = Config.googleMapsApiKey;
 export const ENVIRONMENT = {
   IS_DEV: __DEV__,
   IS_PROD: !__DEV__,
@@ -34,11 +40,13 @@ export const APP_INFO = {
 // ====================
 export const API_CONFIG = {
   // Base URLs (Auto-switch based on environment)
-  BASE_URL: 'https://api.kabaza.mw/api',
-  SOCKET_URL: 'https://socket.kabaza.mw',
+  BASE_URL: Config.API_BASE_URL || 'https://api.kabaza.mw/api',
+  SOCKET_URL: Config.SOCKET_URL || 'https://socket.kabaza.mw',
+  SOCKET_PATH: Config.SOCKET_PATH || '/socket.io',
+
   
   // API Timeouts
-  TIMEOUT: 30000,
+  TIMEOUT: parseInt(Config.API_TIMEOUT || '30000', 10),
   SOCKET_TIMEOUT: 20000,
   
   // Socket Configuration
@@ -51,6 +59,7 @@ export const API_CONFIG = {
     transports: ['websocket', 'polling'],
     autoConnect: true,
     forceNew: true,
+    path: Config.SOCKET_PATH || '/socket.io',
   },
   
   // Real-time intervals

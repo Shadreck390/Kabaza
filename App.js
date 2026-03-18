@@ -1,4 +1,5 @@
 // App.js - SECURE VERSION (Firebase Disabled)
+import './test-config';
 import 'react-native-gesture-handler';
 import React, { useEffect, useState } from 'react';
 import { 

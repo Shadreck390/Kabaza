@@ -18,13 +18,14 @@ import {
   Easing,
   SafeAreaView,
   Modal,
+  Alert,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
 import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import LinearGradient from 'react-native-linear-gradient';
 import { getUserData } from '@src/utils/userStorage';
-import { useNavigation } from '@react-navigation/native'; // ADD THIS IMPORT
+import { useNavigation, useFocusEffect } from '@react-navigation/native'; // ADD THIS IMPORT
 
 const { width, height } = Dimensions.get('window');
 
@@ -113,6 +114,44 @@ export default function RiderHomeScreen({ route, navigation }) {
   // Animation values
   const sheetHeight = useRef(new Animated.Value(SHEET_MIN_HEIGHT)).current;
   const mapOpacity = useRef(new Animated.Value(1)).current;
+
+  // Handle location selection from SearchLocation screen
+  useFocusEffect(
+    React.useCallback(() => {
+      const selectedLocation = route.params?.selectedLocation;
+      if (selectedLocation) {
+        setSelectedDestination(selectedLocation);
+        setSearchQuery(selectedLocation.name);
+        setShowRideOptions(true);
+        setShowSearchResults(false);
+        
+        // Navigate to RideSelection
+        navigation.navigate('RideSelection', {
+          destination: selectedLocation.name,
+          destinationAddress: selectedLocation.address || 'Malawi Location',
+          destinationCoordinates: selectedLocation.coordinates || {
+            latitude: -13.9626,
+            longitude: 33.7741
+          },
+          pickupLocation: 'Your Location',
+          pickupCoordinates: currentLocation || region,
+          rideType: 'lifo',
+          preselectedRide: 'lifo',
+        });
+        
+        if (selectedLocation.coordinates) {
+          setRegion({
+            ...region,
+            latitude: selectedLocation.coordinates.latitude,
+            longitude: selectedLocation.coordinates.longitude,
+          });
+        }
+
+        // Clear the parameter to prevent re-triggering
+        navigation.setParams({ selectedLocation: undefined });
+      }
+    }, [route.params?.selectedLocation, currentLocation, region, navigation])
+  );
 
   // Quick Actions - MATCHING SCREENSHOT
   const quickActions = [
@@ -699,15 +738,28 @@ export default function RiderHomeScreen({ route, navigation }) {
         key={item.id}
         style={styles.locationItem}
         onPress={() => {
-          navigation.navigate('RideSelection', {
-            destination: item.name,
-            destinationAddress: item.address,
-            destinationCoordinates: item.coordinates,
-            pickupLocation: 'Your Location',
-            pickupCoordinates: currentLocation || region,
-            rideType: 'lifo',
-            preselectedRide: 'lifo',
-          });
+          try {
+            console.log('Navigating to RideSelection with:', {
+              destination: item.name,
+              destinationAddress: item.address,
+              destinationCoordinates: item.coordinates,
+              pickupLocation: 'Your Location',
+              pickupCoordinates: currentLocation || region,
+            });
+            
+            navigation.navigate('RideSelection', {
+              destination: item.name,
+              destinationAddress: item.address,
+              destinationCoordinates: item.coordinates,
+              pickupLocation: 'Your Location',
+              pickupCoordinates: currentLocation || region,
+              rideType: 'lifo',
+              preselectedRide: 'lifo',
+            });
+          } catch (error) {
+            console.error('Error navigating to RideSelection:', error);
+            Alert.alert('Error', 'Unable to proceed with booking. Please try again.');
+          }
         }}
         activeOpacity={0.7}
       >
@@ -809,29 +861,19 @@ export default function RiderHomeScreen({ route, navigation }) {
           {/* SEARCH BAR */}
           <View style={styles.searchContainer}>
             <View style={styles.searchBox}>
-              <TouchableOpacity 
-                style={styles.searchLeftPart}
-                onPress={() => navigation.navigate('SearchLocation', {
-                  initialType: 'destination',
-                  onLocationSelect: (selectedLocation) => {
-                    navigation.navigate('RideSelection', {
-                      destination: selectedLocation.name,
-                      destinationAddress: selectedLocation.address || 'Malawi Location',
-                      destinationCoordinates: selectedLocation.coordinates,
-                      pickupLocation: 'Your Location',
-                      pickupCoordinates: currentLocation || region,
-                      rideType: 'lifo',
-                      preselectedRide: 'lifo',
-                    });
-                  }
-                })}
-                activeOpacity={0.8}
-              >
-                <MaterialIcon name="search" size={20} color="#666" />
-                <Text style={styles.searchPlaceholder}>
-                  Where to?
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.searchLeftPart}>
+                <MaterialIcon name="search" size={20} color="#666" style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Where to?"
+                  placeholderTextColor="#666"
+                  value={searchQuery}
+                  onChangeText={handleSearch}
+                  onFocus={() => navigation.navigate('SearchLocation')}
+                  returnKeyType="search"
+                  clearButtonMode="while-editing"
+                />
+              </View>
               
               <TouchableOpacity 
                 style={styles.laterContainer}
@@ -1041,6 +1083,15 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#000',
+    marginLeft: 12,
   },
   searchPlaceholder: {
     flex: 1,

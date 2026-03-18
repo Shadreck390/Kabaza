@@ -1649,6 +1649,44 @@ const ICON_MAP = {
     community: 'bus', 
     ion: 'bus' 
   },
+  
+  // ===== ADD THESE MISSING ICONS HERE =====
+  'briefcase': { 
+    material: 'work', 
+    fa: 'briefcase', 
+    community: 'briefcase', 
+    ion: 'briefcase' 
+  },
+  'city': { 
+    material: 'location-city', 
+    fa: 'building', 
+    community: 'city', 
+    ion: 'business' 
+  },
+  'history': { 
+    material: 'history', 
+    fa: 'history', 
+    community: 'history', 
+    ion: 'time' 
+  },
+  'current-location': { 
+    material: 'my-location', 
+    fa: 'location-arrow', 
+    community: 'map-marker', 
+    ion: 'locate' 
+  },
+  'search-off': { 
+    material: 'search-off', 
+    fa: 'search', 
+    community: 'search-off', 
+    ion: 'search' 
+  },
+  'map-pin': { 
+    material: 'place', 
+    fa: 'map-pin', 
+    community: 'map-marker', 
+    ion: 'location' 
+  },
 };
 
 // Optimized fallback component with memoization
@@ -1787,4 +1825,3 @@ export { ICON_MAP };
 
 // Export default Icon component
 export default Icon;
-

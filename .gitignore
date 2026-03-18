@@ -1,10 +1,6 @@
 # ============================================
-# GITIGNORE FOR KABAZA REACT NATIVE PROJECT
-# ============================================
-
-# ======================
 # ENVIRONMENT VARIABLES (CRITICAL!)
-# ======================
+# ============================================
 .env
 .env.local
 .env.development
@@ -12,43 +8,40 @@
 .env.staging
 .env.test
 
-# ======================
+# ============================================
 # FIREBASE CONFIGURATION (CRITICAL!)
-# ======================
+# ============================================
 android/app/google-services.json
 ios/GoogleService-Info.plist
 
-# ======================
+# ============================================
 # SECRETS & API KEYS
-# ======================
+# ============================================
 *.p12
 *.p8
 secrets/
 keys/
 certificates/
+android/key.properties
 
-# React Native Config generated files
-android/app/src/main/res/raw/appconfig.*
-
-# ======================
+# ============================================
 # ANDROID SIGNING KEYS (CRITICAL!)
-# ======================
+# ============================================
 *.keystore
 *.jks
 release.keystore
 upload-keystore.jks
-*.properties  # This will catch any properties files with secrets
 
-# ======================
+# ============================================
 # iOS SECURITY FILES
-# ======================
+# ============================================
 *.mobileprovision
 *.provisionprofile
 *.pem
 
-# ======================
+# ============================================
 # ANDROID BUILD & CACHE
-# ======================
+# ============================================
 android/.gradle/
 android/.idea/
 android/.settings/
@@ -59,19 +52,19 @@ android/build/
 android/app/.cxx/
 .gradle/
 
-# ======================
+# ============================================
 # iOS BUILD & DEPENDENCIES
-# ======================
+# ============================================
 ios/build/
 ios/Pods/
 ios/.xcode.env.local
 ios/ServiceDefinitions.json
-ios/**/*.xcconfig  # Xcode config files often contain secrets
+ios/**/*.xcconfig
 Podfile.lock
 
-# ======================
+# ============================================
 # DEVELOPMENT & IDE FILES
-# ======================
+# ============================================
 .vscode/
 !.vscode/settings.json
 !.vscode/tasks.json
@@ -82,90 +75,70 @@ Podfile.lock
 *.swo
 *~
 
-# ======================
+# ============================================
 # NODE & PACKAGE MANAGER
-# ======================
+# ============================================
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 
-# ======================
+# ============================================
 # REACT NATIVE & METRO
-# ======================
+# ============================================
 .expo/
 .expo-shared/
 metro.config.js.local
 .rn-debug
 .hot-reloader/
 
-# ======================
+# ============================================
 # TEMPORARY & CACHE FILES
-# ======================
+# ============================================
 tmp/
 temp/
 *.tmp
 *.temp
 .cache/
 
-# ======================
+# ============================================
 # LOGS
-# ======================
+# ============================================
 *.log
 logs/
 android/log/
 
-# ======================
+# ============================================
 # BACKUP FILES
-# ======================
+# ============================================
 *.bak
 *.backup
 *.orig
 
-# ======================
-# DOCUMENTATION BUILD
-# ======================
-docs/_build/
-docs/_out/
-
-# ======================
+# ============================================
 # SYSTEM FILES
-# ======================
+# ============================================
 .DS_Store
 Thumbs.db
 *.db
 
-# Firebase config (Android)
-android/app/google-services.json
-
-# react-native-config
-android/react-native-config.js
-
-# ======================
-# REACT NATIVE GENERATED FILES (MISSING)
-# ======================
+# ============================================
+# REACT NATIVE GENERATED FILES
+# ============================================
 android/app/src/main/assets/
 android/app/src/main/res/drawable-*/
 
-# ======================
-# JAVA / ANDROID MEMORY DUMPS
-# ======================
-android/java_pid*.hprof
-*.hprof
-
-# ======================
+# ============================================
 # ANDROID NDK / CMAKE
-# ======================
+# ============================================
 **/.cxx/
 **/obj/
 **/build/intermediates/
 
-# ======================
-# FASTLANE (PLAY STORE)
-# ======================
+# ============================================
+# FASTLANE
+# ============================================
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots
 fastlane/test_output
-

@@ -47,6 +47,7 @@ android {
         buildConfigField("boolean", "IS_HERMES_ENABLED", "true")
 
         buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${project.env.get("GOOGLE_MAPS_API_KEY")}\"")
+        buildConfigField("String", "GOOGLE_PLACES_API_KEY", "\"${project.env.get("GOOGLE_PLACES_API_KEY")}\"")
         buildConfigField("String", "API_BASE_URL", "\"${project.env.get("API_BASE_URL")}\"")
         buildConfigField("String", "ENVIRONMENT", "\"${project.env.get("ENVIRONMENT")}\"")
         //buildConfigField("String", "FACEBOOK_APP_ID", "\"${project.env.get("FACEBOOK_APP_ID")}\"")
@@ -55,6 +56,7 @@ android {
         
         manifestPlaceholders = [
             GOOGLE_MAPS_API_KEY: project.env.get("GOOGLE_MAPS_API_KEY"),
+            GOOGLE_PLACES_API_KEY: project.env.get("GOOGLE_PLACES_API_KEY")
             //FACEBOOK_APP_ID: project.env.get("FACEBOOK_APP_ID") 
         ]
 
@@ -211,4 +213,5 @@ dependencies {
 
     // React Native Vector Icons
     apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
+    
 }

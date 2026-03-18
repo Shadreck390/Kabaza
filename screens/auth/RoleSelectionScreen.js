@@ -69,7 +69,7 @@ export default function RoleSelectionScreen({ navigation, route }) {
       icon: 'local-taxi',
       gradient: ['#2196f3', '#21cbf3'],
       image: require('../../assets/images/driver-role.png'),
-      requirements: '📍 Location + Verification required',
+      requirements: '📍 Location access required (Verification temporarily skipped)',
     },
   ];
 
@@ -326,15 +326,17 @@ export default function RoleSelectionScreen({ navigation, route }) {
       console.log('🚀 [DEBUG] Navigating to next screen...');
       setTimeout(() => {
         if (role === 'passenger') {
-          // For passenger, navigate to RiderStack (assuming passenger uses rider flow)
           console.log('🧭 [DEBUG] Navigating to RiderStack...');
           navigation.replace('RiderStack', { 
             userData,
             screen: 'RiderHome' // Explicitly set the screen
           });
         } else if (role === 'driver') {
-          console.log('🧭 [DEBUG] Navigating to DriverVerificationFlow...');
-          navigation.replace('DriverVerificationFlow', { userData });
+          console.log('🧭 [DEBUG] Navigating to DriverHomeScreen (skipping verification)...');
+          navigation.replace('DriverStack', { 
+            userData,
+            screen: 'DriverHome' // Navigate directly to driver home, skip verification
+          });
         } else {
           // Default fallback
           console.log('🧭 [DEBUG] Default navigation to RiderStack...');

@@ -667,12 +667,12 @@ const rideOptions = [
             <>
               <Text style={styles.confirmButtonText}>
                 {selectedRide 
-                  ? `Book ${rideOptions.find(r => r.id === selectedRide)?.name} Ride`
+                  ? 'Book Ride'
                   : 'Select a ride'}
               </Text>
               {selectedRide && (
                 <Text style={styles.confirmButtonPrice}>
-                  {formatMK(rideOptions.find(r => r.id === selectedRide)?.basePrice || 0)}
+                  {rideOptions.find(r => r.id === selectedRide)?.name}
                 </Text>
               )}
             </>
