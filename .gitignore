@@ -24,6 +24,11 @@ keys/
 certificates/
 android/key.properties
 
+node_modules/
+android/app/build/
+android/.gradle/
+android/app/src/main/res/drawable-*/
+
 # ============================================
 # ANDROID SIGNING KEYS (CRITICAL!)
 # ============================================

@@ -2,6 +2,17 @@ module.exports = {
   presets: ['module:@react-native/babel-preset'],
   
   plugins: [
+    ['module:react-native-dotenv', {
+      moduleName: '@env',
+      path: '.env',
+      safe: false,
+      allowUndefined: true,
+      verbose: false,
+      // Add these options to prevent looking for other .env files
+      allowEmptyValues: true,
+      systemvars: false,
+    }],
+    
     // ✅ Module resolver for alias support
     [
       'module-resolver',
@@ -18,7 +29,6 @@ module.exports = {
         ],
         
         alias: {
-          // Core folders
           '@src': './src',
           '@components': './src/components',
           '@constants': './src/constants',
@@ -27,16 +37,11 @@ module.exports = {
           '@store': './src/store',
           '@utils': './src/utils',
           '@config': './src/config',
-          // Crypto polyfill for React Native
           crypto: 'react-native-crypto',
           '@context': './src/context',
-          
-          // Root level folders
           '@navigation': './navigation',
           '@screens': './screens',
           '@assets': './assets',
-          
-          // Screen modules
           '@screens/auth': './screens/auth',
           '@screens/common': './screens/common',
           '@screens/driver': './screens/driver',
@@ -44,15 +49,11 @@ module.exports = {
           '@screens/payments': './screens/payments',
           '@screens/MapScreen': './screens/MapScreen',
           '@screens/profile': './screens/profile',
-          
-          // Feature-specific aliases
           '@auth': './screens/auth',
           '@driver': './screens/driver',
           '@rider': './screens/rider',
           '@payments': './screens/payments',
           '@common': './screens/common',
-          
-          // Specific services
           '@api': './src/services/api',
           '@location': './src/services/location',
           '@ride': './src/services/ride',
@@ -65,8 +66,6 @@ module.exports = {
           '@chat': './src/services/chat',
           '@emergency': './src/services/emergency',
           '@rating': './src/services/rating',
-          
-          // Navigation aliases
           '@nav': './navigation',
           '@stacks': './navigation/stacks',
           '@tabs': './navigation/tabs',
@@ -75,7 +74,6 @@ module.exports = {
       },
     ],
     
-    // ✅ React Native Reanimated (MUST be last)
     'react-native-reanimated/plugin',
   ],
   
@@ -84,4 +82,4 @@ module.exports = {
       plugins: ['transform-remove-console'],
     },
   },
-};;
+};

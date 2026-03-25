@@ -29,7 +29,7 @@ export default function BookAheadScreen({ navigation }) {
     passengers: 1,
     luggage: 0,
     specialRequests: '',
-    estimatedPrice: 'MK 4,500 - MK 6,500',
+    estimatedPrice: 'MK 10,500 - MK 15,500',
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);

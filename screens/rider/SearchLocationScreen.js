@@ -1,4 +1,4 @@
-// screens/rider/SearchLocationScreen.js - FINAL FIXED VERSION
+// screens/rider/SearchLocationScreen.js - FIXED VERSION WITH PACKAGE DELIVERY SUPPORT
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -20,7 +20,7 @@ import { POPULAR_MALAWI_LOCATIONS } from '@src/services/location/constants';
 export default function SearchLocationScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { onLocationSelect } = route.params || {};
+  const { source, locationType } = route.params || {}; // Add locationType for package delivery
   
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -28,6 +28,22 @@ export default function SearchLocationScreen() {
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+
+  // Determine header title based on source and locationType
+  const getHeaderTitle = () => {
+    if (source === 'package_delivery') {
+      return locationType === 'pickup' ? 'Select Pickup Location' : 'Select Delivery Location';
+    }
+    return 'Where to?';
+  };
+
+  // Determine placeholder text
+  const getPlaceholderText = () => {
+    if (source === 'package_delivery') {
+      return locationType === 'pickup' ? 'Search pickup location' : 'Search delivery location';
+    }
+    return 'Search destination';
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -78,7 +94,6 @@ export default function SearchLocationScreen() {
     try {
       let selectedLocation = location;
 
-      // If it's a Google place, get full details
       if (location.source === 'google' && location.placeId) {
         selectedLocation = await placeSearchService.getPlaceDetails(
           location.placeId, 
@@ -86,11 +101,25 @@ export default function SearchLocationScreen() {
         );
       }
 
-      // Add to recent searches
       placeSearchService.addToRecent(selectedLocation);
 
-      // Navigate back with selected location as param
-      navigation.navigate('RiderHome', { selectedLocation });
+      // Handle different navigation sources
+      if (source === 'package_delivery') {
+        // For package delivery: navigate back to PackageDelivery with location and type
+        navigation.navigate('PackageDelivery', { 
+          selectedLocation,
+          locationType: locationType // 'pickup' or 'delivery'
+        });
+      } else if (source === 'schedule') {
+        // For schedule flow, navigate back with location WITHOUT any auto-navigation
+        navigation.navigate('Schedule', { 
+          selectedLocation,
+          fromScheduleSelect: true  // Add flag to indicate this is from schedule selection
+        });
+      } else {
+        // For home flow, navigate back to RiderHome
+        navigation.navigate('RiderHome', { selectedLocation });
+      }
     } catch (error) {
       console.error('Error selecting location:', error);
     }
@@ -134,7 +163,7 @@ export default function SearchLocationScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <MaterialIcon name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Where to?</Text>
+        <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
         <View style={{ width: 24 }} />
       </Animated.View>
 
@@ -144,7 +173,7 @@ export default function SearchLocationScreen() {
           <MaterialIcon name="search" size={20} color="#999" />
           <TextInput
             style={styles.input}
-            placeholder="Search destination"
+            placeholder={getPlaceholderText()}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoFocus

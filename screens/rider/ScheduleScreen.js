@@ -1,5 +1,5 @@
 // screens/rider/ScheduleScreen.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,8 +13,9 @@ import {
 } from 'react-native';
 import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useFocusEffect } from '@react-navigation/native';
 
-export default function ScheduleScreen({ navigation }) {
+export default function ScheduleScreen({ navigation, route }) {
   const [step, setStep] = useState(1); // 1: select date, 2: select time, 3: recurring options, 4: confirm
   
   const [scheduleDetails, setScheduleDetails] = useState({
@@ -26,17 +27,50 @@ export default function ScheduleScreen({ navigation }) {
     pickupLocation: '',
     dropoffLocation: '',
     notes: '',
-    estimatedPrice: 'MK 4,500 - MK 6,500',
+    estimatedPrice: 'MK 10,500 - MK 15,500',
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
+  // Handle location selection from SearchLocation screen
+  useFocusEffect(
+    React.useCallback(() => {
+      const selectedLocation = route.params?.selectedLocation;
+      const fromScheduleSelect = route.params?.fromScheduleSelect;
+      
+      if (selectedLocation) {
+        // For schedule booking, alternate between pickup and dropoff
+        if (!scheduleDetails.pickupLocation || scheduleDetails.pickupLocation === '') {
+          setScheduleDetails({
+            ...scheduleDetails,
+            pickupLocation: selectedLocation.name,
+            pickupCoordinates: selectedLocation.coordinates,
+            pickupAddress: selectedLocation.address
+          });
+        } else if (!scheduleDetails.dropoffLocation || scheduleDetails.dropoffLocation === '') {
+          setScheduleDetails({
+            ...scheduleDetails,
+            dropoffLocation: selectedLocation.name,
+            dropoffCoordinates: selectedLocation.coordinates,
+            dropoffAddress: selectedLocation.address
+          });
+        } else {
+          // If both are filled, you might want to replace the last selected or show alert
+          Alert.alert('Locations Set', 'Both pickup and dropoff are already selected. Tap on a location to change it.');
+        }
+        
+        // Clear the parameters to prevent re-triggering
+        navigation.setParams({ selectedLocation: undefined, fromScheduleSelect: undefined });
+      }
+    }, [route.params?.selectedLocation, route.params?.fromScheduleSelect, scheduleDetails, navigation])
+  );
+
   const recurringOptions = [
-    { id: 'none', label: 'One time', icon: 'event' },
-    { id: 'daily', label: 'Daily', icon: 'today' },
-    { id: 'weekly', label: 'Weekly', icon: 'date-range' },
-    { id: 'monthly', label: 'Monthly', icon: 'calendar-month' },
+    { id: 'none', label: 'One time', icon: 'event' }, 
+    { id: 'daily', label: 'Daily', icon: 'calendar-today' }, 
+    { id: 'weekly', label: 'Weekly', icon: 'calendar-today' },
+    { id: 'monthly', label: 'Monthly', icon: 'calendar-today' },
   ];
 
   const weekDays = [
@@ -50,9 +84,13 @@ export default function ScheduleScreen({ navigation }) {
   ];
 
   const rideTypes = [
-    { id: 'kabaza', label: 'Kabaza', icon: 'motorcycle', price: 'MK 4,500' },
-    { id: 'comfort', label: 'Comfort', icon: 'directions-car', price: 'MK 6,500' },
-    { id: 'green', label: 'Green', icon: 'eco', price: 'MK 5,500' },
+    { id: 'LG', label: 'San LG', icon: 'motorcycle', price: 'MK 10,500' },
+    { id: 'LK', label: 'Lion King', icon: 'motorcycle', price: 'MK 12,500' },
+    { id: 'LF', label: 'Lifo', icon: 'motorcycle', price: 'MK 11,500' },
+    { id: 'LN', label: 'Lifan', icon: 'motorcycle', price: 'MK 10,500' },
+    { id: 'KK', label: 'Kiwasaki', icon: 'motorcycle', price: 'MK 13,500' },
+    { id: 'KM', label: 'Economy', icon: 'directions-car', price: 'MK 17,500' },
+    { id: 'CFT', label: 'Comfort', icon: 'directions-car', price: 'MK 25,500' },
   ];
 
   const formatDate = (date) => {
@@ -303,17 +341,7 @@ export default function ScheduleScreen({ navigation }) {
       {/* Pickup Location */}
       <TouchableOpacity 
         style={styles.locationCard}
-        onPress={() => navigation.navigate('SearchLocation', {
-          onLocationSelect: (location) => {
-            setScheduleDetails({
-              ...scheduleDetails,
-              pickupLocation: location.name,
-              pickupCoordinates: location.coordinates,
-              pickupAddress: location.address
-            });
-          },
-          type: 'pickup'
-        })}
+        onPress={() => navigation.navigate('SearchLocation', { source: 'schedule' })}
       >
         <View style={[styles.locationDot, { backgroundColor: '#00a82d' }]} />
         <Text style={scheduleDetails.pickupLocation ? styles.locationText : styles.locationPlaceholder}>
@@ -325,17 +353,7 @@ export default function ScheduleScreen({ navigation }) {
       {/* Dropoff Location */}
       <TouchableOpacity 
         style={styles.locationCard}
-        onPress={() => navigation.navigate('SearchLocation', {
-          onLocationSelect: (location) => {
-            setScheduleDetails({
-              ...scheduleDetails,
-              dropoffLocation: location.name,
-              dropoffCoordinates: location.coordinates,
-              dropoffAddress: location.address
-            });
-          },
-          type: 'dropoff'
-        })}
+        onPress={() => navigation.navigate('SearchLocation', { source: 'schedule' })}
       >
         <View style={[styles.locationDot, { backgroundColor: '#ff4444' }]} />
         <Text style={scheduleDetails.dropoffLocation ? styles.locationText : styles.locationPlaceholder}>

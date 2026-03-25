@@ -1,4 +1,4 @@
-// Create this entire file - it doesn't exist yet
+// src/services/location/constants.js
 
 // Location types
 export const LOCATION_TYPES = {

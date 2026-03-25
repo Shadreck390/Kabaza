@@ -119,7 +119,10 @@ export default function RiderHomeScreen({ route, navigation }) {
   useFocusEffect(
     React.useCallback(() => {
       const selectedLocation = route.params?.selectedLocation;
-      if (selectedLocation) {
+      const fromSchedule = route.params?.fromSchedule;
+      
+      // Only auto-navigate if this is from home search (not from schedule)
+      if (selectedLocation && !fromSchedule) {
         setSelectedDestination(selectedLocation);
         setSearchQuery(selectedLocation.name);
         setShowRideOptions(true);
@@ -150,7 +153,7 @@ export default function RiderHomeScreen({ route, navigation }) {
         // Clear the parameter to prevent re-triggering
         navigation.setParams({ selectedLocation: undefined });
       }
-    }, [route.params?.selectedLocation, currentLocation, region, navigation])
+    }, [route.params?.selectedLocation, route.params?.fromSchedule, currentLocation, region, navigation])
   );
 
   // Quick Actions - MATCHING SCREENSHOT
@@ -709,9 +712,11 @@ export default function RiderHomeScreen({ route, navigation }) {
         style={styles.quickActionCard}
         onPress={() => {
           if (action.id === 'schedule') {
-            navigation.navigate('Schedule');
+            navigation.navigate('Schedule', { fromHome: true });
           } else if (action.id === 'send') {
-            navigation.navigate('PackageDelivery');
+            navigation.navigate('Rides', {
+              screen: 'PackageDelivery'
+            });
           } else {
             setShowRideOptions(true);
           }
@@ -869,7 +874,7 @@ export default function RiderHomeScreen({ route, navigation }) {
                   placeholderTextColor="#666"
                   value={searchQuery}
                   onChangeText={handleSearch}
-                  onFocus={() => navigation.navigate('SearchLocation')}
+                  onFocus={() => navigation.navigate('SearchLocation', { source: 'home' })}
                   returnKeyType="search"
                   clearButtonMode="while-editing"
                 />

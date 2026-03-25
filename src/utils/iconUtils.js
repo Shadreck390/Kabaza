@@ -15,6 +15,12 @@ const ICON_MAP = {
     community: 'map-marker', 
     ion: 'location' 
   },
+  'calendar-month': {
+    material: 'calendar-view-month',
+    fa: 'calendar',
+    community: 'calendar',
+    ion: 'calendar' 
+  },
   'location-pin': { 
     material: 'location-pin', 
     fa: 'map-pin', 
@@ -39,6 +45,13 @@ const ICON_MAP = {
     community: 'map', 
     ion: 'map' 
   },
+
+  'calendar-month': { 
+  material: 'calendar-today',  // Fallback to calendar-today
+  fa: 'calendar', 
+  community: 'calendar-month', 
+  ion: 'calendar' 
+},
   
   // Actions & Status
   'star': { 

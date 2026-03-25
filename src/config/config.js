@@ -1,22 +1,31 @@
-/**
- * Application Constants
- /**
- * Static values that don't change between environments
- */
-import Config from 'react-native-config';
+import { 
+  GOOGLE_MAPS_API_KEY, 
+  GOOGLE_PLACES_API_KEY,
+  API_BASE_URL,
+  SOCKET_URL,
+  SOCKET_PATH,
+  API_TIMEOUT,
+  ENVIRONMENT,
+  DEBUG 
+} from '@env';
 
-console.log('🔑 Config loaded:');
-console.log('  - googleMapsApiKey:', Config.googleMapsApiKey ? '✅ Present' : '❌ Missing');
-console.log('  - googlePlacesApiKey:', Config.googlePlacesApiKey ? '✅ Present' : '❌ Missing');
+console.log('📦 ========== @ENV LOADING ==========');
+console.log('📦 GOOGLE_MAPS_API_KEY:', GOOGLE_MAPS_API_KEY ? '✅ Present' : '❌ Missing');
+console.log('📦 GOOGLE_PLACES_API_KEY:', GOOGLE_PLACES_API_KEY ? '✅ Present' : '❌ Missing');
+console.log('📦 API_BASE_URL:', API_BASE_URL || '❌ Missing');
+console.log('📦 =================================');
+
 // ====================
 // ENVIRONMENT CONFIGURATION
 // ====================
-export const GOOGLE_PLACES_API_KEY = Config.googlePlacesApiKey;
-export const GOOGLE_MAPS_API_KEY = Config.googleMapsApiKey;
-export const ENVIRONMENT = {
+export const GOOGLE_PLACES_API_KEY_VALUE = GOOGLE_PLACES_API_KEY;
+export const GOOGLE_MAPS_API_KEY_VALUE = GOOGLE_MAPS_API_KEY;
+export const ENVIRONMENT_CONFIG = {
   IS_DEV: __DEV__,
   IS_PROD: !__DEV__,
   IS_TEST: process.env.NODE_ENV === 'test',
+  NAME: ENVIRONMENT || 'development',
+  DEBUG: DEBUG === 'true',
 };
 
 // ====================
@@ -39,14 +48,13 @@ export const APP_INFO = {
 // API & SOCKET CONFIGURATION (REAL-TIME)
 // ====================
 export const API_CONFIG = {
-  // Base URLs (Auto-switch based on environment)
-  BASE_URL: Config.API_BASE_URL || 'https://api.kabaza.mw/api',
-  SOCKET_URL: Config.SOCKET_URL || 'https://socket.kabaza.mw',
-  SOCKET_PATH: Config.SOCKET_PATH || '/socket.io',
-
+  // Base URLs (from @env)
+  BASE_URL: API_BASE_URL || 'https://api.kabaza.mw/api',
+  SOCKET_URL: SOCKET_URL || 'https://socket.kabaza.mw',
+  SOCKET_PATH: SOCKET_PATH || '/socket.io',
   
   // API Timeouts
-  TIMEOUT: parseInt(Config.API_TIMEOUT || '30000', 10),
+  TIMEOUT: parseInt(API_TIMEOUT || '30000', 10),
   SOCKET_TIMEOUT: 20000,
   
   // Socket Configuration
@@ -59,7 +67,7 @@ export const API_CONFIG = {
     transports: ['websocket', 'polling'],
     autoConnect: true,
     forceNew: true,
-    path: Config.SOCKET_PATH || '/socket.io',
+    path: SOCKET_PATH || '/socket.io',
   },
   
   // Real-time intervals
@@ -729,7 +737,7 @@ export const COLORS = {
 // EXPORT ALL CONSTANTS
 // ====================
 export default {
-  ENVIRONMENT,
+  ENVIRONMENT_CONFIG,
   APP_INFO,
   API_CONFIG,
   STORAGE_KEYS,

@@ -1,5 +1,5 @@
-// screens/rider/PackageDeliveryScreen.js
-import React, { useState } from 'react';
+// screens/rider/PackageDeliveryScreen.js - COMPLETE FIXED VERSION
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,21 +10,20 @@ import {
   SafeAreaView,
   Alert,
   Switch,
-  Image,
 } from 'react-native';
 import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
-export default function PackageDeliveryScreen() {
-  const navigation = useNavigation();
-  
+export default function PackageDeliveryScreen({ route, navigation }) {
   const [packageDetails, setPackageDetails] = useState({
     senderName: '',
     senderPhone: '',
     recipientName: '',
     recipientPhone: '',
     pickupAddress: '',
+    pickupCoordinates: null,
     deliveryAddress: '',
+    deliveryCoordinates: null,
     packageType: 'parcel',
     packageWeight: '1-2 kg',
     packageDescription: '',
@@ -33,7 +32,7 @@ export default function PackageDeliveryScreen() {
     insurance: false,
   });
 
-  const [step, setStep] = useState(1); // 1: pickup, 2: delivery, 3: package info, 4: review
+  const [step, setStep] = useState(1);
 
   const packageTypes = [
     { id: 'document', label: 'Document', icon: 'description' },
@@ -52,18 +51,121 @@ export default function PackageDeliveryScreen() {
     '> 10 kg',
   ];
 
+  // Handle location selection from SearchLocationScreen
+  useFocusEffect(
+    useCallback(() => {
+      const selectedLocation = route.params?.selectedLocation;
+      const locationType = route.params?.locationType;
+      
+      if (selectedLocation) {
+        const locationName = selectedLocation.name || selectedLocation.address;
+        const locationCoords = selectedLocation.coordinates || null;
+        
+        if (locationType === 'pickup') {
+          setPackageDetails(prev => ({
+            ...prev,
+            pickupAddress: locationName,
+            pickupCoordinates: locationCoords
+          }));
+        } else if (locationType === 'delivery') {
+          setPackageDetails(prev => ({
+            ...prev,
+            deliveryAddress: locationName,
+            deliveryCoordinates: locationCoords
+          }));
+        }
+        // Clear the parameters to prevent re-triggering
+        navigation.setParams({ selectedLocation: undefined, locationType: undefined });
+      }
+    }, [route.params?.selectedLocation, route.params?.locationType])
+  );
+
+  // Validate step 1 (pickup details)
+  const validateStep1 = () => {
+    const errors = [];
+    if (!packageDetails.senderName.trim()) {
+      errors.push('Please enter your name');
+    }
+    if (!packageDetails.senderPhone.trim()) {
+      errors.push('Please enter your phone number');
+    }
+    if (!packageDetails.pickupAddress.trim()) {
+      errors.push('Please select pickup address');
+    }
+    
+    if (errors.length > 0) {
+      Alert.alert('Missing Information', errors.join('\n'));
+      return false;
+    }
+    return true;
+  };
+
+  // Validate step 2 (delivery details)
+  const validateStep2 = () => {
+    const errors = [];
+    if (!packageDetails.recipientName.trim()) {
+      errors.push('Please enter recipient name');
+    }
+    if (!packageDetails.recipientPhone.trim()) {
+      errors.push('Please enter recipient phone number');
+    }
+    if (!packageDetails.deliveryAddress.trim()) {
+      errors.push('Please select delivery address');
+    }
+    
+    if (errors.length > 0) {
+      Alert.alert('Missing Information', errors.join('\n'));
+      return false;
+    }
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (step === 1 && validateStep1()) {
+      setStep(2);
+    } else if (step === 2 && validateStep2()) {
+      setStep(3);
+    } else if (step === 3) {
+      setStep(4);
+    }
+  };
+
+  const handleBackStep = () => {
+    if (step > 1) {
+      setStep(step - 1);
+    }
+  };
+
   const handleSendPackage = () => {
-    // Validate required fields
+    // Final validation before sending
     if (!packageDetails.pickupAddress || !packageDetails.deliveryAddress) {
       Alert.alert('Error', 'Please enter pickup and delivery addresses');
       return;
     }
+    
+    if (!packageDetails.senderName || !packageDetails.senderPhone) {
+      Alert.alert('Error', 'Please enter sender details');
+      return;
+    }
+    
+    if (!packageDetails.recipientName || !packageDetails.recipientPhone) {
+      Alert.alert('Error', 'Please enter recipient details');
+      return;
+    }
 
-    // Navigate to package confirmation
+    // Navigate to ride selection for package delivery
     navigation.navigate('RideSelection', {
       rideType: 'delivery',
       packageDetails: packageDetails,
       isPackageDelivery: true,
+    });
+  };
+
+  // Open search location screen
+  const openLocationSearch = (type) => {
+    navigation.navigate('SearchLocation', {
+      source: 'package_delivery',
+      locationType: type,
     });
   };
 
@@ -85,7 +187,7 @@ export default function PackageDeliveryScreen() {
         <MaterialIcon name="phone" size={20} color="#666" style={styles.inputIcon} />
         <TextInput
           style={styles.input}
-          placeholder="Your phone number"
+          placeholder="Your phone number(e.g 088/099)"
           keyboardType="phone-pad"
           value={packageDetails.senderPhone}
           onChangeText={(text) => setPackageDetails({...packageDetails, senderPhone: text})}
@@ -95,25 +197,20 @@ export default function PackageDeliveryScreen() {
       <View style={styles.inputContainer}>
         <MaterialIcon name="location-on" size={20} color="#666" style={styles.inputIcon} />
         <TextInput
-          style={styles.input}
-          placeholder="Pickup address"
+          style={[styles.input, styles.locationInput]}
+          placeholder="Select pickup address"
           value={packageDetails.pickupAddress}
-          onChangeText={(text) => setPackageDetails({...packageDetails, pickupAddress: text})}
+          editable={false}
+          pointerEvents="none"
         />
-        <TouchableOpacity onPress={() => navigation.navigate('SearchLocation', {
-          onLocationSelect: (location) => setPackageDetails({
-            ...packageDetails, 
-            pickupAddress: location.name,
-            pickupCoordinates: location.coordinates
-          })
-        })}>
-          <MaterialIcon name="my-location" size={20} color="#00a82d" />
+        <TouchableOpacity onPress={() => openLocationSearch('pickup')}>
+          <MaterialIcon name="search" size={20} color="#00a82d" />
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity 
         style={styles.nextButton}
-        onPress={() => setStep(2)}
+        onPress={handleNextStep}
       >
         <Text style={styles.nextButtonText}>Continue</Text>
         <MaterialIcon name="arrow-forward" size={20} color="#fff" />
@@ -139,7 +236,7 @@ export default function PackageDeliveryScreen() {
         <MaterialIcon name="phone" size={20} color="#666" style={styles.inputIcon} />
         <TextInput
           style={styles.input}
-          placeholder="Recipient phone number"
+          placeholder="Recipient phone number(e.g 088/099)"
           keyboardType="phone-pad"
           value={packageDetails.recipientPhone}
           onChangeText={(text) => setPackageDetails({...packageDetails, recipientPhone: text})}
@@ -149,26 +246,21 @@ export default function PackageDeliveryScreen() {
       <View style={styles.inputContainer}>
         <MaterialIcon name="location-on" size={20} color="#666" style={styles.inputIcon} />
         <TextInput
-          style={styles.input}
-          placeholder="Delivery address"
+          style={[styles.input, styles.locationInput]}
+          placeholder="Select delivery address"
           value={packageDetails.deliveryAddress}
-          onChangeText={(text) => setPackageDetails({...packageDetails, deliveryAddress: text})}
+          editable={false}
+          pointerEvents="none"
         />
-        <TouchableOpacity onPress={() => navigation.navigate('SearchLocation', {
-          onLocationSelect: (location) => setPackageDetails({
-            ...packageDetails, 
-            deliveryAddress: location.name,
-            deliveryCoordinates: location.coordinates
-          })
-        })}>
-          <MaterialIcon name="my-location" size={20} color="#00a82d" />
+        <TouchableOpacity onPress={() => openLocationSearch('delivery')}>
+          <MaterialIcon name="search" size={20} color="#00a82d" />
         </TouchableOpacity>
       </View>
 
       <View style={styles.buttonRow}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => setStep(1)}
+          onPress={handleBackStep}
         >
           <MaterialIcon name="arrow-back" size={20} color="#666" />
           <Text style={styles.backButtonText}>Back</Text>
@@ -176,7 +268,7 @@ export default function PackageDeliveryScreen() {
 
         <TouchableOpacity 
           style={styles.nextButton}
-          onPress={() => setStep(3)}
+          onPress={handleNextStep}
         >
           <Text style={styles.nextButtonText}>Continue</Text>
           <MaterialIcon name="arrow-forward" size={20} color="#fff" />
@@ -235,10 +327,10 @@ export default function PackageDeliveryScreen() {
       <View style={styles.inputContainer}>
         <MaterialIcon name="description" size={20} color="#666" style={styles.inputIcon} />
         <TextInput
-          style={styles.input}
+          style={[styles.input, styles.textArea]}
           placeholder="Package description (optional)"
           multiline
-          numberOfLines={2}
+          numberOfLines={3}
           value={packageDetails.packageDescription}
           onChangeText={(text) => setPackageDetails({...packageDetails, packageDescription: text})}
         />
@@ -254,6 +346,7 @@ export default function PackageDeliveryScreen() {
             value={packageDetails.requiresSignature}
             onValueChange={(value) => setPackageDetails({...packageDetails, requiresSignature: value})}
             trackColor={{ false: '#e0e0e0', true: '#00a82d' }}
+            thumbColor="#fff"
           />
         </View>
 
@@ -266,6 +359,7 @@ export default function PackageDeliveryScreen() {
             value={packageDetails.isFragile}
             onValueChange={(value) => setPackageDetails({...packageDetails, isFragile: value})}
             trackColor={{ false: '#e0e0e0', true: '#00a82d' }}
+            thumbColor="#fff"
           />
         </View>
 
@@ -278,6 +372,7 @@ export default function PackageDeliveryScreen() {
             value={packageDetails.insurance}
             onValueChange={(value) => setPackageDetails({...packageDetails, insurance: value})}
             trackColor={{ false: '#e0e0e0', true: '#00a82d' }}
+            thumbColor="#fff"
           />
         </View>
       </View>
@@ -285,7 +380,7 @@ export default function PackageDeliveryScreen() {
       <View style={styles.buttonRow}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => setStep(2)}
+          onPress={handleBackStep}
         >
           <MaterialIcon name="arrow-back" size={20} color="#666" />
           <Text style={styles.backButtonText}>Back</Text>
@@ -293,7 +388,7 @@ export default function PackageDeliveryScreen() {
 
         <TouchableOpacity 
           style={styles.nextButton}
-          onPress={() => setStep(4)}
+          onPress={handleNextStep}
         >
           <Text style={styles.nextButtonText}>Review</Text>
           <MaterialIcon name="arrow-forward" size={20} color="#fff" />
@@ -302,71 +397,88 @@ export default function PackageDeliveryScreen() {
     </View>
   );
 
-  const renderStep4 = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Review & Send</Text>
-      
-      <View style={styles.reviewCard}>
-        <Text style={styles.reviewSectionTitle}>Pickup</Text>
-        <Text style={styles.reviewText}>{packageDetails.pickupAddress || 'Not specified'}</Text>
-        <Text style={styles.reviewSubtext}>{packageDetails.senderName} • {packageDetails.senderPhone}</Text>
-      </View>
-
-      <View style={styles.reviewCard}>
-        <Text style={styles.reviewSectionTitle}>Delivery</Text>
-        <Text style={styles.reviewText}>{packageDetails.deliveryAddress || 'Not specified'}</Text>
-        <Text style={styles.reviewSubtext}>{packageDetails.recipientName} • {packageDetails.recipientPhone}</Text>
-      </View>
-
-      <View style={styles.reviewCard}>
-        <Text style={styles.reviewSectionTitle}>Package</Text>
-        <View style={styles.reviewRow}>
-          <Text style={styles.reviewLabel}>Type:</Text>
-          <Text style={styles.reviewValue}>{packageDetails.packageType}</Text>
+  const renderStep4 = () => {
+    // Get package type label
+    const packageTypeLabel = packageTypes.find(t => t.id === packageDetails.packageType)?.label || packageDetails.packageType;
+    
+    return (
+      <View style={styles.stepContainer}>
+        <Text style={styles.stepTitle}>Review & Send</Text>
+        
+        <View style={styles.reviewCard}>
+          <Text style={styles.reviewSectionTitle}>Pickup</Text>
+          <Text style={styles.reviewText}>{packageDetails.pickupAddress || 'Not specified'}</Text>
+          <Text style={styles.reviewSubtext}>{packageDetails.senderName} • {packageDetails.senderPhone}</Text>
         </View>
-        <View style={styles.reviewRow}>
-          <Text style={styles.reviewLabel}>Weight:</Text>
-          <Text style={styles.reviewValue}>{packageDetails.packageWeight}</Text>
+
+        <View style={styles.reviewCard}>
+          <Text style={styles.reviewSectionTitle}>Delivery</Text>
+          <Text style={styles.reviewText}>{packageDetails.deliveryAddress || 'Not specified'}</Text>
+          <Text style={styles.reviewSubtext}>{packageDetails.recipientName} • {packageDetails.recipientPhone}</Text>
         </View>
-        {packageDetails.requiresSignature && (
+
+        <View style={styles.reviewCard}>
+          <Text style={styles.reviewSectionTitle}>Package</Text>
           <View style={styles.reviewRow}>
-            <MaterialIcon name="check-circle" size={16} color="#00a82d" />
-            <Text style={styles.reviewFeature}>Signature required</Text>
+            <Text style={styles.reviewLabel}>Type:</Text>
+            <Text style={styles.reviewValue}>{packageTypeLabel}</Text>
           </View>
-        )}
-        {packageDetails.isFragile && (
           <View style={styles.reviewRow}>
-            <MaterialIcon name="check-circle" size={16} color="#00a82d" />
-            <Text style={styles.reviewFeature}>Fragile</Text>
+            <Text style={styles.reviewLabel}>Weight:</Text>
+            <Text style={styles.reviewValue}>{packageDetails.packageWeight}</Text>
           </View>
-        )}
-      </View>
+          {packageDetails.packageDescription ? (
+            <View style={styles.reviewRow}>
+              <Text style={styles.reviewLabel}>Description:</Text>
+              <Text style={styles.reviewValue} numberOfLines={2}>{packageDetails.packageDescription}</Text>
+            </View>
+          ) : null}
+          {packageDetails.requiresSignature && (
+            <View style={styles.reviewFeatureRow}>
+              <MaterialIcon name="check-circle" size={16} color="#00a82d" />
+              <Text style={styles.reviewFeature}>Signature required</Text>
+            </View>
+          )}
+          {packageDetails.isFragile && (
+            <View style={styles.reviewFeatureRow}>
+              <MaterialIcon name="check-circle" size={16} color="#00a82d" />
+              <Text style={styles.reviewFeature}>Fragile</Text>
+            </View>
+          )}
+          {packageDetails.insurance && (
+            <View style={styles.reviewFeatureRow}>
+              <MaterialIcon name="check-circle" size={16} color="#00a82d" />
+              <Text style={styles.reviewFeature}>Insurance included (+MK 500)</Text>
+            </View>
+          )}
+        </View>
 
-      <View style={styles.priceCard}>
-        <Text style={styles.priceLabel}>Delivery Fee</Text>
-        <Text style={styles.priceAmount}>MK 3,500 - MK 5,500</Text>
-        <Text style={styles.priceNote}>*Final price based on distance</Text>
-      </View>
+        <View style={styles.priceCard}>
+          <Text style={styles.priceLabel}>Estimated Delivery Fee</Text>
+          <Text style={styles.priceAmount}>MK 10,500 - MK 15,500</Text>
+          <Text style={styles.priceNote}>*Final price based on distance and package weight</Text>
+        </View>
 
-      <View style={styles.buttonRow}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => setStep(3)}
-        >
-          <MaterialIcon name="arrow-back" size={20} color="#666" />
-          <Text style={styles.backButtonText}>Edit</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={handleBackStep}
+          >
+            <MaterialIcon name="arrow-back" size={20} color="#666" />
+            <Text style={styles.backButtonText}>Edit</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.sendButton}
-          onPress={handleSendPackage}
-        >
-          <Text style={styles.sendButtonText}>Send Package</Text>
-          <MaterialIcon name="send" size={20} color="#fff" />
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.sendButton}
+            onPress={handleSendPackage}
+          >
+            <Text style={styles.sendButtonText}>Send Package</Text>
+            <MaterialIcon name="send" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -489,6 +601,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     color: '#000',
+  },
+  locationInput: {
+    color: '#333',
+  },
+  textArea: {
+    minHeight: 60,
+    textAlignVertical: 'top',
   },
   sectionLabel: {
     fontSize: 16,
@@ -651,18 +770,23 @@ const styles = StyleSheet.create({
   },
   reviewRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     marginTop: 8,
   },
   reviewLabel: {
     fontSize: 14,
     color: '#666',
-    width: 60,
+    width: 70,
   },
   reviewValue: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#000',
+    flex: 1,
+  },
+  reviewFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
   },
   reviewFeature: {
     fontSize: 14,

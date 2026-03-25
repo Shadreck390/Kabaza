@@ -1,10 +1,19 @@
-import { GOOGLE_PLACES_API_KEY } from '@src/config/config';
+// At the very top, before any other code
+console.log('🔥 GOOGLE PLACES SERVICE LOADING');
+console.log('🔥 Import path test - config exists?', typeof require('@src/config/config'));
+
+import { GOOGLE_PLACES_API_KEY_VALUE } from '@src/config/config';
 import { SAVED_PLACES, POPULAR_MALAWI_LOCATIONS } from './location/constants';
+
+console.log('🔑 Google Places API Key Status:', {
+  exists: !!GOOGLE_PLACES_API_KEY_VALUE,
+  length: GOOGLE_PLACES_API_KEY_VALUE?.length || 0,
+});
 
 // Check if API key is configured
 const isApiKeyConfigured = () => {
-  return GOOGLE_PLACES_API_KEY && 
-         GOOGLE_PLACES_API_KEY.length > 10;
+  return GOOGLE_PLACES_API_KEY_VALUE && 
+         GOOGLE_PLACES_API_KEY_VALUE.length > 10;
 };
 
 export const googlePlacesService = {
@@ -21,22 +30,31 @@ export const googlePlacesService = {
     if (!query || query.length < 2) return [];
     
     try {
-      let url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_PLACES_API_KEY}`;
+      let url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_PLACES_API_KEY_VALUE}`;
 
-      if (options.latitude && options.longitude) {
-        url += `&location=${options.latitude},${options.longitude}&radius=50000`;
+      // Safely check if options exists and has valid latitude/longitude
+      if (options && typeof options === 'object') {
+        const lat = options.latitude;
+        const lng = options.longitude;
+        
+        if (lat && lng && typeof lat === 'number' && typeof lng === 'number') {
+          url += `&location=${lat},${lng}&radius=50000`;
+        }
       }
 
       // Optional: Add language preference
-      if (options.language) {
+      if (options && options.language) {
         url += `&language=${options.language}`;
       }
 
+      console.log('🔍 Searching places with query:', query);
+      
       const response = await fetch(url);
       const data = await response.json();
       
       if (data.status === 'REQUEST_DENIED') {
         console.error('Google Places API access denied - check API key and billing');
+        console.error('Error message:', data.error_message);
         return [];
       }
       
@@ -45,15 +63,19 @@ export const googlePlacesService = {
         return [];
       }
       
-      return data.predictions.map(prediction => ({
+      const results = data.predictions.map(prediction => ({
         id: prediction.place_id,
         placeId: prediction.place_id,
         name: prediction.structured_formatting?.main_text || prediction.description.split(',')[0],
         address: prediction.structured_formatting?.secondary_text || prediction.description,
         fullAddress: prediction.description,
         type: 'google',
-        icon: 'map-pin'
+        icon: 'map-pin',
+        source: 'google'
       }));
+      
+      console.log(`✅ Found ${results.length} places for query: ${query}`);
+      return results;
     } catch (error) {
       console.error('Error searching places:', error);
       return [];
@@ -70,7 +92,7 @@ export const googlePlacesService = {
 
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${GOOGLE_PLACES_API_KEY}&fields=name,formatted_address,geometry,address_components`
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${GOOGLE_PLACES_API_KEY_VALUE}&fields=name,formatted_address,geometry,address_components`
       );
       
       const data = await response.json();
@@ -88,6 +110,7 @@ export const googlePlacesService = {
         latitude: place.geometry.location.lat,
         longitude: place.geometry.location.lng,
         type: 'google',
+        source: 'google',
         country: place.address_components?.find(c => c.types.includes('country'))?.long_name
       };
     } catch (error) {
@@ -98,9 +121,8 @@ export const googlePlacesService = {
 
   /**
    * Search all locations (local + Google)
-   * FIXED: Added options parameter
    */
-  searchAllLocations: async (query, options = {}) => {  // ADDED options parameter
+  searchAllLocations: async (query, options = {}) => {
     if (!query || query.length < 2) {
       // Return saved and popular locations when no query
       return [...SAVED_PLACES, ...POPULAR_MALAWI_LOCATIONS];
@@ -122,8 +144,9 @@ export const googlePlacesService = {
       source: 'local'
     }));
     
-    // Get Google Places results - NOW options is defined!
-    const googleResults = await googlePlacesService.searchPlaces(query, options);
+    // Get Google Places results - ensure options is an object
+    const safeOptions = options && typeof options === 'object' ? options : {};
+    const googleResults = await googlePlacesService.searchPlaces(query, safeOptions);
     const formattedGoogleResults = googleResults.map(place => ({
       ...place,
       source: 'google'
@@ -140,10 +163,9 @@ export const googlePlacesService = {
     return googlePlacesService.searchAllLocations(query, { 
       latitude, 
       longitude,
-      bias: true // Indicate that we want to bias results based on location
+      bias: true
     });
   }
 };
 
-// Re-export for backward compatibility
 export { SAVED_PLACES, POPULAR_MALAWI_LOCATIONS };
