@@ -56,6 +56,58 @@ class RideService {
   }
 
   // ====================
+  // SCHEDULED RIDES
+  // ====================
+
+  /**
+   * Schedule a future ride
+   */
+  async scheduleRide(rideData) {
+    try {
+      const enhancedRideData = {
+        ...rideData,
+        rideId: this.generateRideId(),
+        scheduledFor: rideData.scheduledFor,
+        status: 'scheduled',
+        createdAt: new Date().toISOString(),
+      };
+
+      // Store in scheduled rides (this could be API call or local storage)
+      // For now, store in AsyncStorage or send to backend
+      
+      // If using socket, you might emit a schedule event
+      // socketService.emit(SocketEvents.RIDE_SCHEDULED, enhancedRideData);
+      
+      console.log('📅 Ride scheduled:', enhancedRideData);
+      
+      // You can also set a local notification reminder
+      // await this.scheduleRideReminder(enhancedRideData);
+      
+      return enhancedRideData;
+      
+    } catch (error) {
+      console.error('❌ Failed to schedule ride:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Schedule a reminder notification for a future ride
+   */
+  async scheduleRideReminder(rideData) {
+    const scheduledTime = new Date(rideData.scheduledFor).getTime();
+    const now = Date.now();
+    const timeUntilRide = scheduledTime - now;
+    
+    // Schedule reminder 30 minutes before
+    if (timeUntilRide > 30 * 60 * 1000) {
+      const reminderTime = timeUntilRide - (30 * 60 * 1000);
+      // Use react-native-push-notification or similar to schedule
+      console.log(`📅 Will remind at: ${new Date(now + reminderTime)}`);
+    }
+  }
+
+  // ====================
   // RIDE MANAGEMENT (DRIVER)
   // ====================
 

@@ -18,6 +18,7 @@ import {
   Modal,
   Alert,
 } from 'react-native';
+import rideService from '@src/services/rideService';
 import { MaterialIconFallback as MaterialIcon } from '@src/utils/iconUtils';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { getUserData } from '@src/utils/userStorage';
@@ -33,7 +34,9 @@ const MOCK_RIDES = [
     id: '1',
     date: 'Today, 10:45 AM',
     pickup: 'Area 3 Shopping Complex',
+    pickupCoordinates: { latitude: -13.9583, longitude: 33.7689 },
     destination: 'Lilongwe City Mall',
+    destinationCoordinates: { latitude: -13.9626, longitude: 33.7741 },
     driver: 'John Banda',
     driverImage: 'https://randomuser.me/api/portraits/men/32.jpg',
     vehicle: 'Toyota Corolla - LL 2345 A',
@@ -57,7 +60,9 @@ const MOCK_RIDES = [
     id: '2',
     date: 'Yesterday, 3:30 PM',
     pickup: 'Current Location',
+    pickupCoordinates: { latitude: -13.9583, longitude: 33.7689 },
     destination: 'Kamuzu Central Hospital',
+    destinationCoordinates: { latitude: -13.9626, longitude: 33.7741 },
     driver: 'Sarah Mwale',
     driverImage: 'https://randomuser.me/api/portraits/women/44.jpg',
     vehicle: 'Honda Fit - LL 5678 B',
@@ -81,7 +86,9 @@ const MOCK_RIDES = [
     id: '3',
     date: 'Dec 15, 2:15 PM',
     pickup: 'Bunda Taxi Rank',
+    pickupCoordinates: { latitude: -13.9583, longitude: 33.7689 },
     destination: 'Likuni Hospital',
+    destinationCoordinates: { latitude: -13.9626, longitude: 33.7741 },
     driver: 'Mike Phiri',
     driverImage: 'https://randomuser.me/api/portraits/men/67.jpg',
     vehicle: 'Toyota Premio - LL 9012 C',
@@ -105,7 +112,9 @@ const MOCK_RIDES = [
     id: '4',
     date: 'Dec 14, 11:20 AM',
     pickup: 'Current Location',
+    pickupCoordinates: { latitude: -13.9583, longitude: 33.7689 },
     destination: 'Mzuzu University',
+    destinationCoordinates: { latitude: -13.9626, longitude: 33.7741 },
     driver: 'Chimwemwe Kanyenda',
     driverImage: 'https://randomuser.me/api/portraits/women/68.jpg',
     vehicle: 'Nissan Sunny - MZ 3456 D',
@@ -124,7 +133,9 @@ const MOCK_RIDES = [
     id: '5',
     date: 'Dec 12, 9:05 AM',
     pickup: 'Crossroads Hotel',
+    pickupCoordinates: { latitude: -13.9583, longitude: 33.7689 },
     destination: 'Lilongwe Bus Station',
+    destinationCoordinates: { latitude: -13.9626, longitude: 33.7741 },
     driver: 'Temwanani Moyo',
     driverImage: 'https://randomuser.me/api/portraits/women/23.jpg',
     vehicle: 'Toyota Corolla - LL 7890 E',
@@ -410,12 +421,32 @@ export default function RideHistoryScreen() {
     navigation.navigate('ReceiptScreen', { rideId: ride.id, rideData: ride });
   };
 
-  const handleRepeatRide = (ride) => {
-    navigation.navigate('RideSelection', {
-      destination: ride.destination,
-      pickupLocation: { name: ride.pickup },
-      rideType: ride.vehicleType,
-    });
+  const handleRepeatRide = async (ride) => {
+    try {
+      const repeatData = await rideService.repeatRide(ride.id);
+
+      if (repeatData && repeatData.pickupCoordinates && repeatData.destinationCoordinates) {
+        navigation.navigate('RideBooking', {
+          destination: repeatData.destination,
+          destinationCoordinates: repeatData.destinationCoordinates,
+          pickupLocation: repeatData.pickupLocation,
+          pickupCoordinates: repeatData.pickupCoordinates,
+          rideType: repeatData.rideType,
+        });
+      } else {
+        navigation.navigate('RideSelection', {
+          destination: ride.destination,
+          pickupLocation: ride.pickup,
+          rideType: ride.vehicleType,
+        });
+      }
+    } catch (error) {
+      navigation.navigate('RideSelection', {
+        destination: ride.destination,
+        pickupLocation: ride.pickup,
+        rideType: ride.vehicleType,
+      });
+    }
   };
 
   const handleContactDriver = (ride) => {

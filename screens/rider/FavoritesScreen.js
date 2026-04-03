@@ -244,50 +244,82 @@ export default function FavoritesScreen() {
   };
 
   const handleSaveFavorite = async () => {
-    if (!newFavorite.name.trim() || !newFavorite.address.trim()) {
-      Alert.alert('Error', 'Please enter name and address');
-      return;
-    }
+  // ✅ Add coordinates validation
+  if (!newFavorite.name.trim() || !newFavorite.address.trim()) {
+    Alert.alert('Error', 'Please enter name and address');
+    return;
+  }
+  
+  // ✅ Check if coordinates are missing
+  if (!newFavorite.coordinates) {
+    Alert.alert(
+      'Location Required',
+      'Please select a location on the map or enter valid coordinates',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Choose Location', 
+          onPress: () => {
+            // Navigate to map to pick location
+            closeModal();
+            setTimeout(() => {
+              navigation.navigate('SearchLocation', {
+                onLocationSelect: (location) => {
+                  setNewFavorite({
+                    ...newFavorite,
+                    address: location.address,
+                    coordinates: location.coordinates,
+                  });
+                  openModal();
+                },
+              });
+            }, 300);
+          }
+        }
+      ]
+    );
+    return;
+  }
 
-    let updatedFavorites;
-    
-    if (editingFavorite) {
-      updatedFavorites = favorites.map(fav =>
-        fav.id === editingFavorite ? { ...newFavorite, id: editingFavorite } : fav
-      );
-    } else {
-      const newId = Date.now().toString();
-      updatedFavorites = [
-        ...favorites,
-        {
-          ...newFavorite,
-          id: newId,
-          createdAt: new Date().toISOString().split('T')[0],
-        },
-      ];
-    }
+  let updatedFavorites;
+  
+  if (editingFavorite) {
+    updatedFavorites = favorites.map(fav =>
+      fav.id === editingFavorite ? { ...newFavorite, id: editingFavorite } : fav
+    );
+  } else {
+    const newId = Date.now().toString();
+    updatedFavorites = [
+      ...favorites,
+      {
+        ...newFavorite,
+        id: newId,
+        createdAt: new Date().toISOString().split('T')[0],
+      },
+    ];
+  }
 
-    await saveFavorites(updatedFavorites);
-    closeModal();
-    
-    // Success animation
-    Animated.sequence([
-      Animated.spring(searchBarScale, {
-        toValue: 1.05,
-        useNativeDriver: true,
-        tension: 200,
-        friction: 3,
-      }),
-      Animated.spring(searchBarScale, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 200,
-        friction: 3,
-      }),
-    ]).start();
-    
-    Alert.alert('Success', editingFavorite ? 'Favorite updated' : 'Favorite added');
-  };
+  await saveFavorites(updatedFavorites);
+  closeModal();
+  
+  // Success animation
+  Animated.sequence([
+    Animated.spring(searchBarScale, {
+      toValue: 1.05,
+      useNativeDriver: true,
+      tension: 200,
+      friction: 3,
+    }),
+    Animated.spring(searchBarScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 200,
+      friction: 3,
+    }),
+  ]).start();
+  
+  Alert.alert('Success', editingFavorite ? 'Favorite updated' : 'Favorite added');
+};
 
   const handleDeleteFavorite = (id) => {
     Alert.alert(
@@ -500,7 +532,7 @@ export default function FavoritesScreen() {
               >
                 <Text style={styles.inputLabel}>Name *</Text>
                 <View style={styles.inputContainer}>
-                  <MaterialIcon name="label" size={20} color="#666" style={styles.inputIcon} />
+                  <MaterialIcon name="local-offer" size={20} color="#666" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="e.g., Home, Work, Gym"

@@ -46,8 +46,15 @@ export default function RideConfirmationScreen() {
     riderInfo, 
     pickupCoords, 
     destinationCoords,
+    isScheduled,
+    scheduleDetails,
     socketRequestId
   } = route.params || {};
+
+  const defaultCoords = { latitude: -13.9626, longitude: 33.7741 };
+  const safePickupCoords = pickupCoords || defaultCoords;
+  const safeDestCoords = destinationCoords || defaultCoords; 
+
   
   const { paymentMethod, usePromo, userId, userName } = riderInfo || {};
   const [loading, setLoading] = useState(false);
@@ -129,6 +136,85 @@ export default function RideConfirmationScreen() {
     };
   }, [connectionStatus]);
 
+  // Handle scheduled ride confirmation
+  const handleConfirmScheduledRide = async () => {
+    setLoading(true);
+    
+    try {
+      // Prepare scheduled ride data
+      const scheduledRideData = {
+        ...ride,
+        pickupLocation: {
+          address: pickupLocation,
+          coordinates: safePickupCoords
+        },
+        destination: {
+          address: destinationAddress || destination,
+          coordinates: safeDestCoords
+        },
+        paymentMethod: paymentMethod || 'cash',
+        promoCode: usePromo ? 'PROMO20' : null,
+        scheduleDetails: scheduleDetails,
+        scheduledFor: scheduleDetails?.date && scheduleDetails?.time 
+          ? new Date(
+              scheduleDetails.date.getFullYear(),
+              scheduleDetails.date.getMonth(),
+              scheduleDetails.date.getDate(),
+              scheduleDetails.time.getHours(),
+              scheduleDetails.time.getMinutes()
+            ).toISOString()
+          : null,
+        recurring: scheduleDetails?.recurring || 'none',
+        recurringDays: scheduleDetails?.selectedDays || [],
+        status: 'scheduled',
+      };
+      
+      // Dispatch of scheduleRide thunk from Redux
+      // You'll need to import useDispatch and scheduleRide action
+      // const dispatch = useDispatch();
+      // const result = await dispatch(scheduleRide(scheduledRideData)).unwrap();
+      
+      // Show success message
+      Alert.alert(
+        'Ride Scheduled! 🗓️',
+        `Your ride has been scheduled for ${formatDate(scheduleDetails.date)} at ${formatTime(scheduleDetails.time)}.\n\nWe'll remind you before the ride.`,
+        [
+          { 
+            text: 'View Scheduled Rides', 
+            onPress: () => navigation.navigate('ScheduledRides') 
+          },
+          { 
+            text: 'Back to Home', 
+            onPress: () => navigation.navigate('RiderHome') 
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('Failed to schedule ride:', error);
+      Alert.alert('Error', 'Failed to schedule ride. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper to format date
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-MW', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  const formatTime = (time) => {
+    return time.toLocaleTimeString('en-MW', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   const handleConfirmRide = async () => {
     // Button press animation
     Animated.sequence([
@@ -154,12 +240,6 @@ export default function RideConfirmationScreen() {
     try {
       setLoading(true);
 
-      if (!pickupCoords || !destinationCoords) {
-        Alert.alert('Error', 'Pickup or destination coordinates missing');
-        setLoading(false);
-        return;
-      }
-
       // Generate unique request ID
       const requestId = `ride_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -173,11 +253,11 @@ export default function RideConfirmationScreen() {
         vehicleType: ride.vehicleType,
         pickupLocation: {
           address: pickupLocation || 'Your Location',
-          coordinates: pickupCoords 
+          coordinates: safePickupCoords 
         },
         destination: {
           address: destinationAddress || destination,
-          coordinates: destinationCoords
+          coordinates: safeDestCoords
         },
         paymentMethod: paymentMethod || 'cash',
         estimatedPrice: finalPrice,
@@ -215,9 +295,9 @@ export default function RideConfirmationScreen() {
           surgeMultiplier: surgeMultiplier,
         },
         pickup: pickupLocation || 'Your Location',
-        pickupCoords: pickupCoords,
+        pickupCoords: safePickupCoords, 
         destination: destinationAddress || destination,
-        destinationCoords: destinationCoords,
+        destinationCoords: safeDestCoords,
         paymentMethod: paymentMethod || 'cash',
         riderInfo: {
           userId: userId || user.id,
@@ -241,6 +321,14 @@ export default function RideConfirmationScreen() {
 
   const handleBack = () => {
     navigation.goBack();
+  };
+
+  const handleConfirm = async () => {
+    if (isScheduled) {
+      await handleConfirmScheduledRide();
+    } else {
+      await handleConfirmRide();
+    }
   };
 
   const getConnectionStatusColor = () => {
@@ -533,7 +621,7 @@ export default function RideConfirmationScreen() {
               styles.confirmButton, 
               loading && styles.confirmButtonDisabled
             ]} 
-            onPress={handleConfirmRide}
+            onPress={handleConfirm}
             disabled={loading}
           >
             {loading ? (

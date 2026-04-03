@@ -11,6 +11,7 @@ import {
   fetchRideDetails,
   updateRideLocation,
   getFareEstimate,
+  scheduleRide,
 } from '@store/slices/rideSlice';
 
 // Mock services - replace with actual API calls
@@ -159,6 +160,20 @@ const RideService = {
       }, 1000);
     });
   },
+  
+  scheduleRide: async (rideData) => {
+    // Replace with actual API call
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          id: 'scheduled_' + Date.now(),
+          ...rideData,
+          status: 'scheduled',
+          createdAt: Date.now(),
+        });
+      }, 1000);
+    });
+  },
 };
 
 // Worker sagas
@@ -260,6 +275,36 @@ function* getFareEstimateWorker(action) {
   }
 }
 
+function* scheduleRideWorker(action) {
+  try {
+    const rideData = action.payload;
+    const { auth } = yield select();
+    const userId = auth.user?.id;
+    
+    // Add user ID to ride data
+    const scheduledRideData = {
+      ...rideData,
+      userId,
+      scheduledFor: rideData.scheduledFor,
+      status: 'scheduled',
+      createdAt: Date.now(),
+    };
+    
+    // Call API to schedule ride
+    const response = yield call(RideService.scheduleRide, scheduledRideData);
+    
+    yield put(scheduleRide.fulfilled(response));
+    
+    Alert.alert(
+      'Ride Scheduled', 
+      `Your ride has been scheduled for ${new Date(rideData.scheduledFor).toLocaleString()}` 
+    );
+  } catch (error) {
+    yield put(scheduleRide.rejected(error.message));
+    Alert.alert('Error', 'Failed to schedule ride. Please try again.');
+  }
+}
+
 // Watcher sagas
 function* watchBookRide() {
   yield takeLatest(bookRide.pending, bookRideWorker);
@@ -289,6 +334,10 @@ function* watchGetFareEstimate() {
   yield takeLatest(getFareEstimate.pending, getFareEstimateWorker);
 }
 
+function* watchScheduleRide() {
+  yield takeLatest(scheduleRide.pending, scheduleRideWorker);
+}
+
 // Root saga
 export default function* rideSaga() {
   yield all([
@@ -299,5 +348,6 @@ export default function* rideSaga() {
     fork(watchFetchRideDetails),
     fork(watchUpdateRideLocation),
     fork(watchGetFareEstimate),
+    fork(watchScheduleRide),
   ]);
 }

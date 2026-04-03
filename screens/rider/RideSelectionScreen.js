@@ -80,6 +80,11 @@ export default function RideSelectionScreen({ route, navigation }) {
     pickupCoordinates,
     preselectedRide
   } = route.params || {};
+
+  // Safety: Provide default coordinates if missing (prevents map crash)
+  const defaultCoords = { latitude: -13.9626, longitude: 33.7741 };
+  const safePickupCoords = pickupCoordinates || defaultCoords;
+  const safeDestCoords = destinationCoordinates || defaultCoords;
   
   const [selectedRide, setSelectedRide] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -474,11 +479,9 @@ const rideOptions = [
     </Modal>
   );
 
-  const pickupCoords = pickupCoordinates || currentLocation || 
-    { latitude: -13.9626, longitude: 33.7741 };
+  const pickupCoords = safePickupCoords || currentLocation || defaultCoords;
 
-  const destCoords = destinationCoordinates || 
-    { latitude: -13.9897, longitude: 33.7777 };
+  const destCoords = safeDestCoords || defaultCoords;
 
   return (
     <SafeAreaView style={styles.container}>

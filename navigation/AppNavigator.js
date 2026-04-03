@@ -221,7 +221,7 @@ const RidesStackNavigator = () => (
 
 const ScheduleStackNavigator = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="Schedule" component={ScheduleScreen} />
+    <Stack.Screen name="ScheduleMain" component={ScheduleScreen} />
     <Stack.Screen name="BookAhead" component={BookAheadScreen} />
     <Stack.Screen name="SearchLocation" component={SearchLocationScreen} />
     <Stack.Screen name="PackageDelivery" component={PackageDeliveryScreen} />

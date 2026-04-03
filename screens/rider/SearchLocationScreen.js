@@ -20,7 +20,10 @@ import { POPULAR_MALAWI_LOCATIONS } from '@src/services/location/constants';
 export default function SearchLocationScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { source, locationType } = route.params || {}; // Add locationType for package delivery
+  const { source, locationType, onLocationSelect } = route.params || {};
+  
+  // Ensure locationType has a default value to prevent undefined errors
+  const safeLocationType = locationType || (source === 'package_delivery' ? 'pickup' : null);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -32,7 +35,7 @@ export default function SearchLocationScreen() {
   // Determine header title based on source and locationType
   const getHeaderTitle = () => {
     if (source === 'package_delivery') {
-      return locationType === 'pickup' ? 'Select Pickup Location' : 'Select Delivery Location';
+      return safeLocationType === 'pickup' ? 'Select Pickup Location' : 'Select Delivery Location';
     }
     return 'Where to?';
   };
@@ -40,7 +43,7 @@ export default function SearchLocationScreen() {
   // Determine placeholder text
   const getPlaceholderText = () => {
     if (source === 'package_delivery') {
-      return locationType === 'pickup' ? 'Search pickup location' : 'Search delivery location';
+      return safeLocationType === 'pickup' ? 'Search pickup location' : 'Search delivery location';
     }
     return 'Search destination';
   };
@@ -61,7 +64,7 @@ export default function SearchLocationScreen() {
 
     // Load default places
     loadDefaultPlaces();
-  }, []);
+  }, [source, safeLocationType]); // Add dependencies to prevent stale closures
 
   const loadDefaultPlaces = () => {
     setResults(POPULAR_MALAWI_LOCATIONS);
@@ -92,36 +95,70 @@ export default function SearchLocationScreen() {
 
   const handleSelectLocation = async (location) => {
     try {
+      if (!location) {
+        console.error('No location provided');
+        return;
+      }
+
       let selectedLocation = location;
 
       if (location.source === 'google' && location.placeId) {
-        selectedLocation = await placeSearchService.getPlaceDetails(
-          location.placeId, 
-          'google'
-        );
+        try {
+          selectedLocation = await placeSearchService.getPlaceDetails(
+            location.placeId, 
+            'google'
+          );
+        } catch (detailError) {
+          console.error('Error getting place details:', detailError);
+          // Continue with original location if details fail
+        }
       }
 
-      placeSearchService.addToRecent(selectedLocation);
+      // ✅ ADD this formatting - preserves all existing properties
+      const formattedLocation = {
+        ...selectedLocation,  // Keep all existing data
+        coordinates: selectedLocation.coordinates || {
+          latitude: selectedLocation.latitude,
+          longitude: selectedLocation.longitude,
+        },
+      };
+
+      placeSearchService.addToRecent(formattedLocation);
+
+
+      if (onLocationSelect) {
+        onLocationSelect({
+          address: formattedLocation.address || formattedLocation.name,
+          coordinates: formattedLocation.coordinates,
+        });
+        navigation.goBack();
+        return; // Exit early since we're already navigating back
+      }
 
       // Handle different navigation sources
       if (source === 'package_delivery') {
         // For package delivery: navigate back to PackageDelivery with location and type
         navigation.navigate('PackageDelivery', { 
-          selectedLocation,
-          locationType: locationType // 'pickup' or 'delivery'
+          selectedLocation: formattedLocation,
+          locationType: safeLocationType // 'pickup' or 'delivery'
         });
       } else if (source === 'schedule') {
         // For schedule flow, navigate back with location WITHOUT any auto-navigation
-        navigation.navigate('Schedule', { 
-          selectedLocation,
-          fromScheduleSelect: true  // Add flag to indicate this is from schedule selection
+        navigation.navigate('Schedule', {
+          screen: 'ScheduleMain',
+          params: {
+            selectedLocation: formattedLocation,
+            fromScheduleSelect: true  // Add flag to indicate this is from schedule selection
+          }
         });
       } else {
         // For home flow, navigate back to RiderHome
-        navigation.navigate('RiderHome', { selectedLocation });
+        navigation.navigate('RiderHome', { selectedLocation: formattedLocation });
       }
     } catch (error) {
       console.error('Error selecting location:', error);
+      // Optionally show user feedback
+      // Could add a toast or alert here
     }
   };
 

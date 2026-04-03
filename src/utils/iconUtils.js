@@ -33,6 +33,18 @@ const ICON_MAP = {
     community: 'circle', 
     ion: 'ellipse' 
   },
+  'radio-button-checked': { 
+    material: 'radio-button-checked', 
+    fa: 'dot-circle', 
+    community: 'radiobox-marked', 
+    ion: 'radio-button-on' 
+  },
+  'radio-button-unchecked': { 
+    material: 'radio-button-unchecked', 
+    fa: 'circle-thin', 
+    community: 'radiobox-blank', 
+    ion: 'radio-button-off' 
+  },
   'directions-car': { 
     material: 'directions-car', 
     fa: 'car', 
@@ -45,6 +57,13 @@ const ICON_MAP = {
     community: 'map', 
     ion: 'map' 
   },
+
+  'label': { 
+  material: 'local-offer', 
+  fa: 'tag', 
+  community: 'tag', 
+  ion: 'pricetag' 
+},
 
   'calendar-month': { 
   material: 'calendar-today',  // Fallback to calendar-today

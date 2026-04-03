@@ -194,7 +194,10 @@ export default function PackageDeliveryScreen({ route, navigation }) {
         />
       </View>
 
-      <View style={styles.inputContainer}>
+      <TouchableOpacity 
+        style={styles.inputContainer}
+        onPress={() => openLocationSearch('pickup')}
+      >
         <MaterialIcon name="location-on" size={20} color="#666" style={styles.inputIcon} />
         <TextInput
           style={[styles.input, styles.locationInput]}
@@ -203,10 +206,8 @@ export default function PackageDeliveryScreen({ route, navigation }) {
           editable={false}
           pointerEvents="none"
         />
-        <TouchableOpacity onPress={() => openLocationSearch('pickup')}>
-          <MaterialIcon name="search" size={20} color="#00a82d" />
-        </TouchableOpacity>
-      </View>
+        <MaterialIcon name="search" size={20} color="#00a82d" />
+      </TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.nextButton}
@@ -243,7 +244,10 @@ export default function PackageDeliveryScreen({ route, navigation }) {
         />
       </View>
 
-      <View style={styles.inputContainer}>
+      <TouchableOpacity 
+        style={styles.inputContainer}
+        onPress={() => openLocationSearch('delivery')}
+      >
         <MaterialIcon name="location-on" size={20} color="#666" style={styles.inputIcon} />
         <TextInput
           style={[styles.input, styles.locationInput]}
@@ -252,10 +256,8 @@ export default function PackageDeliveryScreen({ route, navigation }) {
           editable={false}
           pointerEvents="none"
         />
-        <TouchableOpacity onPress={() => openLocationSearch('delivery')}>
-          <MaterialIcon name="search" size={20} color="#00a82d" />
-        </TouchableOpacity>
-      </View>
+        <MaterialIcon name="search" size={20} color="#00a82d" />
+      </TouchableOpacity>
 
       <View style={styles.buttonRow}>
         <TouchableOpacity 

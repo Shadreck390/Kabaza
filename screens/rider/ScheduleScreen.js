@@ -1,5 +1,5 @@
 // screens/rider/ScheduleScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,8 @@ export default function ScheduleScreen({ navigation, route }) {
     rideType: 'kabaza',
     pickupLocation: '',
     dropoffLocation: '',
+    pickupCoordinates: null, 
+    dropoffCoordinates: null,
     notes: '',
     estimatedPrice: 'MK 10,500 - MK 15,500',
   });
@@ -39,32 +41,89 @@ export default function ScheduleScreen({ navigation, route }) {
       const selectedLocation = route.params?.selectedLocation;
       const fromScheduleSelect = route.params?.fromScheduleSelect;
       
-      if (selectedLocation) {
-        // For schedule booking, alternate between pickup and dropoff
-        if (!scheduleDetails.pickupLocation || scheduleDetails.pickupLocation === '') {
-          setScheduleDetails({
-            ...scheduleDetails,
-            pickupLocation: selectedLocation.name,
-            pickupCoordinates: selectedLocation.coordinates,
-            pickupAddress: selectedLocation.address
-          });
-        } else if (!scheduleDetails.dropoffLocation || scheduleDetails.dropoffLocation === '') {
-          setScheduleDetails({
-            ...scheduleDetails,
-            dropoffLocation: selectedLocation.name,
-            dropoffCoordinates: selectedLocation.coordinates,
-            dropoffAddress: selectedLocation.address
-          });
-        } else {
-          // If both are filled, you might want to replace the last selected or show alert
-          Alert.alert('Locations Set', 'Both pickup and dropoff are already selected. Tap on a location to change it.');
-        }
+      console.log('🔍 useFocusEffect triggered:', { selectedLocation, fromScheduleSelect });
+      
+      if (selectedLocation && fromScheduleSelect) {
+        // Extract coordinates safely
+        const coordinates = 
+          selectedLocation.coordinates ||
+          (selectedLocation.latitude && selectedLocation.longitude ? 
+            { latitude: selectedLocation.latitude, longitude: selectedLocation.longitude } : 
+            null);
         
-        // Clear the parameters to prevent re-triggering
+        const locationName = selectedLocation.name || selectedLocation.address;
+        console.log('📍 Location received:', { locationName, coordinates });
+
+        // Use functional update to get fresh state
+        setScheduleDetails(prev => {
+          console.log('Current prev state:', {
+            pickupLocation: prev.pickupLocation,
+            dropoffLocation: prev.dropoffLocation
+          });
+
+          // Case 1: Pickup is empty - set pickup
+          if (!prev.pickupLocation || prev.pickupLocation === '') {
+            console.log('✅ Setting PICKUP location:', locationName);
+            return {
+              ...prev,
+              pickupLocation: locationName,
+              pickupCoordinates: coordinates,
+              pickupAddress: selectedLocation.address || locationName
+            };
+          } 
+          // Case 2: Pickup is set, Dropoff is empty - set dropoff
+          else if (!prev.dropoffLocation || prev.dropoffLocation === '') {
+            console.log('✅ Setting DROPOFF location:', locationName);
+            return {
+              ...prev,
+              dropoffLocation: locationName,
+              dropoffCoordinates: coordinates,
+              dropoffAddress: selectedLocation.address || locationName
+            };
+          } 
+          // Case 3: Both are already set
+          else {
+            console.log('⚠️ Both locations already set');
+            Alert.alert('Locations Set', 'Both pickup and dropoff are already selected. Tap on a location to change it.');
+            return prev;
+          }
+        });
+        
+        // Clear the params after processing
         navigation.setParams({ selectedLocation: undefined, fromScheduleSelect: undefined });
       }
-    }, [route.params?.selectedLocation, route.params?.fromScheduleSelect, scheduleDetails, navigation])
+    }, [route.params?.selectedLocation, route.params?.fromScheduleSelect]) // ← Remove scheduleDetails from deps
   );
+
+  // Handle navigation from Home screen with fromHome parameter
+  useEffect(() => {
+    const fromHome = route.params?.fromHome;
+    const pickupFromHome = route.params?.pickupLocation;
+    const dropoffFromHome = route.params?.dropoffLocation;
+    const pickupCoordsFromHome = route.params?.pickupCoordinates;
+    const dropoffCoordsFromHome = route.params?.dropoffCoordinates;
+    
+    if (fromHome) {
+      console.log('Navigated from Home screen');
+      // Optionally pre-fill locations if passed from home
+      if (pickupFromHome) {
+        setScheduleDetails(prev => ({
+          ...prev,
+          pickupLocation: pickupFromHome,
+          pickupCoordinates: pickupCoordsFromHome,
+        }));
+      }
+      if (dropoffFromHome) {
+        setScheduleDetails(prev => ({
+          ...prev,
+          dropoffLocation: dropoffFromHome,
+          dropoffCoordinates: dropoffCoordsFromHome,
+        }));
+      }
+      // Clear the param so it doesn't re-trigger
+      navigation.setParams({ fromHome: undefined });
+    }
+  }, [route.params?.fromHome]);
 
   const recurringOptions = [
     { id: 'none', label: 'One time', icon: 'event' }, 
@@ -149,7 +208,18 @@ export default function ScheduleScreen({ navigation, route }) {
       return;
     }
 
-    // Navigate to confirmation screen with schedule details
+    // Find the selected ride from rideTypes array
+    const selectedRideData = rideTypes.find(ride => ride.id === scheduleDetails.rideType);
+    
+    if (!selectedRideData) {
+      Alert.alert('Error', 'Please select a ride type');
+      return;
+    }
+
+    // Extract price number from string (e.g., "MK 10,500" -> 10500)
+    const priceNumber = parseInt(selectedRideData.price.replace(/[^0-9]/g, ''), 10);
+
+    // Navigate to confirmation screen with correct ride details
     navigation.navigate('RideConfirmation', {
       isScheduled: true,
       scheduleDetails: scheduleDetails,
@@ -158,11 +228,12 @@ export default function ScheduleScreen({ navigation, route }) {
       destination: scheduleDetails.dropoffLocation,
       destinationCoords: scheduleDetails.dropoffCoordinates,
       ride: {
-        name: scheduleDetails.rideType === 'kabaza' ? 'Life Bike' : 
-              scheduleDetails.rideType === 'comfort' ? 'Lion King Bike' : 'Kiwasaki Bike',
-        vehicleType: scheduleDetails.rideType,
-        basePrice: scheduleDetails.rideType === 'kabaza' ? 4500 : 
-                   scheduleDetails.rideType === 'comfort' ? 6500 : 5500,
+        id: selectedRideData.id,
+        name: selectedRideData.label,
+        icon: selectedRideData.icon,
+        vehicleType: selectedRideData.id,
+        basePrice: priceNumber,
+        formattedPrice: selectedRideData.price,
         estimatedTime: '5-10 min',
         distance: '0 km',
       }

@@ -176,6 +176,43 @@ export const getFareEstimate = createAsyncThunk(
   }
 );
 
+// Schedule a future ride
+export const scheduleRide = createAsyncThunk(
+  'ride/scheduleRide',
+  async (rideData, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      const userId = auth.user?.id;
+      
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+      
+      // Validate schedule time (must be at least 15 minutes in future)
+      const scheduleTime = rideData.scheduledFor;
+      const minTime = Date.now() + (15 * 60 * 1000);
+      if (scheduleTime && new Date(scheduleTime).getTime() < minTime) {
+        throw new Error('Schedule time must be at least 15 minutes from now');
+      }
+      
+      const scheduledRide = {
+        ...rideData,
+        userId,
+        scheduledFor: scheduleTime,
+        status: 'scheduled',
+        createdAt: Date.now(),
+      };
+      
+      // Call schedule ride service
+      const result = await RideService.scheduleRide(scheduledRide);
+      
+      return { ...result, isScheduled: true };
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to schedule ride');
+    }
+  }
+);
+
 // ====================
 // INITIAL STATE
 // ====================
@@ -1142,6 +1179,38 @@ const rideSlice = createSlice({
         state.loading.estimatingFare = false;
         state.errors.estimatingFare = action.payload;
         state.timestamps.lastUpdated = Date.now();
+      })
+      
+      // Schedule ride
+      .addCase(scheduleRide.pending, (state) => {
+        state.loading.booking = true;
+        state.errors.booking = null;
+        state.timestamps.rideRequested = Date.now();
+      })
+      .addCase(scheduleRide.fulfilled, (state, action) => {
+        state.loading.booking = false;
+        state.currentRide = action.payload;
+        state.searchingForDriver = false;
+        state.features.canCancelRide = true;
+        
+        // Add to ride history as scheduled
+        if (action.payload.isScheduled) {
+          state.rideHistory.unshift({
+            ...action.payload,
+            addedAt: Date.now(),
+            status: 'scheduled',
+          });
+          
+          // Update stats
+          state.stats.totalRides += 1;
+        }
+        
+        state.timestamps.lastUpdated = Date.now();
+      })
+      .addCase(scheduleRide.rejected, (state, action) => {
+        state.loading.booking = false;
+        state.errors.booking = action.payload;
+        state.timestamps.lastUpdated = Date.now();
       });
   },
 });
@@ -1488,50 +1557,7 @@ export const shareRideDetails = (contacts) => async (dispatch, getState) => {
     console.error('Failed to share ride details:', error);
     dispatch(setError({ 
       key: 'safety', 
-      error: 'Failed to share ride' 
-    }));
-    throw error;
-  }
-};
-
-// Schedule a future ride
-export const scheduleRide = (rideData, scheduleTime) => async (dispatch, getState) => {
-  const { auth } = getState();
-  const userId = auth.user?.id;
-  
-  try {
-    // Validate schedule time (must be at least 15 minutes in future)
-    const minTime = Date.now() + (15 * 60 * 1000);
-    if (scheduleTime < minTime) {
-      throw new Error('Schedule time must be at least 15 minutes from now');
-    }
-    
-    const scheduledRide = {
-      ...rideData,
-      userId,
-      scheduledFor: scheduleTime,
-      status: 'scheduled',
-      createdAt: Date.now(),
-    };
-    
-    // Call schedule ride service
-    const result = await RideService.scheduleRide(scheduledRide);
-    
-    // Add to ride history as scheduled
-    dispatch(addToRideHistory({
-      ...result,
-      isScheduled: true,
-    }));
-    
-    // Set reminder notification
-    // You would integrate with your notification service here
-    
-    return { success: true, ...result };
-  } catch (error) {
-    console.error('Failed to schedule ride:', error);
-    dispatch(setError({ 
-      key: 'booking', 
-      error: 'Failed to schedule ride' 
+      error: 'Failed to share ride details' 
     }));
     throw error;
   }

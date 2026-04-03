@@ -347,6 +347,27 @@ export const rateRide = async (rideId, rating, review = '', tip = 0) => {
   }
 };
 
+// Schedule a future ride
+export const scheduleRide = async (rideData) => {
+  try {
+    const result = await apiRequest('/rides/schedule', {
+      method: 'POST',
+      body: rideData,
+    });
+
+    return {
+      success: true,
+      ride: result.ride,
+      scheduledFor: result.scheduledFor,
+      reminderSet: result.reminderSet || true,
+      message: result.message || 'Ride scheduled successfully',
+    };
+  } catch (error) {
+    console.error('Error scheduling ride:', error);
+    throw new Error(error.message || 'Failed to schedule ride.');
+  }
+};
+
 // Get active ride for user
 export const getActiveRide = async (userId) => {
   try {
@@ -667,6 +688,7 @@ export default {
   rateRide,
   sendSOSAlert,
   shareRideDetails,
+  scheduleRide,
   
   // Driver operations
   fetchNearbyDrivers,
